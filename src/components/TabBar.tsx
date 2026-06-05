@@ -2,16 +2,17 @@ import type { WheelPosition } from "../types";
 import { PHASE_CONFIG } from "../constants";
 import { fmt, dayChange, dayChangePct } from "../utils/formatters";
 
-interface Tab { id: string; label: string; }
+interface Tab { id: string; label: string; closeable?: boolean; }
 
 interface TabBarProps {
   tabs: Tab[];
   activeTab: string;
   positions: WheelPosition[];
   onSelect: (id: string) => void;
+  onClose?: (id: string) => void;
 }
 
-export function TabBar({ tabs, activeTab, positions, onSelect }: TabBarProps) {
+export function TabBar({ tabs, activeTab, positions, onSelect, onClose }: TabBarProps) {
   return (
     <div
       style={{
@@ -57,6 +58,27 @@ export function TabBar({ tabs, activeTab, positions, onSelect }: TabBarProps) {
                 }}
               >
                 {fmt.pct(dayChangePct(pos))}
+              </span>
+            )}
+            {tab.closeable && onClose && (
+              <span
+                role="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose(tab.id);
+                }}
+                title="Close tab"
+                style={{
+                  marginLeft: 8,
+                  fontSize: 10,
+                  color: "#3a3a5a",
+                  cursor: "pointer",
+                  transition: "color 0.15s",
+                }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#ef4444")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#3a3a5a")}
+              >
+                ✕
               </span>
             )}
           </button>

@@ -5,26 +5,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev        # Start Vite dev server (hot reload)
+# Frontend (repo root)
+npm run dev        # Start Vite dev server (hot reload) on http://localhost:5173
 npm run build      # Type-check (tsc -b) then build for production
 npm run preview    # Serve the production build locally
+
+# Backend analysis API (backend/WheelStrategy.Api)
+dotnet run         # Serves http://localhost:5099 (launchSettings sets Development env)
+dotnet build       # Compile only
 ```
 
 No test runner is configured.
 
+First-time backend setup — the Alpaca keys are read from user-secrets (never committed, never the browser's `VITE_*` keys):
+
+```bash
+cd backend/WheelStrategy.Api
+dotnet user-secrets set "Alpaca:ApiKeyId" "<key>"
+dotnet user-secrets set "Alpaca:ApiSecretKey" "<secret>"
+```
+
 ## Architecture
 
-This is a single-page React + TypeScript app built with Vite. It's a **Wheel Strategy options trading dashboard** — a UI for tracking the three phases of the wheel: Cash-Secured Put → Stock Holding → Covered Call.
+A React + TypeScript SPA (Vite) — a **Wheel Strategy options trading dashboard** for tracking the three phases of the wheel (Cash-Secured Put → Stock Holding → Covered Call) — plus a **.NET 10 analysis backend** (`backend/WheelStrategy.Api`) that computes data-driven strike suggestions.
 
-### Key files
+> Note: the **live app entry is [src/WheelDashboard.tsx](src/WheelDashboard.tsx)** (rendered by `src/main.tsx`), composing the `src/components/` and `src/hooks/` files. The root-level `WheelDashboard.tsx` is a dead duplicate — do not edit it.
 
-- **[WheelDashboard.tsx](WheelDashboard.tsx)** — monolithic root file containing all types, mock data, sub-components, the API hook, and the root `WheelDashboard` component. The `src/components/` files appear to be extracted duplicates of some of these components but are not currently imported anywhere.
-- **[src/data/mockPositions.ts](src/data/mockPositions.ts)** — mock `WheelPosition[]` data (mirrored in the root file).
-- **[src/utils/formatters.ts](src/utils/formatters.ts)** — currency/compact/percent formatters (mirrored as `fmt` in the root file).
+### Key files (frontend)
+
+- **[src/WheelDashboard.tsx](src/WheelDashboard.tsx)** — root component: broker/account state, tab system (Dashboard + per-position tabs + closeable opened-watchlist-ticker tabs).
+- **[src/data/mockPositions.ts](src/data/mockPositions.ts)** — mock `WheelPosition[]`. **[src/utils/formatters.ts](src/utils/formatters.ts)** — `fmt` currency/compact/percent helpers.
+- The browser calls Alpaca directly via [src/api/alpacaClient.ts](src/api/alpacaClient.ts) for prices/positions; it calls the .NET backend via [src/api/fetchWheelAnalysis.ts](src/api/fetchWheelAnalysis.ts) for analysis. `API_BASE` comes from `VITE_API_BASE_URL` (default `http://localhost:5099`).
+
+### Analysis backend
+
+`GET /api/analysis/wheel?symbol=NVDA&dte=35&lookbackDays=730&granularity=weekly` returns safe/regular/risky strike suggestions for both the cash-secured put and covered call. Each suggestion carries an **empirical** assignment probability (percentile of the stock's own historical forward returns over a DTE-matched horizon) **and** a **Black-Scholes** assignment probability (from realized volatility), plus estimated premium and annualized yield. 2yr weekly bars are fetched from Alpaca (adjusted), cached in SQLite (`HistoricalBar`), and refreshed incrementally. Layers: `Endpoints/` → `Services/WheelAnalysisService` → `Services/BarCacheService` + `Alpaca/AlpacaMarketDataClient`, with pure-`double` math in `Stats/StatMath`. Surfaced in the UI inside [src/components/WheelAnalysisPanel.tsx](src/components/WheelAnalysisPanel.tsx), embedded in [src/components/WatchlistTickerDetail.tsx](src/components/WatchlistTickerDetail.tsx).
+
+⚠️ Alpaca's market-data API rejects a `Content-Type` header on GET requests (CORS preflight fails). Both the browser and backend clients deliberately omit it.
 
 ### Data flow
 
-`useWheelPositions` hook → `WheelDashboard` (root) → tab selection → either `SummaryDashboard` (portfolio overview) or `TickerDetail` (per-ticker drill-down).
+`useWheelPositions` hook → `src/WheelDashboard.tsx` → tab selection → `SummaryDashboard`, `TickerDetail` (held position), or `WatchlistTickerDetail` (opened-from-watchlist research view, which embeds the analysis panel).
 
 The hook is wired for real API integration. Comments in `useWheelPositions` document the intended backend endpoints:
 - E\*TRADE `/v1/accounts/{id}/portfolio` for positions/shares/cost basis

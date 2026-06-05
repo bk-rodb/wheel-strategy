@@ -42,7 +42,7 @@ function inferPhase(
 
 // ─── 30-day bar history ───────────────────────────────────────────────────────
 
-async function fetchPriceHistory(symbols: string[]): Promise<Record<string, PricePoint[]>> {
+export async function fetchPriceHistory(symbols: string[]): Promise<Record<string, PricePoint[]>> {
   if (symbols.length === 0) return {};
 
   const start = new Date(Date.now() - 31 * 86400000).toISOString().slice(0, 10);

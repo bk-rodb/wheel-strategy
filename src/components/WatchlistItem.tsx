@@ -4,9 +4,10 @@ import { fmt } from "../utils/formatters";
 interface WatchlistItemProps {
   item: WatchlistItemData;
   onRemove: (symbol: string) => void;
+  onOpen: (symbol: string) => void;
 }
 
-export function WatchlistItem({ item, onRemove }: WatchlistItemProps) {
+export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
   const q = item.quote;
   // Render every row as a live daily-session quote: the session price up top,
   // the day's move (vs. prior close) below — shown actively whether or not the
@@ -18,11 +19,14 @@ export function WatchlistItem({ item, onRemove }: WatchlistItemProps) {
 
   return (
     <div
+      onClick={() => onOpen(item.symbol)}
+      title={`Open ${item.symbol}`}
       style={{
         padding: "10px 14px",
         borderBottom: "1px solid #0e0e20",
         transition: "background 0.1s",
         position: "relative",
+        cursor: "pointer",
       }}
       onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#0d0d1e")}
       onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
@@ -92,7 +96,10 @@ export function WatchlistItem({ item, onRemove }: WatchlistItemProps) {
 
       {/* Remove */}
       <button
-        onClick={() => onRemove(item.symbol)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(item.symbol);
+        }}
         title="Remove"
         style={{
           cursor: "pointer",

@@ -25,3 +25,19 @@ Thumbs.db
 
 # vite
 *.local
+
+# .NET build output
+backend/**/bin/
+backend/**/obj/
+
+# SQLite cache db (created at runtime by WheelStrategy.Api)
+backend/**/wheel.db
+backend/**/wheel.db-shm
+backend/**/wheel.db-wal
+
+# Playwright MCP artifacts
+.playwright-mcp/
+nvda-analysis.png
+
+# Claude Code local settings
+.claude/

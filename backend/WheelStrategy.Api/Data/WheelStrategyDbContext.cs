@@ -11,6 +11,7 @@ public class WheelStrategyDbContext(DbContextOptions<WheelStrategyDbContext> opt
     public DbSet<OptionLeg> OptionLegs => Set<OptionLeg>();
     public DbSet<WatchlistItem> WatchlistItems => Set<WatchlistItem>();
     public DbSet<PriceSnapshot> PriceSnapshots => Set<PriceSnapshot>();
+    public DbSet<HistoricalBar> HistoricalBars => Set<HistoricalBar>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -68,6 +69,18 @@ public class WheelStrategyDbContext(DbContextOptions<WheelStrategyDbContext> opt
             e.Property(x => x.DayOpen).HasPrecision(18, 4);
             e.Property(x => x.DayHigh).HasPrecision(18, 4);
             e.Property(x => x.DayLow).HasPrecision(18, 4);
+        });
+
+        // HistoricalBar — cached OHLC bars; one row per (Symbol, Timeframe, BarStart)
+        b.Entity<HistoricalBar>(e =>
+        {
+            e.HasIndex(x => new { x.Symbol, x.Timeframe, x.BarStart }).IsUnique();
+            e.Property(x => x.Timeframe).HasConversion<string>();
+            e.Property(x => x.Open).HasPrecision(18, 4);
+            e.Property(x => x.High).HasPrecision(18, 4);
+            e.Property(x => x.Low).HasPrecision(18, 4);
+            e.Property(x => x.Close).HasPrecision(18, 4);
+            e.Property(x => x.VWAP).HasPrecision(18, 4);
         });
     }
 }

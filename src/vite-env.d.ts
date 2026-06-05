@@ -6,6 +6,7 @@ interface ImportMetaEnv {
   readonly VITE_ALPACA_BASE_URL: string;
   readonly VITE_ALPACA_DATA_URL: string;
   readonly VITE_POLYGON_API_KEY: string;
+  readonly VITE_API_BASE_URL: string;
 }
 
 interface ImportMeta {

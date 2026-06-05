@@ -35,6 +35,34 @@ export interface PricePoint {
   price: number;
 }
 
+export type AnalysisLevel = "safe" | "regular" | "risky";
+
+export interface StrikeSuggestion {
+  level: AnalysisLevel;
+  strike: number;
+  pctFromSpot: number;
+  empiricalAssignmentProb: number;
+  blackScholesAssignmentProb: number;
+  estPremium: number;
+  annualizedYield: number;
+}
+
+export interface WheelAnalysis {
+  symbol: string;
+  currentPrice: number;
+  asOf: string;
+  lookbackDays: number;
+  dte: number;
+  horizonPeriods: number;
+  granularity: string;
+  sampleCount: number;
+  realizedVolAnnual: number;
+  riskFreeRate: number;
+  put: StrikeSuggestion[] | null;
+  call: StrikeSuggestion[] | null;
+  warnings: string[];
+}
+
 export interface WheelPosition {
   id: string;
   ticker: string;

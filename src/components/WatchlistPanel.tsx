@@ -12,7 +12,7 @@ function useDebounce<T>(value: T, ms: number): T {
   return debounced;
 }
 
-export function WatchlistPanel() {
+export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string) => void }) {
   const { items, add, remove } = useWatchlist();
 
   const [query, setQuery] = useState("");
@@ -310,7 +310,7 @@ export function WatchlistPanel() {
           </div>
         ) : (
           items.map((item) => (
-            <WatchlistItem key={item.symbol} item={item} onRemove={remove} />
+            <WatchlistItem key={item.symbol} item={item} onRemove={remove} onOpen={onOpenTicker} />
           ))
         )}
       </div>

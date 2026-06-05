@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { BrokerType } from "./types";
 import { useWheelPositions } from "./hooks/useWheelPositions";
 import { useAccountDetails } from "./hooks/useAccountDetails";
@@ -7,6 +7,7 @@ import { AccountHeader } from "./components/AccountHeader";
 import { TabBar } from "./components/TabBar";
 import { SummaryDashboard } from "./components/SummaryDashboard";
 import { TickerDetail } from "./components/TickerDetail";
+import { WatchlistTickerDetail } from "./components/WatchlistTickerDetail";
 import { WatchlistPanel } from "./components/WatchlistPanel";
 
 export default function WheelDashboard() {
@@ -14,13 +15,41 @@ export default function WheelDashboard() {
   const { positions, loading, error, lastRefresh, refresh, isMock } = useWheelPositions();
   const { account, loading: accountLoading } = useAccountDetails(broker);
   const [activeTab, setActiveTab] = useState<string>("__summary__");
+  const [openedTickers, setOpenedTickers] = useState<string[]>([]);
+
+  const handleOpenTicker = useCallback(
+    (symbol: string) => {
+      const sym = symbol.toUpperCase();
+      // Held tickers already have a permanent position tab — just activate it.
+      if (!positions.some((p) => p.id === sym)) {
+        setOpenedTickers((prev) => (prev.includes(sym) ? prev : [...prev, sym]));
+      }
+      setActiveTab(sym);
+    },
+    [positions],
+  );
+
+  const handleCloseTicker = useCallback(
+    (symbol: string) => {
+      setOpenedTickers((prev) => prev.filter((s) => s !== symbol));
+      setActiveTab((current) => (current === symbol ? "__summary__" : current));
+    },
+    [],
+  );
+
+  // Opened watchlist tickers that haven't since become positions (avoid dupes).
+  const watchlistTabs = openedTickers.filter(
+    (sym) => !positions.some((p) => p.id === sym),
+  );
 
   const tabs = [
     { id: "__summary__", label: "DASHBOARD" },
     ...positions.map((p) => ({ id: p.id, label: p.ticker })),
+    ...watchlistTabs.map((sym) => ({ id: sym, label: sym, closeable: true })),
   ];
 
   const activePosition = positions.find((p) => p.id === activeTab);
+  const activeWatchlistTicker = watchlistTabs.includes(activeTab) ? activeTab : null;
 
   return (
     <div style={{ minHeight: "100vh", background: "#030310", padding: "10px", color: "#c0c0e0", fontFamily: "monospace" }}>
@@ -52,6 +81,7 @@ export default function WheelDashboard() {
           activeTab={activeTab}
           positions={positions}
           onSelect={setActiveTab}
+          onClose={handleCloseTicker}
         />
 
         <div style={{ display: "flex", alignItems: "flex-start", flex: 1 }}>
@@ -82,10 +112,12 @@ export default function WheelDashboard() {
               <SummaryDashboard positions={positions} onSelectTicker={setActiveTab} />
             ) : activePosition ? (
               <TickerDetail pos={activePosition} />
+            ) : activeWatchlistTicker ? (
+              <WatchlistTickerDetail symbol={activeWatchlistTicker} />
             ) : null}
           </div>
 
-          <WatchlistPanel />
+          <WatchlistPanel onOpenTicker={handleOpenTicker} />
         </div>
       </div>
     </div>
