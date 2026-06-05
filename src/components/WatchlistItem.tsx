@@ -8,9 +8,13 @@ interface WatchlistItemProps {
 
 export function WatchlistItem({ item, onRemove }: WatchlistItemProps) {
   const q = item.quote;
+  // Render every row as a live daily-session quote: the session price up top,
+  // the day's move (vs. prior close) below — shown actively whether or not the
+  // market is currently open.
+  const flat = q ? q.change === 0 : false;
   const up = q ? q.change >= 0 : true;
-  const chgColor = q ? (up ? "#34d399" : "#f87171") : "#3a3a5a";
-  const arrow = up ? "▲" : "▼";
+  const chgColor = !q ? "#3a3a5a" : flat ? "#8a8aa8" : up ? "#34d399" : "#f87171";
+  const arrow = flat ? "▶" : up ? "▲" : "▼";
 
   return (
     <div
@@ -23,13 +27,13 @@ export function WatchlistItem({ item, onRemove }: WatchlistItemProps) {
       onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#0d0d1e")}
       onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
     >
-      {/* Row 1: symbol + last price */}
+      {/* Row 1: symbol + closing price */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "baseline",
-          marginBottom: 3,
+          marginBottom: 4,
         }}
       >
         <span
@@ -55,26 +59,15 @@ export function WatchlistItem({ item, onRemove }: WatchlistItemProps) {
         </span>
       </div>
 
-      {/* Row 2: source label + arrow + change */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 4,
-        }}
-      >
-        <span
+      {/* Row 2: arrow + change + change % (daily session move) */}
+      {q && (
+        <div
           style={{
-            fontSize: 9,
-            fontFamily: "monospace",
-            color: "#3a3a5a",
-            letterSpacing: "0.06em",
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
           }}
         >
-          {q?.source === "5min" ? "5MIN DELAYED" : "CLOSE"}
-        </span>
-        {q && (
           <span
             style={{
               fontSize: 11,
@@ -87,28 +80,13 @@ export function WatchlistItem({ item, onRemove }: WatchlistItemProps) {
             }}
           >
             <span style={{ fontSize: 9 }}>{arrow}</span>
+            {q.change >= 0 ? "+" : "−"}
             {fmt.currency(Math.abs(q.change))}
-            <span style={{ fontSize: 10, opacity: 0.8 }}>
+            <span style={{ fontSize: 10, opacity: 0.85 }}>
               ({q.changePct >= 0 ? "+" : ""}
               {q.changePct.toFixed(2)}%)
             </span>
           </span>
-        )}
-      </div>
-
-      {/* Row 3: prev close */}
-      {q && (
-        <div
-          style={{
-            fontSize: 9,
-            fontFamily: "monospace",
-            color: "#3a3a5a",
-            display: "flex",
-            justifyContent: "space-between",
-          }}
-        >
-          <span>PREV CLOSE</span>
-          <span style={{ color: "#4a4a6a" }}>{fmt.currency(q.closePrice)}</span>
         </div>
       )}
 
