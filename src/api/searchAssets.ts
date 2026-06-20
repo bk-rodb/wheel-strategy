@@ -39,6 +39,7 @@ const MOCK_ASSETS: AssetResult[] = [
   { symbol: "PLTR",  name: "Palantir Technologies",    exchange: "NYSE" },
   { symbol: "HOOD",  name: "Robinhood Markets Inc.",   exchange: "NASDAQ" },
   { symbol: "SOFI",  name: "SoFi Technologies Inc.",   exchange: "NASDAQ" },
+  { symbol: "SPCX",  name: "Space Exploration Technologies Corp.", exchange: "NASDAQ" },
 ];
 
 const USE_MOCK = !import.meta.env.VITE_ALPACA_API_KEY_ID;

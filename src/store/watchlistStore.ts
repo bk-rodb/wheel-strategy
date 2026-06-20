@@ -1,3 +1,5 @@
+import { DEFAULT_WATCHLIST } from "../data/defaultWatchlist";
+
 export interface WatchlistEntry {
   symbol: string;
   addedAt: string;   // ISO timestamp
@@ -19,9 +21,28 @@ function save(entries: WatchlistEntry[]) {
   localStorage.setItem(KEY, JSON.stringify(entries));
 }
 
+function ensureDefaults(entries: WatchlistEntry[]): WatchlistEntry[] {
+  let updated = entries;
+  for (const { symbol, notes } of DEFAULT_WATCHLIST) {
+    const sym = symbol.toUpperCase();
+    if (updated.some((e) => e.symbol === sym)) continue;
+    updated = [
+      ...updated,
+      {
+        symbol: sym,
+        addedAt: new Date().toISOString(),
+        notes,
+        displayOrder: updated.length,
+      },
+    ];
+  }
+  if (updated !== entries) save(updated);
+  return updated;
+}
+
 export const watchlistStore = {
   getAll(): WatchlistEntry[] {
-    return load().sort((a, b) => a.displayOrder - b.displayOrder);
+    return ensureDefaults(load()).sort((a, b) => a.displayOrder - b.displayOrder);
   },
 
   add(symbol: string, notes?: string): WatchlistEntry[] {

@@ -7,4 +7,5 @@ export const MOCK_QUOTES: Record<string, WatchlistQuote> = {
   SPY:  { closePrice: 536.40, lastPrice: 538.60, change:  2.20, changePct:  0.41, source: "5min" },
   AAPL: { closePrice: 210.10, lastPrice: 212.50, change:  2.40, changePct:  1.14, source: "5min" },
   MSFT: { closePrice: 444.80, lastPrice: 447.30, change:  2.50, changePct:  0.56, source: "5min" },
+  SPCX: { closePrice: 158.00, lastPrice: 162.40, change:  4.40, changePct:  2.78, source: "5min" },
 };
