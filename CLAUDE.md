@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Local setup and launch
+
+- **First-time setup:** [docs/PRE_LAUNCH.md](docs/PRE_LAUNCH.md) — requirements, `npm install`, `.env`, backend user-secrets
+- **Run the app:** [docs/LAUNCH.md](docs/LAUNCH.md) — `npm run dev` + `dotnet run`
+
 ## Commands
 
 ```bash
@@ -9,20 +14,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev        # Start Vite dev server (hot reload) on http://localhost:5173
 npm run build      # Type-check (tsc -b) then build for production
 npm run preview    # Serve the production build locally
+npm test           # vitest run
+npm run test:watch
 
 # Backend analysis API (backend/WheelStrategy.Api)
 dotnet run         # Serves http://localhost:5099 (launchSettings sets Development env)
 dotnet build       # Compile only
-```
-
-No test runner is configured.
-
-First-time backend setup — the Alpaca keys are read from user-secrets (never committed, never the browser's `VITE_*` keys):
-
-```bash
-cd backend/WheelStrategy.Api
-dotnet user-secrets set "Alpaca:ApiKeyId" "<key>"
-dotnet user-secrets set "Alpaca:ApiSecretKey" "<secret>"
 ```
 
 ## Architecture
@@ -54,7 +51,7 @@ The hook is wired for real API integration. Comments in `useWheelPositions` docu
 - E\*TRADE `/v1/market/optionchains` for the active option leg
 - yFinance (via a .NET proxy) as a price history fallback
 
-The refresh interval is 5 minutes. Until real endpoints exist, `MOCK_POSITIONS` is returned after a simulated 600 ms delay.
+The refresh interval is 5 minutes. When `VITE_ALPACA_API_KEY_ID` is unset (`IS_MOCK`), mock positions are returned after a simulated 600 ms delay; otherwise positions load from Alpaca via `fetchWheelPositions`.
 
 ### Phase color coding
 

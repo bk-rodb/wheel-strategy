@@ -1,5 +1,7 @@
 # Wheel Desk — Suggested Features & Next Steps
 
+Setup and run: [PRE_LAUNCH.md](./PRE_LAUNCH.md) · [LAUNCH.md](./LAUNCH.md)
+
 Status snapshot (2026-06-04): the wheel-strategy **analysis API** is live end-to-end.
 A .NET 10 backend (`backend/WheelStrategy.Api`) serves
 `GET /api/analysis/wheel`, returning safe/regular/risky strike suggestions for
