@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useWheelAnalysis } from "../hooks/useWheelAnalysis";
-import type { AnalysisLevel, StrikeSuggestion, WheelAnalysis } from "../types";
+import type { AnalysisGranularity, AnalysisLevel, StrikeSuggestion, WheelAnalysis } from "../types";
 import { fmt } from "../utils/formatters";
 import { API_BASE } from "../config";
 
@@ -12,13 +12,36 @@ const LEVEL_COLOR: Record<AnalysisLevel, string> = {
 
 const DTE_CHOICES = [21, 30, 35, 45];
 
+const GRANULARITY_CHOICES: { value: AnalysisGranularity; label: string; title: string }[] = [
+  {
+    value: "weekly",
+    label: "WEEKLY",
+    title: "Fewer, wider-spaced samples; default and faster to interpret.",
+  },
+  {
+    value: "daily",
+    label: "DAILY",
+    title: "~5× more overlapping forward-return samples; empirical percentiles are sharper, but overlapping windows still widen confidence.",
+  },
+];
+
 export function WheelAnalysisPanel({ symbol }: { symbol: string }) {
   const [dte, setDte] = useState(35);
-  const { data, loading, error, refresh } = useWheelAnalysis({ symbol, dte });
+  const [granularity, setGranularity] = useState<AnalysisGranularity>("weekly");
+  const { data, loading, error, refresh } = useWheelAnalysis({ symbol, dte, granularity });
 
   return (
     <div style={{ padding: "0 4px" }}>
-      <Header symbol={symbol} data={data} dte={dte} onDte={setDte} loading={loading} onRefresh={refresh} />
+      <Header
+        symbol={symbol}
+        data={data}
+        dte={dte}
+        onDte={setDte}
+        granularity={granularity}
+        onGranularity={setGranularity}
+        loading={loading}
+        onRefresh={refresh}
+      />
 
       {error && (
         <div
@@ -43,7 +66,7 @@ export function WheelAnalysisPanel({ symbol }: { symbol: string }) {
       {loading && !data && (
         <div style={{ textAlign: "center", padding: 60, color: "#2a2a4a", fontFamily: "monospace", fontSize: 12 }}>
           <div style={{ fontSize: 24, marginBottom: 8 }}>◌</div>
-          ANALYZING {symbol}...
+          ANALYZING {symbol} · {granularity}...
         </div>
       )}
 
@@ -84,6 +107,8 @@ function Header({
   data,
   dte,
   onDte,
+  granularity,
+  onGranularity,
   loading,
   onRefresh,
 }: {
@@ -91,6 +116,8 @@ function Header({
   data: WheelAnalysis | null;
   dte: number;
   onDte: (d: number) => void;
+  granularity: AnalysisGranularity;
+  onGranularity: (g: AnalysisGranularity) => void;
   loading: boolean;
   onRefresh: () => void;
 }) {
@@ -110,34 +137,43 @@ function Header({
           WHEEL STRATEGY ANALYSIS · {symbol}
         </div>
         {data && (
-          <div style={{ fontSize: 11, fontFamily: "monospace", color: "#5a5a7a", marginTop: 6, display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <span>SPOT <b style={{ color: "#e8e8f8" }}>{fmt.currency(data.currentPrice)}</b></span>
-            <span>IV(realized) <b style={{ color: "#e8e8f8" }}>{(data.realizedVolAnnual * 100).toFixed(1)}%</b></span>
-            <span>HORIZON <b style={{ color: "#e8e8f8" }}>{data.horizonPeriods}× {data.granularity}</b></span>
-            <span>LOOKBACK <b style={{ color: "#e8e8f8" }}>{(data.lookbackDays / 365).toFixed(1)}y</b></span>
-            <span>SAMPLES <b style={{ color: "#e8e8f8" }}>{data.sampleCount}</b></span>
-          </div>
+          <>
+            <div style={{ fontSize: 11, fontFamily: "monospace", color: "#5a5a7a", marginTop: 6, display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <span>SPOT <b style={{ color: "#e8e8f8" }}>{fmt.currency(data.currentPrice)}</b></span>
+              <span>IV(realized) <b style={{ color: "#e8e8f8" }}>{(data.realizedVolAnnual * 100).toFixed(1)}%</b></span>
+              <span>HORIZON <b style={{ color: "#e8e8f8" }}>{data.horizonPeriods}× {data.granularity}</b></span>
+              <span>LOOKBACK <b style={{ color: "#e8e8f8" }}>{(data.lookbackDays / 365).toFixed(1)}y</b></span>
+              <span>SAMPLES <b style={{ color: "#e8e8f8" }}>{data.sampleCount}</b></span>
+            </div>
+            <div style={{ fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", marginTop: 4, letterSpacing: "0.04em" }}>
+              ~{data.sampleCount} overlapping windows ·{" "}
+              {data.granularity === "daily" ? "tighter empirical percentiles" : "coarser tails"}
+            </div>
+          </>
         )}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", letterSpacing: "0.08em" }}>BARS</span>
+          {GRANULARITY_CHOICES.map(({ value, label, title }) => (
+            <button
+              key={value}
+              onClick={() => onGranularity(value)}
+              title={title}
+              style={toggleBtn(value === granularity)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", letterSpacing: "0.08em" }}>DTE</span>
           {DTE_CHOICES.map((d) => (
             <button
               key={d}
               onClick={() => onDte(d)}
-              style={{
-                cursor: "pointer",
-                background: d === dte ? "#34d39920" : "#0d0d1e",
-                border: `1px solid ${d === dte ? "#34d39950" : "#1e1e38"}`,
-                borderRadius: 4,
-                padding: "4px 9px",
-                fontSize: 11,
-                fontFamily: "monospace",
-                fontWeight: 700,
-                color: d === dte ? "#34d399" : "#5a5a7a",
-              }}
+              style={toggleBtn(d === dte)}
             >
               {d}
             </button>
@@ -165,6 +201,20 @@ function Header({
       </div>
     </div>
   );
+}
+
+function toggleBtn(active: boolean): React.CSSProperties {
+  return {
+    cursor: "pointer",
+    background: active ? "#34d39920" : "#0d0d1e",
+    border: `1px solid ${active ? "#34d39950" : "#1e1e38"}`,
+    borderRadius: 4,
+    padding: "4px 9px",
+    fontSize: 11,
+    fontFamily: "monospace",
+    fontWeight: 700,
+    color: active ? "#34d399" : "#5a5a7a",
+  };
 }
 
 function SideCard({

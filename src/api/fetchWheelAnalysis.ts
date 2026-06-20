@@ -1,11 +1,11 @@
 import { API_BASE } from "../config";
-import type { WheelAnalysis } from "../types";
+import type { AnalysisGranularity, WheelAnalysis } from "../types";
 
 export interface WheelAnalysisParams {
   symbol: string;
   lookbackDays?: number;
   dte?: number;
-  granularity?: "weekly" | "daily";
+  granularity?: AnalysisGranularity;
   riskFreeRate?: number;
   refresh?: boolean;
 }

@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchWheelAnalysis, type WheelAnalysisParams } from "../api/fetchWheelAnalysis";
-import type { WheelAnalysis } from "../types";
+import type { AnalysisGranularity, WheelAnalysis } from "../types";
 
 interface UseWheelAnalysisOptions {
   symbol: string;
   dte?: number;
   lookbackDays?: number;
-  granularity?: "weekly" | "daily";
+  granularity?: AnalysisGranularity;
 }
 
 export function useWheelAnalysis(opts: UseWheelAnalysisOptions) {

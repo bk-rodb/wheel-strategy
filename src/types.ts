@@ -36,6 +36,7 @@ export interface PricePoint {
 }
 
 export type AnalysisLevel = "safe" | "regular" | "risky";
+export type AnalysisGranularity = "weekly" | "daily";
 
 export interface StrikeSuggestion {
   level: AnalysisLevel;
