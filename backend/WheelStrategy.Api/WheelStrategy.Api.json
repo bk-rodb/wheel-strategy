@@ -1,0 +1,220 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "WheelStrategy.Api | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "WheelStrategy.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/analysis/wheel": {
+      "get": {
+        "tags": [
+          "WheelStrategy.Api"
+        ],
+        "operationId": "GetWheelAnalysis",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lookbackDays",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "dte",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "granularity",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "riskFreeRate",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WheelAnalysisResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StrikeSuggestion": {
+        "required": [
+          "level",
+          "strike",
+          "pctFromSpot",
+          "empiricalAssignmentProb",
+          "blackScholesAssignmentProb",
+          "estPremium",
+          "annualizedYield"
+        ],
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string"
+          },
+          "strike": {
+            "type": "number",
+            "format": "double"
+          },
+          "pctFromSpot": {
+            "type": "number",
+            "format": "double"
+          },
+          "empiricalAssignmentProb": {
+            "type": "number",
+            "format": "double"
+          },
+          "blackScholesAssignmentProb": {
+            "type": "number",
+            "format": "double"
+          },
+          "estPremium": {
+            "type": "number",
+            "format": "double"
+          },
+          "annualizedYield": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "WheelAnalysisResult": {
+        "required": [
+          "symbol",
+          "currentPrice",
+          "asOf",
+          "lookbackDays",
+          "dte",
+          "horizonPeriods",
+          "granularity",
+          "sampleCount",
+          "realizedVolAnnual",
+          "riskFreeRate",
+          "put",
+          "call",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "currentPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lookbackDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dte": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "horizonPeriods": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "granularity": {
+            "type": "string"
+          },
+          "sampleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "realizedVolAnnual": {
+            "type": "number",
+            "format": "double"
+          },
+          "riskFreeRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "put": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StrikeSuggestion"
+            }
+          },
+          "call": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/StrikeSuggestion"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "WheelStrategy.Api"
+    }
+  ]
+}

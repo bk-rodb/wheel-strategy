@@ -1,3 +1,5 @@
+import type { components } from "./api/generated/analysis";
+
 export type WheelPhase = "cash-secured-put" | "stock-holding" | "covered-call";
 export type DataSource = "etrade" | "alpaca" | "polygon" | "yfinance";
 export type BrokerType = "alpaca-paper" | "alpaca-live" | "etrade";
@@ -35,34 +37,26 @@ export interface PricePoint {
   price: number;
 }
 
+// `level`/`granularity` are lowercase string literals on the wire; the backend DTO
+// types them as plain strings, so we narrow them here for the UI. `granularity` is also
+// a request parameter, so it stays hand-authored.
 export type AnalysisLevel = "safe" | "regular" | "risky";
 export type AnalysisGranularity = "weekly" | "daily";
 
-export interface StrikeSuggestion {
+// The analysis contract is the single source of truth in the backend
+// (Contracts/WheelAnalysisDtos.cs) and is generated into src/api/generated/analysis.ts
+// via `npm run gen:api`. Re-exported here under stable names, narrowing `level`.
+export type StrikeSuggestion = Omit<components["schemas"]["StrikeSuggestion"], "level"> & {
   level: AnalysisLevel;
-  strike: number;
-  pctFromSpot: number;
-  empiricalAssignmentProb: number;
-  blackScholesAssignmentProb: number;
-  estPremium: number;
-  annualizedYield: number;
-}
+};
 
-export interface WheelAnalysis {
-  symbol: string;
-  currentPrice: number;
-  asOf: string;
-  lookbackDays: number;
-  dte: number;
-  horizonPeriods: number;
-  granularity: string;
-  sampleCount: number;
-  realizedVolAnnual: number;
-  riskFreeRate: number;
+export type WheelAnalysis = Omit<
+  components["schemas"]["WheelAnalysisResult"],
+  "put" | "call"
+> & {
   put: StrikeSuggestion[] | null;
   call: StrikeSuggestion[] | null;
-  warnings: string[];
-}
+};
 
 export interface WheelPosition {
   id: string;

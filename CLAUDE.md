@@ -16,6 +16,8 @@ npm run build      # Type-check (tsc -b) then build for production
 npm run preview    # Serve the production build locally
 npm test           # vitest run
 npm run test:watch
+npm run gen:api    # Regenerate src/api/generated/analysis.ts from the backend OpenAPI doc
+npm run check:api  # Regenerate + fail if the committed generated types/openapi are stale
 
 # Backend analysis API (backend/WheelStrategy.Api)
 dotnet run         # Serves http://localhost:5099 (launchSettings sets Development env)
@@ -37,6 +39,8 @@ A React + TypeScript SPA (Vite) — a **Wheel Strategy options trading dashboard
 ### Analysis backend
 
 `GET /api/analysis/wheel?symbol=NVDA&dte=35&lookbackDays=730&granularity=weekly` returns safe/regular/risky strike suggestions for both the cash-secured put and covered call. Each suggestion carries an **empirical** assignment probability (percentile of the stock's own historical forward returns over a DTE-matched horizon) **and** a **Black-Scholes** assignment probability (from realized volatility), plus estimated premium and annualized yield. 2yr weekly bars are fetched from Alpaca (adjusted), cached in SQLite (`HistoricalBar`), and refreshed incrementally. Layers: `Endpoints/` → `Services/WheelAnalysisService` → `Services/BarCacheService` + `Alpaca/AlpacaMarketDataClient`, with pure-`double` math in `Stats/StatMath`. Surfaced in the UI inside [src/components/WheelAnalysisPanel.tsx](src/components/WheelAnalysisPanel.tsx), embedded in [src/components/WatchlistTickerDetail.tsx](src/components/WatchlistTickerDetail.tsx).
+
+**Analysis contract is single-sourced from the backend.** The wire shape lives in `Contracts/WheelAnalysisDtos.cs` (`WheelAnalysisResult`/`StrikeSuggestion`). On `dotnet build` the API emits `backend/WheelStrategy.Api/WheelStrategy.Api.json` (OpenAPI); `npm run gen:api` turns that into `src/api/generated/analysis.ts`, which `src/types.ts` re-exports as `WheelAnalysis`/`StrikeSuggestion` (narrowing `level` to the `"safe"|"regular"|"risky"` union). **Do not hand-edit the analysis types in `src/types.ts` or the generated file** — change the C# DTO, rebuild, and run `npm run gen:api`. `npm run check:api` fails the build if either committed artifact is stale. A schema transformer in `Program.cs` collapses .NET 10's `number|string` numeric unions so generated fields stay `number`. Note: `EnsureCreated` builds only the `HistoricalBar` cache table — the backend has no other persistence layer.
 
 ⚠️ Alpaca's market-data API rejects a `Content-Type` header on GET requests (CORS preflight fails). Both the browser and backend clients deliberately omit it.
 

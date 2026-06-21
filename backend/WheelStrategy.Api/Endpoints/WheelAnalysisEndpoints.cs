@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using WheelStrategy.Api.Contracts;
 using WheelStrategy.Api.Options;
 using WheelStrategy.Api.Services;
 
@@ -41,7 +42,8 @@ public static class WheelAnalysisEndpoints
                     statusCode: StatusCodes.Status502BadGateway);
             }
         })
-        .WithName("GetWheelAnalysis");
+        .WithName("GetWheelAnalysis")
+        .Produces<WheelAnalysisResult>(StatusCodes.Status200OK);
 
         return app;
     }

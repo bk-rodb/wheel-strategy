@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:api": "openapi-typescript ./backend/WheelStrategy.Api/WheelStrategy.Api.json -o ./src/api/generated/analysis.ts",
+    "check:api": "npm run gen:api && git diff --exit-code src/api/generated backend/WheelStrategy.Api/WheelStrategy.Api.json"
   },
   "dependencies": {
     "react": "^19.1.0",
@@ -23,6 +25,7 @@
     "@types/react-dom": "^19.1.5",
     "@vitejs/plugin-react": "^4.5.2",
     "jsdom": "^29.1.1",
+    "openapi-typescript": "^7.13.0",
     "typescript": "~5.8.3",
     "vite": "^6.3.5",
     "vitest": "^4.1.9"
