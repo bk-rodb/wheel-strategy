@@ -1,0 +1,392 @@
+{
+  "C:\\repos\\wheel-strategy\\WheelDashboard.tsx": {
+    "mtime": 1780631406.2933037,
+    "ast_hash": "4efc593dea9a46c29190702820ed1c4d",
+    "semantic_hash": "4efc593dea9a46c29190702820ed1c4d"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Alpaca\\AlpacaBarDtos.cs": {
+    "mtime": 1780636833.8785045,
+    "ast_hash": "229ee6fa568468ecda8b270601e7e2f7",
+    "semantic_hash": "229ee6fa568468ecda8b270601e7e2f7"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Alpaca\\AlpacaMarketDataClient.cs": {
+    "mtime": 1780636851.6113887,
+    "ast_hash": "8bad0a408ace0630187c810be6aeebd0",
+    "semantic_hash": "8bad0a408ace0630187c810be6aeebd0"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Contracts\\WheelAnalysisDtos.cs": {
+    "mtime": 1780636901.6196814,
+    "ast_hash": "3e76a2b9fe8a19ac732022c01594018b",
+    "semantic_hash": "3e76a2b9fe8a19ac732022c01594018b"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Data\\WheelStrategyDbContext.cs": {
+    "mtime": 1780636794.5869045,
+    "ast_hash": "6ca9ebda350060f463815f3c39ecd9e8",
+    "semantic_hash": "6ca9ebda350060f463815f3c39ecd9e8"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Endpoints\\WheelAnalysisEndpoints.cs": {
+    "mtime": 1780636958.3208797,
+    "ast_hash": "2464fce1bf9aa176460108a29603be14",
+    "semantic_hash": "2464fce1bf9aa176460108a29603be14"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Models\\BrokerAccount.cs": {
+    "mtime": 1780633148.03906,
+    "ast_hash": "6111fb6a640c17698e8f3fbc5fa62a89",
+    "semantic_hash": "6111fb6a640c17698e8f3fbc5fa62a89"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Models\\HistoricalBar.cs": {
+    "mtime": 1780636780.5890536,
+    "ast_hash": "0d93ca79ab6808061ada8fdd8edf430c",
+    "semantic_hash": "0d93ca79ab6808061ada8fdd8edf430c"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Models\\OptionLeg.cs": {
+    "mtime": 1780633161.8299618,
+    "ast_hash": "639a73dd6c3fa7eb5731b22ab9b4f379",
+    "semantic_hash": "639a73dd6c3fa7eb5731b22ab9b4f379"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Models\\Position.cs": {
+    "mtime": 1780633155.2571607,
+    "ast_hash": "c8bc8e6402896810753d6c8db6d5ffad",
+    "semantic_hash": "c8bc8e6402896810753d6c8db6d5ffad"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Models\\PriceSnapshot.cs": {
+    "mtime": 1780633169.8669798,
+    "ast_hash": "67d9a5921bcfd593efc45d58cb1f5760",
+    "semantic_hash": "67d9a5921bcfd593efc45d58cb1f5760"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Models\\WatchlistItem.cs": {
+    "mtime": 1780633165.0862672,
+    "ast_hash": "1c2ff2ac479359602b9e723340c57ac0",
+    "semantic_hash": "1c2ff2ac479359602b9e723340c57ac0"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Options\\AlpacaOptions.cs": {
+    "mtime": 1780636817.725121,
+    "ast_hash": "f249a8c266739c4235cfbb4a8786f8c0",
+    "semantic_hash": "f249a8c266739c4235cfbb4a8786f8c0"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Options\\AnalysisOptions.cs": {
+    "mtime": 1780636824.2551305,
+    "ast_hash": "a2e3a94c4040837102b8ff520261fd68",
+    "semantic_hash": "a2e3a94c4040837102b8ff520261fd68"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Program.cs": {
+    "mtime": 1780636969.763689,
+    "ast_hash": "220b0ac6a751fa976b019c403086cb8b",
+    "semantic_hash": "220b0ac6a751fa976b019c403086cb8b"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Properties\\launchSettings.json": {
+    "mtime": 1780637874.320583,
+    "ast_hash": "5cc89c667e7c553e5a31f1c7d9c7cbe5",
+    "semantic_hash": "5cc89c667e7c553e5a31f1c7d9c7cbe5"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Services\\BarCacheService.cs": {
+    "mtime": 1780636867.2910526,
+    "ast_hash": "6bbe42ad2a3489399f0a39c9b1b5a4bf",
+    "semantic_hash": "6bbe42ad2a3489399f0a39c9b1b5a4bf"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Services\\WheelAnalysisService.cs": {
+    "mtime": 1780636947.5384915,
+    "ast_hash": "44ad1772d356d95bc845bc50385b9118",
+    "semantic_hash": "44ad1772d356d95bc845bc50385b9118"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\Stats\\StatMath.cs": {
+    "mtime": 1780636894.6982791,
+    "ast_hash": "812f6bcf866727836bda9432591443a2",
+    "semantic_hash": "812f6bcf866727836bda9432591443a2"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\WheelStrategy.Api.csproj": {
+    "mtime": 1780636807.8762856,
+    "ast_hash": "bc125d0f26762125e99f4a363109ed6a",
+    "semantic_hash": "bc125d0f26762125e99f4a363109ed6a"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\appsettings.Development.json": {
+    "mtime": 1780636979.6048698,
+    "ast_hash": "bcc55eab41b81146a52bef647086b58e",
+    "semantic_hash": "bcc55eab41b81146a52bef647086b58e"
+  },
+  "C:\\repos\\wheel-strategy\\backend\\WheelStrategy.Api\\appsettings.json": {
+    "mtime": 1780636975.5308895,
+    "ast_hash": "cb2eee9e27009485f7db5af7d781ef22",
+    "semantic_hash": "cb2eee9e27009485f7db5af7d781ef22"
+  },
+  "C:\\repos\\wheel-strategy\\package.json": {
+    "mtime": 1781980270.982949,
+    "ast_hash": "2ad604101debd512dd645324e1ee4019",
+    "semantic_hash": "2ad604101debd512dd645324e1ee4019"
+  },
+  "C:\\repos\\wheel-strategy\\src\\WheelDashboard.tsx": {
+    "mtime": 1780636704.7407906,
+    "ast_hash": "2770a6f2ae697e64d55f7d34fed1c3be",
+    "semantic_hash": "2770a6f2ae697e64d55f7d34fed1c3be"
+  },
+  "C:\\repos\\wheel-strategy\\src\\api\\alpacaClient.ts": {
+    "mtime": 1780635350.7050302,
+    "ast_hash": "739571852a9d661eb6e57be5e586f080",
+    "semantic_hash": "739571852a9d661eb6e57be5e586f080"
+  },
+  "C:\\repos\\wheel-strategy\\src\\api\\alpacaTypes.ts": {
+    "mtime": 1780632802.0192688,
+    "ast_hash": "cfa137907311540647864004ab5550fc",
+    "semantic_hash": "cfa137907311540647864004ab5550fc"
+  },
+  "C:\\repos\\wheel-strategy\\src\\api\\fetchAccountDetails.ts": {
+    "mtime": 1780632806.686344,
+    "ast_hash": "a40899452a0e607fd22f828ae64ac870",
+    "semantic_hash": "a40899452a0e607fd22f828ae64ac870"
+  },
+  "C:\\repos\\wheel-strategy\\src\\api\\fetchWheelAnalysis.test.ts": {
+    "mtime": 1781980275.065986,
+    "ast_hash": "be1330ef689833cc3cfca9d364596568",
+    "semantic_hash": "be1330ef689833cc3cfca9d364596568"
+  },
+  "C:\\repos\\wheel-strategy\\src\\api\\fetchWheelAnalysis.ts": {
+    "mtime": 1781980102.402597,
+    "ast_hash": "31c644de2319e3f71a6c6e1e9fca32ee",
+    "semantic_hash": "31c644de2319e3f71a6c6e1e9fca32ee"
+  },
+  "C:\\repos\\wheel-strategy\\src\\api\\fetchWheelPositions.ts": {
+    "mtime": 1780636578.8714118,
+    "ast_hash": "f3f4dd9ef0795d08d0594e68d7113cc4",
+    "semantic_hash": "f3f4dd9ef0795d08d0594e68d7113cc4"
+  },
+  "C:\\repos\\wheel-strategy\\src\\api\\searchAssets.ts": {
+    "mtime": 1781980528.8304937,
+    "ast_hash": "050a84978f04b9ce105d8fb3be9f3eb4",
+    "semantic_hash": "050a84978f04b9ce105d8fb3be9f3eb4"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\AccountHeader.tsx": {
+    "mtime": 1780632843.3245366,
+    "ast_hash": "f9780d33ca02737b25016d36dd2b6de1",
+    "semantic_hash": "f9780d33ca02737b25016d36dd2b6de1"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\AccountPicker.tsx": {
+    "mtime": 1780634594.1516192,
+    "ast_hash": "440ce97fe3d7694fea648bdb6cfb9a8c",
+    "semantic_hash": "440ce97fe3d7694fea648bdb6cfb9a8c"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\OptionCard.tsx": {
+    "mtime": 1780631573.792385,
+    "ast_hash": "063db1d712cb5661ccecde9853d5df9a",
+    "semantic_hash": "063db1d712cb5661ccecde9853d5df9a"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\PriceTrendChart.tsx": {
+    "mtime": 1780631559.0065384,
+    "ast_hash": "5d6ad99a25d9dbde1bb1d83400d4189e",
+    "semantic_hash": "5d6ad99a25d9dbde1bb1d83400d4189e"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\Sparkline.tsx": {
+    "mtime": 1780631548.6451788,
+    "ast_hash": "993c921a23b9613bfd27a979e8b83923",
+    "semantic_hash": "993c921a23b9613bfd27a979e8b83923"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\StatRow.tsx": {
+    "mtime": 1780631563.811925,
+    "ast_hash": "84cd872e815ffd96695b30a4439b8db6",
+    "semantic_hash": "84cd872e815ffd96695b30a4439b8db6"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\SummaryDashboard.tsx": {
+    "mtime": 1780631626.3176174,
+    "ast_hash": "710ce412794665b141a52e287fb43fb2",
+    "semantic_hash": "710ce412794665b141a52e287fb43fb2"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\TabBar.tsx": {
+    "mtime": 1780636642.5978203,
+    "ast_hash": "8ba7bcdef20a4a8682636163b3f8ff3b",
+    "semantic_hash": "8ba7bcdef20a4a8682636163b3f8ff3b"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\TickerDetail.tsx": {
+    "mtime": 1780631594.305547,
+    "ast_hash": "f08296b0427741338ed7da68072c86d5",
+    "semantic_hash": "f08296b0427741338ed7da68072c86d5"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\TopBar.tsx": {
+    "mtime": 1780634613.6432464,
+    "ast_hash": "e830697637eebf6e493fcd4bcc4ee805",
+    "semantic_hash": "e830697637eebf6e493fcd4bcc4ee805"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\WatchlistItem.tsx": {
+    "mtime": 1780636673.9706879,
+    "ast_hash": "7a7626b1d44ee286421a298c1fe75cdb",
+    "semantic_hash": "7a7626b1d44ee286421a298c1fe75cdb"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\WatchlistPanel.tsx": {
+    "mtime": 1780636653.9541705,
+    "ast_hash": "564a98f285f3216ff4b05aeeba89bb37",
+    "semantic_hash": "564a98f285f3216ff4b05aeeba89bb37"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\WatchlistTickerDetail.tsx": {
+    "mtime": 1780637594.8405747,
+    "ast_hash": "966f5ecf974a6c1ed7305aac55b799aa",
+    "semantic_hash": "966f5ecf974a6c1ed7305aac55b799aa"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\WheelAnalysisPanel.test.tsx": {
+    "mtime": 1781980309.2065437,
+    "ast_hash": "12acfe52111f5e2280162a99248b70c2",
+    "semantic_hash": "12acfe52111f5e2280162a99248b70c2"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\WheelAnalysisPanel.tsx": {
+    "mtime": 1781980112.0680604,
+    "ast_hash": "23a41007ddc0048851d22ace9645abf0",
+    "semantic_hash": "23a41007ddc0048851d22ace9645abf0"
+  },
+  "C:\\repos\\wheel-strategy\\src\\components\\WheelPhaseIndicator.tsx": {
+    "mtime": 1780631545.062845,
+    "ast_hash": "9512c30bb9285d42c37c5aabf2adce1d",
+    "semantic_hash": "9512c30bb9285d42c37c5aabf2adce1d"
+  },
+  "C:\\repos\\wheel-strategy\\src\\config.ts": {
+    "mtime": 1780637466.586021,
+    "ast_hash": "91f32700a31a448966455822c5389add",
+    "semantic_hash": "91f32700a31a448966455822c5389add"
+  },
+  "C:\\repos\\wheel-strategy\\src\\constants.ts": {
+    "mtime": 1780634544.561069,
+    "ast_hash": "b4c35f160e8c0e2714308c98dd2dc13f",
+    "semantic_hash": "b4c35f160e8c0e2714308c98dd2dc13f"
+  },
+  "C:\\repos\\wheel-strategy\\src\\data\\defaultWatchlist.ts": {
+    "mtime": 1781980526.710366,
+    "ast_hash": "9ae088bd5d94639a1a4c738b5e22c8ec",
+    "semantic_hash": "9ae088bd5d94639a1a4c738b5e22c8ec"
+  },
+  "C:\\repos\\wheel-strategy\\src\\data\\mockAccount.ts": {
+    "mtime": 1780634526.4773693,
+    "ast_hash": "ba117950277cd689869d0437810c9555",
+    "semantic_hash": "ba117950277cd689869d0437810c9555"
+  },
+  "C:\\repos\\wheel-strategy\\src\\data\\mockPositions.ts": {
+    "mtime": 1780631525.3725352,
+    "ast_hash": "163af9b8a7deb9dec507b632a91f0271",
+    "semantic_hash": "163af9b8a7deb9dec507b632a91f0271"
+  },
+  "C:\\repos\\wheel-strategy\\src\\data\\mockQuotes.ts": {
+    "mtime": 1781980529.380442,
+    "ast_hash": "03458a2c6ca0050bdf49e27703ee308a",
+    "semantic_hash": "03458a2c6ca0050bdf49e27703ee308a"
+  },
+  "C:\\repos\\wheel-strategy\\src\\hooks\\useAccountDetails.ts": {
+    "mtime": 1780634564.9664173,
+    "ast_hash": "c5e411e933631a72f1894f14eb7a5ce4",
+    "semantic_hash": "c5e411e933631a72f1894f14eb7a5ce4"
+  },
+  "C:\\repos\\wheel-strategy\\src\\hooks\\useTickerSnapshot.ts": {
+    "mtime": 1780636602.1247358,
+    "ast_hash": "4f1353c04b2ba8e96b6139713d7d07ce",
+    "semantic_hash": "4f1353c04b2ba8e96b6139713d7d07ce"
+  },
+  "C:\\repos\\wheel-strategy\\src\\hooks\\useWatchlist.ts": {
+    "mtime": 1780634581.2479541,
+    "ast_hash": "51e70b0c171ebbf91d697d15cfb051c8",
+    "semantic_hash": "51e70b0c171ebbf91d697d15cfb051c8"
+  },
+  "C:\\repos\\wheel-strategy\\src\\hooks\\useWheelAnalysis.test.ts": {
+    "mtime": 1781980321.121782,
+    "ast_hash": "6612674e3356c4d9a3bf9399e4a71086",
+    "semantic_hash": "6612674e3356c4d9a3bf9399e4a71086"
+  },
+  "C:\\repos\\wheel-strategy\\src\\hooks\\useWheelAnalysis.ts": {
+    "mtime": 1781980102.6575687,
+    "ast_hash": "f44f36172d5e0931b583e22b70dbada6",
+    "semantic_hash": "f44f36172d5e0931b583e22b70dbada6"
+  },
+  "C:\\repos\\wheel-strategy\\src\\hooks\\useWheelPositions.ts": {
+    "mtime": 1780634555.711357,
+    "ast_hash": "fa4f33c5853fa87576c780f15b3c4e51",
+    "semantic_hash": "fa4f33c5853fa87576c780f15b3c4e51"
+  },
+  "C:\\repos\\wheel-strategy\\src\\main.tsx": {
+    "mtime": 1780634602.7877467,
+    "ast_hash": "b01d5dbb83fb2bf094c91921dc40b118",
+    "semantic_hash": "b01d5dbb83fb2bf094c91921dc40b118"
+  },
+  "C:\\repos\\wheel-strategy\\src\\store\\watchlistStore.test.ts": {
+    "mtime": 1781980539.2456458,
+    "ast_hash": "9e73f0e62944da86dda7c5db87191de7",
+    "semantic_hash": "9e73f0e62944da86dda7c5db87191de7"
+  },
+  "C:\\repos\\wheel-strategy\\src\\store\\watchlistStore.ts": {
+    "mtime": 1781980528.5004308,
+    "ast_hash": "2a69336a275a8705f6571fbe9465fc3a",
+    "semantic_hash": "2a69336a275a8705f6571fbe9465fc3a"
+  },
+  "C:\\repos\\wheel-strategy\\src\\test\\mockWheelAnalysis.ts": {
+    "mtime": 1781980272.0351427,
+    "ast_hash": "4df6423c5f635002f3975fa2eddbd36e",
+    "semantic_hash": "4df6423c5f635002f3975fa2eddbd36e"
+  },
+  "C:\\repos\\wheel-strategy\\src\\test\\setup.ts": {
+    "mtime": 1781980295.6479704,
+    "ast_hash": "d1ead276afafc1d21cc6440351166794",
+    "semantic_hash": "d1ead276afafc1d21cc6440351166794"
+  },
+  "C:\\repos\\wheel-strategy\\src\\types.ts": {
+    "mtime": 1781980102.0975258,
+    "ast_hash": "ded0f5a5eb0dbc26ce28fd0efca1400c",
+    "semantic_hash": "ded0f5a5eb0dbc26ce28fd0efca1400c"
+  },
+  "C:\\repos\\wheel-strategy\\src\\utils\\formatters.ts": {
+    "mtime": 1780631507.0041685,
+    "ast_hash": "a290a0166f7cbf7f75c583b3b28c408a",
+    "semantic_hash": "a290a0166f7cbf7f75c583b3b28c408a"
+  },
+  "C:\\repos\\wheel-strategy\\src\\utils\\marketHours.ts": {
+    "mtime": 1780634145.5129657,
+    "ast_hash": "a7e2b49b928800bff2532d98972d1d77",
+    "semantic_hash": "a7e2b49b928800bff2532d98972d1d77"
+  },
+  "C:\\repos\\wheel-strategy\\src\\vite-env.d.ts": {
+    "mtime": 1780637459.4970348,
+    "ast_hash": "3f8c3d15c2558ededc215d13c1fb32cf",
+    "semantic_hash": "3f8c3d15c2558ededc215d13c1fb32cf"
+  },
+  "C:\\repos\\wheel-strategy\\tsconfig.app.json": {
+    "mtime": 1781980271.4309633,
+    "ast_hash": "0df3e09995ee7e54a01064c5b2510ff7",
+    "semantic_hash": "0df3e09995ee7e54a01064c5b2510ff7"
+  },
+  "C:\\repos\\wheel-strategy\\tsconfig.json": {
+    "mtime": 1780631710.9480095,
+    "ast_hash": "a3d39fa780ebff65444de257f291ce6c",
+    "semantic_hash": "a3d39fa780ebff65444de257f291ce6c"
+  },
+  "C:\\repos\\wheel-strategy\\tsconfig.node.json": {
+    "mtime": 1780631718.5706217,
+    "ast_hash": "aad45b3c5a362587cf7ee0e46ec4a75e",
+    "semantic_hash": "aad45b3c5a362587cf7ee0e46ec4a75e"
+  },
+  "C:\\repos\\wheel-strategy\\vite.config.ts": {
+    "mtime": 1781980295.4530013,
+    "ast_hash": "6cf13357a28c5487596524a574f45dae",
+    "semantic_hash": "6cf13357a28c5487596524a574f45dae"
+  },
+  "C:\\repos\\wheel-strategy\\CLAUDE.md": {
+    "mtime": 1781980937.7032795,
+    "ast_hash": "b650e9d7b973c5422068ff6b6bf19eba",
+    "semantic_hash": "b650e9d7b973c5422068ff6b6bf19eba"
+  },
+  "C:\\repos\\wheel-strategy\\README.md": {
+    "mtime": 1781980932.3423412,
+    "ast_hash": "e57c80ea1a750b3bc881aeac01ddcc96",
+    "semantic_hash": "e57c80ea1a750b3bc881aeac01ddcc96"
+  },
+  "C:\\repos\\wheel-strategy\\docs\\LAUNCH.md": {
+    "mtime": 1781980940.9475138,
+    "ast_hash": "fed5d7858d3063b3766e16b4da90e3ab",
+    "semantic_hash": "fed5d7858d3063b3766e16b4da90e3ab"
+  },
+  "C:\\repos\\wheel-strategy\\docs\\NEXT_STEPS.md": {
+    "mtime": 1781980938.6674767,
+    "ast_hash": "3af20d1db89244a76b4efa81286ee4d9",
+    "semantic_hash": "3af20d1db89244a76b4efa81286ee4d9"
+  },
+  "C:\\repos\\wheel-strategy\\docs\\PRE_LAUNCH.md": {
+    "mtime": 1781980933.832667,
+    "ast_hash": "87e87891690b93339e6249992e0ff52c",
+    "semantic_hash": "87e87891690b93339e6249992e0ff52c"
+  },
+  "C:\\repos\\wheel-strategy\\index.html": {
+    "mtime": 1780631721.408282,
+    "ast_hash": "0ce45b51de5502bd3e4b8edb80dc1d90",
+    "semantic_hash": "0ce45b51de5502bd3e4b8edb80dc1d90"
+  }
+}
