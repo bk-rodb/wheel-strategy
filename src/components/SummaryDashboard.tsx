@@ -3,13 +3,31 @@ import { fmt, dayChange, dayChangePct, dte } from "../utils/formatters";
 import { PHASE_CONFIG, SOURCE_BADGE } from "../constants";
 import { WheelPhaseIndicator } from "./WheelPhaseIndicator";
 import { Sparkline } from "./Sparkline";
+import { useOpenBlotterOrders } from "../hooks/useOpenBlotterOrders";
+import type { BlotterOrder, DeskOrderState } from "../store/orderBlotter";
 
 interface SummaryDashboardProps {
   positions: WheelPosition[];
   onSelectTicker: (id: string) => void;
+  /** Navigate to ticker and focus Open Options (pending order click). */
+  onSelectPendingOrder?: (underlying: string) => void;
 }
 
-export function SummaryDashboard({ positions, onSelectTicker }: SummaryDashboardProps) {
+const DESK_STATE_LABEL: Partial<Record<DeskOrderState, string>> = {
+  submitting: "SUBMITTING",
+  orphan_check: "RECONCILING",
+  ack_pending: "AWAITING ACK",
+  working: "WORKING",
+  cancel_requested: "CANCEL REQ",
+  cancel_pending: "CANCELING",
+};
+
+export function SummaryDashboard({
+  positions,
+  onSelectTicker,
+  onSelectPendingOrder,
+}: SummaryDashboardProps) {
+  const pendingOrders = useOpenBlotterOrders();
   const totalDeployed = positions.reduce((s, p) => s + p.cashDeployed, 0);
   const totalUnrealized = positions.reduce((s, p) => s + p.unrealizedPnL, 0);
   const totalPremium = positions.reduce((s, p) => s + p.premiumCollectedTotal, 0);
@@ -26,9 +44,14 @@ export function SummaryDashboard({ positions, onSelectTicker }: SummaryDashboard
     { label: "Day Change", value: fmt.currency(totalDayChange), accent: totalDayChange >= 0 },
   ];
 
+  const goPending = (o: BlotterOrder) => {
+    const u = o.underlying.toUpperCase();
+    if (onSelectPendingOrder) onSelectPendingOrder(u);
+    else onSelectTicker(u);
+  };
+
   return (
     <div>
-      {/* Portfolio metrics */}
       <div
         style={{
           display: "grid",
@@ -72,7 +95,123 @@ export function SummaryDashboard({ positions, onSelectTicker }: SummaryDashboard
         ))}
       </div>
 
-      {/* Expiry alerts */}
+      {pendingOrders.length > 0 && (
+        <div
+          style={{
+            background: "#08081a",
+            border: "1px solid #2a2040",
+            borderRadius: 6,
+            padding: 12,
+            marginBottom: 20,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              color: "#a78bfa",
+              fontFamily: "monospace",
+              letterSpacing: "0.08em",
+              marginBottom: 10,
+              fontWeight: 700,
+            }}
+          >
+            PENDING ORDERS · {pendingOrders.length}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {pendingOrders.map((o) => {
+              const stateLabel = DESK_STATE_LABEL[o.deskState] ?? o.deskState.toUpperCase();
+              const sideColor = o.side === "buy" ? "#60a5fa" : "#f59e0b";
+              return (
+                <button
+                  key={o.clientOrderId}
+                  type="button"
+                  onClick={() => goPending(o)}
+                  title={`Open ${o.underlying} · focus Open Options`}
+                  style={{
+                    background: "#0c0c1c",
+                    border: "1px solid #1e1e38",
+                    borderRadius: 4,
+                    padding: "10px 12px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "grid",
+                    gridTemplateColumns: "0.7fr 1.4fr 0.6fr 0.9fr 1fr",
+                    gap: 10,
+                    alignItems: "center",
+                    width: "100%",
+                    transition: "border-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "#a78bfa60";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = "#1e1e38";
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: "monospace",
+                      fontWeight: 800,
+                      fontSize: 13,
+                      color: "#e8e8f8",
+                    }}
+                  >
+                    {o.underlying}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: 11,
+                      color: "#8a8aa8",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {o.symbol || "—"}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: sideColor,
+                    }}
+                  >
+                    {(o.side || "?").toUpperCase()} {o.qty || "?"}
+                  </span>
+                  <span style={{ fontFamily: "monospace", fontSize: 11, color: "#c0c0e0" }}>
+                    {o.limitPrice ? `@ $${o.limitPrice}` : "MKT"}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: "monospace",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: "#a78bfa",
+                      letterSpacing: "0.04em",
+                      textAlign: "right",
+                    }}
+                  >
+                    {stateLabel} →
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 8,
+              fontFamily: "monospace",
+              color: "#3a3a5a",
+            }}
+          >
+            Click a row to open the ticker tab and focus Open Options
+          </div>
+        </div>
+      )}
+
       {expiringSoon.length > 0 && (
         <div
           style={{
@@ -126,7 +265,6 @@ export function SummaryDashboard({ positions, onSelectTicker }: SummaryDashboard
         </div>
       )}
 
-      {/* Position cards grid */}
       <div
         style={{
           display: "grid",
@@ -165,7 +303,6 @@ export function SummaryDashboard({ positions, onSelectTicker }: SummaryDashboard
             >
               <div style={{ height: 2, background: phaseCfg.color, opacity: 0.7 }} />
               <div style={{ padding: 14 }}>
-                {/* Header row */}
                 <div
                   style={{
                     display: "flex",
@@ -207,7 +344,6 @@ export function SummaryDashboard({ positions, onSelectTicker }: SummaryDashboard
                   </div>
                 </div>
 
-                {/* Phase + source */}
                 <div
                   style={{
                     display: "flex",
@@ -231,12 +367,10 @@ export function SummaryDashboard({ positions, onSelectTicker }: SummaryDashboard
                   </span>
                 </div>
 
-                {/* Sparkline */}
                 <div style={{ height: 48, marginBottom: 10 }}>
                   <Sparkline data={pos.priceHistory} color={phaseCfg.color} />
                 </div>
 
-                {/* Bottom stats */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
                   <div>
                     <div style={{ fontSize: 9, color: "#3a3a5a", fontFamily: "monospace" }}>

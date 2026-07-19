@@ -1,12 +1,22 @@
-import type { WheelPosition } from "../types";
+import type { AccountInfo, WheelPosition } from "../types";
 import { fmt, dayChange, dayChangePct } from "../utils/formatters";
 import { SOURCE_BADGE } from "../constants";
 import { WheelPhaseIndicator } from "./WheelPhaseIndicator";
 import { PriceTrendChart } from "./PriceTrendChart";
 import { StatRow } from "./StatRow";
-import { OptionCard } from "./OptionCard";
+import { OpenOptionsSection } from "./OpenOptionsSection";
 
-export function TickerDetail({ pos }: { pos: WheelPosition }) {
+export function TickerDetail({
+  pos,
+  account = null,
+  focusOpenOptions = false,
+  onFocusOpenOptionsHandled,
+}: {
+  pos: WheelPosition;
+  account?: AccountInfo | null;
+  focusOpenOptions?: boolean;
+  onFocusOpenOptionsHandled?: () => void;
+}) {
   const chg = dayChange(pos);
   const chgPct = dayChangePct(pos);
   const chgColor = chg >= 0 ? "#34d399" : "#f87171";
@@ -160,11 +170,25 @@ export function TickerDetail({ pos }: { pos: WheelPosition }) {
         </div>
       </div>
 
-      {pos.activeOption && (
-        <div style={{ marginBottom: 16 }}>
-          <OptionCard opt={pos.activeOption} phase={pos.phase} />
-        </div>
-      )}
+      <div
+        style={{
+          background: "#08081a",
+          border: "1px solid #1a1a30",
+          borderRadius: 6,
+          padding: 14,
+          marginBottom: 16,
+        }}
+      >
+        <OpenOptionsSection
+          symbol={pos.ticker}
+          shares={pos.shares}
+          activeOption={pos.activeOption}
+          phase={pos.phase}
+          account={account}
+          focusSection={focusOpenOptions}
+          onFocusHandled={onFocusOpenOptionsHandled}
+        />
+      </div>
 
       <div
         style={{

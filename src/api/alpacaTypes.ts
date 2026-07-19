@@ -55,3 +55,104 @@ export interface AlpacaSnapshot {
 export interface AlpacaSnapshotsResponse {
   [symbol: string]: AlpacaSnapshot;
 }
+
+export interface AlpacaOptionContract {
+  id: string;
+  symbol: string;
+  name: string;
+  status: string;
+  tradable: boolean;
+  expiration_date: string;
+  root_symbol: string;
+  underlying_symbol: string;
+  type: "call" | "put";
+  style: string;
+  strike_price: string;
+  multiplier: string;
+  size: string;
+  open_interest?: string;
+  close_price?: string;
+}
+
+export interface AlpacaOptionContractsResponse {
+  option_contracts: AlpacaOptionContract[];
+  next_page_token: string | null;
+}
+
+export interface AlpacaOptionQuote {
+  ap?: number;
+  as?: number;
+  bp?: number;
+  bs?: number;
+  t?: string;
+}
+
+export interface AlpacaOptionTrade {
+  p?: number;
+  s?: number;
+  t?: string;
+}
+
+export interface AlpacaOptionSnapshot {
+  latestQuote?: AlpacaOptionQuote;
+  latestTrade?: AlpacaOptionTrade;
+  impliedVolatility?: number;
+  greeks?: { delta?: number; gamma?: number; theta?: number; vega?: number; rho?: number };
+}
+
+export interface AlpacaOptionSnapshotsResponse {
+  snapshots: Record<string, AlpacaOptionSnapshot>;
+  next_page_token?: string | null;
+}
+
+export interface AlpacaOrderRequest {
+  symbol: string;
+  qty: string;
+  side: "buy" | "sell";
+  type: "market" | "limit";
+  time_in_force: "day" | "gtc";
+  limit_price?: string;
+  client_order_id?: string;
+}
+
+export type AlpacaOrderStatus =
+  | "new"
+  | "partially_filled"
+  | "filled"
+  | "done_for_day"
+  | "canceled"
+  | "expired"
+  | "replaced"
+  | "pending_cancel"
+  | "pending_replace"
+  | "accepted"
+  | "pending_new"
+  | "accepted_for_bidding"
+  | "stopped"
+  | "rejected"
+  | "suspended"
+  | "calculated"
+  | "held"
+  | string;
+
+export interface AlpacaOrder {
+  id: string;
+  client_order_id: string;
+  created_at: string;
+  updated_at?: string;
+  submitted_at?: string;
+  filled_at?: string | null;
+  canceled_at?: string | null;
+  expired_at?: string | null;
+  failed_at?: string | null;
+  symbol: string;
+  asset_class?: string;
+  qty: string;
+  filled_qty?: string;
+  side: string;
+  type: string;
+  order_type?: string;
+  time_in_force?: string;
+  status: AlpacaOrderStatus;
+  limit_price: string | null;
+}

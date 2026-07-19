@@ -16,6 +16,7 @@ export default function WheelDashboard() {
   const { account, loading: accountLoading } = useAccountDetails(broker);
   const [activeTab, setActiveTab] = useState<string>("__summary__");
   const [openedTickers, setOpenedTickers] = useState<string[]>([]);
+  const [focusOpenOptionsFor, setFocusOpenOptionsFor] = useState<string | null>(null);
 
   const handleOpenTicker = useCallback(
     (symbol: string) => {
@@ -29,10 +30,24 @@ export default function WheelDashboard() {
     [positions],
   );
 
+  const handleSelectPendingOrder = useCallback(
+    (underlying: string) => {
+      const sym = underlying.toUpperCase();
+      handleOpenTicker(sym);
+      setFocusOpenOptionsFor(sym);
+    },
+    [handleOpenTicker],
+  );
+
+  const clearOpenOptionsFocus = useCallback(() => {
+    setFocusOpenOptionsFor(null);
+  }, []);
+
   const handleCloseTicker = useCallback(
     (symbol: string) => {
       setOpenedTickers((prev) => prev.filter((s) => s !== symbol));
       setActiveTab((current) => (current === symbol ? "__summary__" : current));
+      setFocusOpenOptionsFor((f) => (f === symbol ? null : f));
     },
     [],
   );
@@ -109,11 +124,25 @@ export default function WheelDashboard() {
                 LOADING POSITIONS...
               </div>
             ) : activeTab === "__summary__" ? (
-              <SummaryDashboard positions={positions} onSelectTicker={setActiveTab} />
+              <SummaryDashboard
+                positions={positions}
+                onSelectTicker={handleOpenTicker}
+                onSelectPendingOrder={handleSelectPendingOrder}
+              />
             ) : activePosition ? (
-              <TickerDetail pos={activePosition} />
+              <TickerDetail
+                pos={activePosition}
+                account={account}
+                focusOpenOptions={focusOpenOptionsFor === activePosition.id}
+                onFocusOpenOptionsHandled={clearOpenOptionsFocus}
+              />
             ) : activeWatchlistTicker ? (
-              <WatchlistTickerDetail symbol={activeWatchlistTicker} />
+              <WatchlistTickerDetail
+                symbol={activeWatchlistTicker}
+                account={account}
+                focusOpenOptions={focusOpenOptionsFor === activeWatchlistTicker}
+                onFocusOpenOptionsHandled={clearOpenOptionsFocus}
+              />
             ) : null}
           </div>
 

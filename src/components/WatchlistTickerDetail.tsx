@@ -1,5 +1,7 @@
 import { useTickerSnapshot } from "../hooks/useTickerSnapshot";
+import type { AccountInfo } from "../types";
 import { fmt } from "../utils/formatters";
+import { OpenOptionsSection } from "./OpenOptionsSection";
 import { PriceTrendChart } from "./PriceTrendChart";
 import { StatRow } from "./StatRow";
 import { WheelAnalysisPanel } from "./WheelAnalysisPanel";
@@ -27,7 +29,17 @@ const emptyStyle: React.CSSProperties = {
   textAlign: "center",
 };
 
-export function WatchlistTickerDetail({ symbol }: { symbol: string }) {
+export function WatchlistTickerDetail({
+  symbol,
+  account = null,
+  focusOpenOptions = false,
+  onFocusOpenOptionsHandled,
+}: {
+  symbol: string;
+  account?: AccountInfo | null;
+  focusOpenOptions?: boolean;
+  onFocusOpenOptionsHandled?: () => void;
+}) {
   const snap = useTickerSnapshot(symbol);
 
   if (snap.loading) {
@@ -144,10 +156,15 @@ export function WatchlistTickerDetail({ symbol }: { symbol: string }) {
         </div>
       </div>
 
-      {/* Open options */}
+      {/* Open options — Friday put ladder + sell-to-open when flat */}
       <div style={{ ...cardStyle, marginBottom: 16 }}>
-        <div style={cardLabelStyle}>OPEN OPTIONS</div>
-        <div style={emptyStyle}>NO OPEN OPTIONS FOR {symbol}</div>
+        <OpenOptionsSection
+          symbol={symbol}
+          shares={0}
+          account={account}
+          focusSection={focusOpenOptions}
+          onFocusHandled={onFocusOpenOptionsHandled}
+        />
       </div>
 
       {/* Options entry suggestions — data-driven CSP / covered-call strikes */}
