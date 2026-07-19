@@ -1,6 +1,6 @@
-# Wheel Strategy Dashboard
+# Wheel Strategy Desk
 
-React + Vite dashboard for tracking the options wheel (cash-secured put → stock → covered call), with a .NET analysis API for data-driven strike suggestions.
+An options **trading desk** — currently focused on the wheel strategy (cash-secured put → stock → covered call). A React + Vite front end that tracks the wheel, surfaces data-driven strike suggestions from a .NET analysis API, and **places live/paper option orders** through Alpaca (fetch the next-Friday chain, snap to listed strikes, sell-to-open, and manage the working order).
 
 ## Getting started
 

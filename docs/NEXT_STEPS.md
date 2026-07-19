@@ -2,6 +2,11 @@
 
 Setup and run: [PRE_LAUNCH.md](./PRE_LAUNCH.md) · [LAUNCH.md](./LAUNCH.md)
 
+**Mission:** this is a **trading desk**, currently focused on the wheel strategy —
+research, analysis, execution, and position management in one cockpit. The items
+below are roughly ordered by value-to-effort; keep building so the desk can grow
+to other options strategies and asset classes.
+
 Status snapshot (2026-06-04): the wheel-strategy **analysis API** is live end-to-end.
 A .NET 10 backend (`backend/WheelStrategy.Api`) serves
 `GET /api/analysis/wheel`, returning safe/regular/risky strike suggestions for
@@ -10,7 +15,13 @@ the cash-secured put and covered call, each annotated with an empirical
 premium, and annualized yield. It's surfaced in the UI via `WheelAnalysisPanel`
 embedded in `WatchlistTickerDetail`.
 
-This doc lists where to take it next, roughly ordered by value-to-effort.
+Status snapshot (2026-07-18): **order execution shipped.** The desk now fetches the
+next-Friday option chain from Alpaca, snaps the safe/regular/risky strikes to
+listed contracts, prices them from live snapshots, and **sells-to-open** with a
+single-working-order lifecycle (place → accept → cancel-with-confirm), plus a full
+mock path. See `fetchFridayOptions.ts`, `optionOrders.ts`, `usePendingOptionOrder.ts`,
+and `OpenOptionsSection.tsx`. This delivered two items previously listed below —
+**live option-chain integration** and **snapping strikes to real option grids**.
 
 ## Near-term (high value, low effort)
 
@@ -24,16 +35,17 @@ This doc lists where to take it next, roughly ordered by value-to-effort.
   Makes "safe/regular/risky" intuitive at a glance.
 - **Persist DTE / lookback / granularity preferences** (localStorage, like the
   watchlist store) so the panel remembers the user's settings per session.
-- **Tighten strike rounding to real option grids.** `RoundStrike` currently uses
-  a flat $1 / $0.50 grid. Pull the actual listed strikes from Alpaca's option
-  chain and snap to them.
+- ~~**Tighten strike rounding to real option grids.**~~ ✅ **Done** —
+  `fetchFridayOptions` snaps each suggested strike to the nearest listed Alpaca
+  contract. (The backend's `RoundStrike` flat grid is still used for the *analysis*
+  numbers; the execution layer overrides it with the real chain.)
 
 ## Medium-term (deeper analysis)
 
-- **Live option-chain integration.** Replace (or cross-check) the Black-Scholes
-  *estimated* premium with the real bid/ask and actual delta from
-  `/v1beta1/options/snapshots`. This makes the premium/yield numbers tradeable
-  rather than theoretical, and lets "regular ≈ 0.30 delta" use the true delta.
+- ~~**Live option-chain integration.**~~ ✅ **Done for bid/ask** — the execution
+  layer prices the Friday ladder from real `/v1beta1/options/snapshots` quotes.
+  *Still open:* surface the true **delta** (so "regular ≈ 0.30 delta" uses the
+  option's own delta rather than the model's assignment probability).
 - **Implied vs realized volatility.** Show option-implied vol alongside the
   realized vol the model uses; a large gap is itself a signal (rich/cheap premium).
 - **Backtest the suggestions.** For each historical date, compute what the
@@ -46,11 +58,11 @@ This doc lists where to take it next, roughly ordered by value-to-effort.
 
 ## Backend hardening
 
-- **Convert `EnsureCreated()` to EF migrations.** The whole `WheelStrategyDbContext`
-  (including the pre-existing BrokerAccount/Position/OptionLeg entities) has no
-  migrations. Before any schema change, run `dotnet ef migrations add InitialCreate`
-  — `EnsureCreated` and migrations do not coexist. (`EntityFrameworkCore.Tools`
-  is already referenced.)
+- **Convert `EnsureCreated()` to EF migrations.** The context now builds only the
+  `HistoricalBar` cache table (the dead BrokerAccount/Position/OptionLeg models were
+  removed), but it still has no migrations. Before any schema change, run
+  `dotnet ef migrations add InitialCreate` — `EnsureCreated` and migrations do not
+  coexist. (`EntityFrameworkCore.Tools` is already referenced.)
 - **Background bar refresh.** A hosted `BackgroundService` could pre-warm/refresh
   the `HistoricalBar` cache for watchlisted symbols off the request path.
 - **Unit tests for `StatMath`.** Quantile (type-7), `NormCdf` (erf approximation),

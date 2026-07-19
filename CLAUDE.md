@@ -24,9 +24,15 @@ dotnet run         # Serves http://localhost:5099 (launchSettings sets Developme
 dotnet build       # Compile only
 ```
 
+## Mission
+
+This application is a **trading desk**. The long-term goal is a single cockpit for running trades end to end — research, analysis, execution, and position management. It is **currently focused on options trading, and specifically the wheel strategy** (Cash-Secured Put → Stock Holding → Covered Call). Treat "wheel dashboard" as today's scope, not the ceiling: features should be built so the desk can grow to other options strategies and, eventually, other asset classes.
+
+Concretely, the app already does more than *track* the wheel — it **executes** it. It fetches live Alpaca option chains, snaps the analysis backend's strike suggestions to listed contracts, and places / cancels real sell-to-open orders (paper or live, per the Alpaca key in use). See **Order execution layer** below.
+
 ## Architecture
 
-A React + TypeScript SPA (Vite) — a **Wheel Strategy options trading dashboard** for tracking the three phases of the wheel (Cash-Secured Put → Stock Holding → Covered Call) — plus a **.NET 10 analysis backend** (`backend/WheelStrategy.Api`) that computes data-driven strike suggestions.
+A React + TypeScript SPA (Vite) — the **Wheel Strategy trading desk**: it tracks the three phases of the wheel, surfaces data-driven strike suggestions, and places option orders — plus a **.NET 10 analysis backend** (`backend/WheelStrategy.Api`) that computes those strike suggestions.
 
 > Note: the **live app entry is [src/WheelDashboard.tsx](src/WheelDashboard.tsx)** (rendered by `src/main.tsx`), composing the `src/components/` and `src/hooks/` files. The root-level `WheelDashboard.tsx` is a dead duplicate — do not edit it.
 
@@ -34,7 +40,17 @@ A React + TypeScript SPA (Vite) — a **Wheel Strategy options trading dashboard
 
 - **[src/WheelDashboard.tsx](src/WheelDashboard.tsx)** — root component: broker/account state, tab system (Dashboard + per-position tabs + closeable opened-watchlist-ticker tabs).
 - **[src/data/mockPositions.ts](src/data/mockPositions.ts)** — mock `WheelPosition[]`. **[src/utils/formatters.ts](src/utils/formatters.ts)** — `fmt` currency/compact/percent helpers.
-- The browser calls Alpaca directly via [src/api/alpacaClient.ts](src/api/alpacaClient.ts) for prices/positions; it calls the .NET backend via [src/api/fetchWheelAnalysis.ts](src/api/fetchWheelAnalysis.ts) for analysis. `API_BASE` comes from `VITE_API_BASE_URL` (default `http://localhost:5099`).
+- The browser calls Alpaca directly via [src/api/alpacaClient.ts](src/api/alpacaClient.ts) for prices/positions/**option chains and orders**; it calls the .NET backend via [src/api/fetchWheelAnalysis.ts](src/api/fetchWheelAnalysis.ts) for analysis. `API_BASE` comes from `VITE_API_BASE_URL` (default `http://localhost:5099`).
+- **`alpacaClient` exposes two clients:** `trading` (base `VITE_ALPACA_BASE_URL`, e.g. `paper-api.alpaca.markets` — accounts, positions, **option contracts, orders**) and `marketData` (base `VITE_ALPACA_DATA_URL`, e.g. `data.alpaca.markets` — quotes, bars, **option snapshots**). `trading.post`/`delete` send `Content-Type: application/json`; every GET omits it (see the CORS note under the analysis backend).
+
+### Order execution layer
+
+The desk can sell-to-open the next-Friday put/call and manage that order — end to end, with a mock path so it works without live keys.
+
+- **[src/api/fetchFridayOptions.ts](src/api/fetchFridayOptions.ts)** — builds a `FridayOptionsBundle`: calls `fetchWheelAnalysis` for the next Friday's DTE, takes the safe/regular/risky (LOW/MED/HIGH) strikes, snaps each to the **nearest listed contract** from Alpaca's option-contracts endpoint, and enriches with live **bid/ask/mid** from `/v1beta1/options/snapshots`. `sellLimit` = mid → bid → estimated premium. Side is `call` when ≥100 shares are held (covered call), else `put` (cash-secured). In `IS_MOCK` mode (or when no contracts list), premiums fall back to the backend's Black-Scholes estimate and orders are simulated.
+- **[src/api/optionOrders.ts](src/api/optionOrders.ts)** — the Alpaca Orders wrapper: `placeOptionOrder` (sell-to-open, limit or market), `getOrder`, `cancelOrder`, and `waitForOrderAcceptance` / `waitForOrderCanceled` pollers, plus status predicates (`isOrderOpen`/`Cancelable`/`Filled`/…) and `listOpenOptionOrdersForUnderlying` (OSI-symbol → underlying matching). Mock mode keeps an in-session order store so place → poll → cancel behaves realistically. **Acceptance ≠ fill:** an `accepted`/`new` order is working and still cancelable; only `filled` is terminal.
+- **[src/hooks/usePendingOptionOrder.ts](src/hooks/usePendingOptionOrder.ts)** — enforces **at most one live option order per underlying** through a phase machine (`idle → submitting → awaiting_acceptance → open → canceling → awaiting_cancel → filled/canceled`). Resumes an already-open order on mount, `locked` gates other SELLs, and a cancel must be **confirmed** by the venue before SELL re-enables.
+- **[src/components/OpenOptionsSection.tsx](src/components/OpenOptionsSection.tsx)** — the UI: renders the LOW/MED/HIGH Friday ladder (strike, % OTM, empirical/BS assignment, live bid/ask, suggested limit), an inline SELL confirm with quantity, and the working-order / cancel banner. Embedded in **[TickerDetail](src/components/TickerDetail.tsx)** (held position; shows the existing `activeOption` when present) and **[WatchlistTickerDetail](src/components/WatchlistTickerDetail.tsx)** (research view, `shares=0` → cash-secured puts). **[src/utils/nextFriday.ts](src/utils/nextFriday.ts)** computes the expiration/DTE.
 
 ### Analysis backend
 
