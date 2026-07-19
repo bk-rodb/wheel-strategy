@@ -2,6 +2,8 @@
 
 Setup and run: [PRE_LAUNCH.md](./PRE_LAUNCH.md) · [LAUNCH.md](./LAUNCH.md)
 
+Institutional outline vs current desk (gaps / future releases): [trading-desk-gaps.md](./trading-desk-gaps.md) · [trading-desk-outline.md](./trading-desk-outline.md)
+
 **Mission:** this is a **trading desk**, currently focused on the wheel strategy —
 research, analysis, execution, and position management in one cockpit. The items
 below are roughly ordered by value-to-effort; keep building so the desk can grow
