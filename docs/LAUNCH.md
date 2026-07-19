@@ -53,6 +53,18 @@ GET http://localhost:5099/api/analysis/wheel?symbol=NVDA&dte=35&lookbackDays=730
 
 ---
 
+## Shutdown
+
+From the repo root (Git Bash / macOS / Linux):
+
+```bash
+./scripts/shutdown.sh
+```
+
+Stops Vite (`:5173`), the analysis API (`:5099`), and `npm run preview` (`:4173`) if they are running. Safe when nothing is up.
+
+---
+
 ## Other commands
 
 ```bash
