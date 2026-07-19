@@ -16,6 +16,10 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.*" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.*" />
+    <!-- Override the transitive SQLitePCLRaw 2.1.10 (bundles SQLite < 3.50.2,
+         CVE-2025-6965 / NU1903) with the 3.0.x line. Drop-in version bump; the
+         bundle still auto-initializes the e_sqlite3 provider, no code changes. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.*">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
