@@ -41,3 +41,7 @@ nvda-analysis.png
 
 # Claude Code local settings
 .claude/
+
+# Understand-Anything local knowledge-graph data (regenerable via /understand)
+.ua/
+.understand-anything/
