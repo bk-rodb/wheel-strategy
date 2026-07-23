@@ -45,3 +45,6 @@ nvda-analysis.png
 # Understand-Anything local knowledge-graph data (regenerable via /understand)
 .ua/
 .understand-anything/
+
+# Graphify knowledge-graph output (regenerable via /graphify)
+graphify*/
