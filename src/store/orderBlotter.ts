@@ -1,7 +1,7 @@
 /**
  * Append-only order blotter (localStorage). Mirrors watchlistStore pattern.
  * Tracks state transitions and last-known order per client_order_id for
- * reload/orphan reconciliation.
+ * reload/orphan reconciliation across browser sessions.
  */
 
 export type DeskOrderState =

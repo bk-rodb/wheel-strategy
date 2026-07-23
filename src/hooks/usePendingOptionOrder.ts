@@ -17,6 +17,7 @@ import {
 import { tradeUpdatesStream } from "../api/tradeUpdatesStream";
 import type { AlpacaOrder } from "../api/alpacaTypes";
 import { orderBlotter, type DeskOrderState } from "../store/orderBlotter";
+import { isMarketOpen, ORDER_STATUS_POLL_MS } from "../utils/marketHours";
 
 export type PendingOrderPhase = DeskOrderState;
 
@@ -146,11 +147,20 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
   const startStatusPoll = useCallback(
     (orderId: string) => {
       stopPolling();
-      pollRef.current = setInterval(() => {
+
+      const tick = () => {
+        if (!isMarketOpen()) return;
         void refreshOrder(orderId).catch((e) => {
           setError(e instanceof Error ? e.message : "Order status check failed");
         });
-      }, 1500);
+      };
+
+      // Always reconcile once (resume / off-hours included).
+      void refreshOrder(orderId).catch((e) => {
+        setError(e instanceof Error ? e.message : "Order status check failed");
+      });
+
+      pollRef.current = setInterval(tick, ORDER_STATUS_POLL_MS);
     },
     [refreshOrder, stopPolling],
   );
