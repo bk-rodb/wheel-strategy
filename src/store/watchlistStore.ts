@@ -7,18 +7,68 @@ export interface WatchlistEntry {
   displayOrder: number;
 }
 
-const KEY = "wheel-watchlist";
+export interface Watchlist {
+  id: string;
+  name: string;
+  entries: WatchlistEntry[];
+}
 
-function load(): WatchlistEntry[] {
+interface WatchlistsState {
+  version: 2;
+  activeId: string;
+  watchlists: Watchlist[];
+}
+
+const KEY = "wheel-watchlist";
+const DEFAULT_NAME = "watchlist";
+
+function newId(): string {
+  return crypto.randomUUID();
+}
+
+function loadRaw(): unknown {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "[]") as WatchlistEntry[];
+    const raw = localStorage.getItem(KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
-function save(entries: WatchlistEntry[]) {
-  localStorage.setItem(KEY, JSON.stringify(entries));
+function migrate(raw: unknown): WatchlistsState {
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "version" in raw &&
+    (raw as WatchlistsState).version === 2
+  ) {
+    return raw as WatchlistsState;
+  }
+
+  const legacyEntries = Array.isArray(raw) ? (raw as WatchlistEntry[]) : [];
+  const defaultId = newId();
+  return {
+    version: 2,
+    activeId: defaultId,
+    watchlists: [{ id: defaultId, name: DEFAULT_NAME, entries: legacyEntries }],
+  };
+}
+
+function save(state: WatchlistsState) {
+  localStorage.setItem(KEY, JSON.stringify(state));
+}
+
+function load(): WatchlistsState {
+  return migrate(loadRaw());
+}
+
+function findById(state: WatchlistsState, id: string): Watchlist | undefined {
+  return state.watchlists.find((w) => w.id === id);
+}
+
+function findByName(state: WatchlistsState, name: string): Watchlist | undefined {
+  const lower = name.trim().toLowerCase();
+  return state.watchlists.find((w) => w.name.toLowerCase() === lower);
 }
 
 function ensureDefaults(entries: WatchlistEntry[]): WatchlistEntry[] {
@@ -36,51 +86,149 @@ function ensureDefaults(entries: WatchlistEntry[]): WatchlistEntry[] {
       },
     ];
   }
-  if (updated !== entries) save(updated);
   return updated;
 }
 
+function getDefaultWatchlist(state: WatchlistsState): Watchlist {
+  return (
+    state.watchlists.find((w) => w.name.toLowerCase() === DEFAULT_NAME) ??
+    state.watchlists[0]
+  );
+}
+
+function withDefaultSeeds(state: WatchlistsState): WatchlistsState {
+  const defaultWl = getDefaultWatchlist(state);
+  const seeded = ensureDefaults(defaultWl.entries);
+  if (seeded === defaultWl.entries) return state;
+  const watchlists = state.watchlists.map((w) =>
+    w.id === defaultWl.id ? { ...w, entries: seeded } : w,
+  );
+  const next = { ...state, watchlists };
+  save(next);
+  return next;
+}
+
+function activeWatchlist(state: WatchlistsState): Watchlist {
+  return findById(state, state.activeId) ?? state.watchlists[0];
+}
+
+function updateActiveEntries(
+  state: WatchlistsState,
+  entries: WatchlistEntry[],
+): WatchlistsState {
+  const watchlists = state.watchlists.map((w) =>
+    w.id === state.activeId ? { ...w, entries } : w,
+  );
+  const next = { ...state, watchlists };
+  save(next);
+  return next;
+}
+
+export type CreateWatchlistResult =
+  | { ok: true; watchlist: Watchlist }
+  | { ok: false; error: "duplicate" | "empty" };
+
 export const watchlistStore = {
+  getState(): WatchlistsState {
+    return withDefaultSeeds(load());
+  },
+
+  getWatchlists(): Watchlist[] {
+    return this.getState().watchlists;
+  },
+
+  getActiveWatchlist(): Watchlist {
+    return activeWatchlist(this.getState());
+  },
+
   getAll(): WatchlistEntry[] {
-    return ensureDefaults(load()).sort((a, b) => a.displayOrder - b.displayOrder);
+    return activeWatchlist(this.getState())
+      .entries
+      .slice()
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+
+  setActive(id: string): WatchlistsState {
+    const state = load();
+    if (!findById(state, id)) return state;
+    const next = { ...state, activeId: id };
+    save(next);
+    return next;
+  },
+
+  create(name: string): CreateWatchlistResult {
+    const trimmed = name.trim();
+    if (!trimmed) return { ok: false, error: "empty" };
+
+    const state = load();
+    if (findByName(state, trimmed)) return { ok: false, error: "duplicate" };
+
+    const watchlist: Watchlist = { id: newId(), name: trimmed, entries: [] };
+    const next: WatchlistsState = {
+      ...state,
+      activeId: watchlist.id,
+      watchlists: [...state.watchlists, watchlist],
+    };
+    save(next);
+    return { ok: true, watchlist };
+  },
+
+  isNameTaken(name: string, excludeId?: string): boolean {
+    const lower = name.trim().toLowerCase();
+    if (!lower) return false;
+    return this.getState().watchlists.some(
+      (w) => w.name.toLowerCase() === lower && w.id !== excludeId,
+    );
   },
 
   add(symbol: string, notes?: string): WatchlistEntry[] {
-    const entries = load();
-    if (entries.some((e) => e.symbol === symbol.toUpperCase())) return entries;
+    const state = load();
+    const active = activeWatchlist(state);
+    if (active.entries.some((e) => e.symbol === symbol.toUpperCase())) {
+      return active.entries;
+    }
     const next: WatchlistEntry = {
       symbol: symbol.toUpperCase(),
       addedAt: new Date().toISOString(),
       notes,
-      displayOrder: entries.length,
+      displayOrder: active.entries.length,
     };
-    const updated = [...entries, next];
-    save(updated);
-    return updated;
+    return updateActiveEntries(state, [...active.entries, next]).watchlists.find(
+      (w) => w.id === state.activeId,
+    )!.entries;
   },
 
   remove(symbol: string): WatchlistEntry[] {
-    const updated = load()
+    const state = load();
+    const active = activeWatchlist(state);
+    const updated = active.entries
       .filter((e) => e.symbol !== symbol.toUpperCase())
       .map((e, i) => ({ ...e, displayOrder: i }));
-    save(updated);
-    return updated;
+    return updateActiveEntries(state, updated).watchlists.find(
+      (w) => w.id === state.activeId,
+    )!.entries;
   },
 
   updateNotes(symbol: string, notes: string): WatchlistEntry[] {
-    const updated = load().map((e) =>
+    const state = load();
+    const active = activeWatchlist(state);
+    const updated = active.entries.map((e) =>
       e.symbol === symbol.toUpperCase() ? { ...e, notes } : e,
     );
-    save(updated);
-    return updated;
+    return updateActiveEntries(state, updated).watchlists.find(
+      (w) => w.id === state.activeId,
+    )!.entries;
   },
 
   reorder(symbols: string[]): WatchlistEntry[] {
-    const map = Object.fromEntries(load().map((e) => [e.symbol, e]));
+    const state = load();
+    const active = activeWatchlist(state);
+    const map = Object.fromEntries(active.entries.map((e) => [e.symbol, e]));
     const updated = symbols
       .filter((s) => map[s])
       .map((s, i) => ({ ...map[s], displayOrder: i }));
-    save(updated);
-    return updated;
+    return updateActiveEntries(state, updated).watchlists.find(
+      (w) => w.id === state.activeId,
+    )!.entries;
   },
 };

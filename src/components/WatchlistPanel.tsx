@@ -13,7 +13,16 @@ function useDebounce<T>(value: T, ms: number): T {
 }
 
 export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string) => void }) {
-  const { items, add, remove } = useWatchlist();
+  const {
+    items,
+    add,
+    remove,
+    watchlists,
+    activeWatchlist,
+    selectWatchlist,
+    createWatchlist,
+    isNameTaken,
+  } = useWatchlist();
 
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<AssetResult[]>([]);
@@ -21,9 +30,15 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
   const [activeIndex, setActiveIndex] = useState(-1);
   const [searching, setSearching] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const newNameRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebounce(query, 250);
 
   // Fetch suggestions when debounced query changes
@@ -93,6 +108,59 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
     }
   }, [activeIndex]);
 
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+        setCreating(false);
+        setNewName("");
+        setCreateError(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownOpen]);
+
+  useEffect(() => {
+    if (creating) newNameRef.current?.focus();
+  }, [creating]);
+
+  function handleSelectWatchlist(id: string) {
+    selectWatchlist(id);
+    setDropdownOpen(false);
+    setCreating(false);
+    setNewName("");
+    setCreateError(null);
+  }
+
+  function handleStartCreate() {
+    setCreating(true);
+    setNewName("");
+    setCreateError(null);
+  }
+
+  function handleCommitCreate() {
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      setCreateError("Name required");
+      return;
+    }
+    if (isNameTaken(trimmed)) {
+      setCreateError("Name already exists");
+      return;
+    }
+    const result = createWatchlist(trimmed);
+    if (!result.ok) {
+      setCreateError(result.error === "duplicate" ? "Name already exists" : "Name required");
+      return;
+    }
+    setDropdownOpen(false);
+    setCreating(false);
+    setNewName("");
+    setCreateError(null);
+  }
+
   return (
     <div
       style={{
@@ -107,17 +175,200 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
     >
       {/* Panel header */}
       <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid #12122a" }}>
-        <div
-          style={{
-            fontSize: 10,
-            fontFamily: "monospace",
-            fontWeight: 700,
-            color: "#4a4a6a",
-            letterSpacing: "0.12em",
-            marginBottom: 10,
-          }}
-        >
-          WATCHLIST
+        <div ref={dropdownRef} style={{ position: "relative", marginBottom: 10 }}>
+          <button
+            type="button"
+            onClick={() => setDropdownOpen((open) => !open)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              width: "100%",
+              padding: 0,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 10,
+              fontFamily: "monospace",
+              fontWeight: 700,
+              color: "#4a4a6a",
+              letterSpacing: "0.12em",
+              textAlign: "left",
+            }}
+          >
+            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {activeWatchlist.name.toUpperCase()}
+            </span>
+            <span style={{ fontSize: 8, color: "#3a3a5a", flexShrink: 0 }}>
+              {dropdownOpen ? "▲" : "▼"}
+            </span>
+          </button>
+
+          {dropdownOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                left: 0,
+                right: 0,
+                zIndex: 60,
+                background: "#0d0d1e",
+                border: "1px solid #2a2a3a",
+                borderRadius: 6,
+                overflow: "hidden",
+                boxShadow: "0 8px 24px #00000070",
+              }}
+            >
+              {watchlists.map((wl) => {
+                const isActive = wl.id === activeWatchlist.id;
+                return (
+                  <button
+                    key={wl.id}
+                    type="button"
+                    onClick={() => handleSelectWatchlist(wl.id)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      width: "100%",
+                      padding: "8px 10px",
+                      background: isActive ? "#1a1a30" : "transparent",
+                      border: "none",
+                      borderBottom: "1px solid #12122a",
+                      cursor: "pointer",
+                      fontSize: 10,
+                      fontFamily: "monospace",
+                      fontWeight: 700,
+                      color: isActive ? "#34d399" : "#c0c0e0",
+                      letterSpacing: "0.08em",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {wl.name.toUpperCase()}
+                    </span>
+                    {isActive && <span style={{ fontSize: 8, color: "#34d399" }}>✓</span>}
+                  </button>
+                );
+              })}
+
+              {creating ? (
+                <div style={{ padding: "8px 10px", borderTop: "1px solid #12122a" }}>
+                  <input
+                    ref={newNameRef}
+                    value={newName}
+                    onChange={(e) => {
+                      setNewName(e.target.value);
+                      setCreateError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCommitCreate();
+                      if (e.key === "Escape") {
+                        setCreating(false);
+                        setNewName("");
+                        setCreateError(null);
+                      }
+                    }}
+                    placeholder="NEW WATCHLIST"
+                    maxLength={40}
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      background: "#07071a",
+                      border: `1px solid ${createError ? "#ef444460" : "#1e1e38"}`,
+                      borderRadius: 4,
+                      padding: "5px 8px",
+                      fontSize: 10,
+                      fontFamily: "monospace",
+                      fontWeight: 700,
+                      color: "#e0e0f0",
+                      letterSpacing: "0.06em",
+                      outline: "none",
+                      marginBottom: 6,
+                    }}
+                  />
+                  {createError && (
+                    <div
+                      style={{
+                        fontSize: 8,
+                        fontFamily: "monospace",
+                        color: "#ef4444",
+                        letterSpacing: "0.06em",
+                        marginBottom: 6,
+                      }}
+                    >
+                      {createError}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={handleCommitCreate}
+                      style={{
+                        flex: 1,
+                        cursor: "pointer",
+                        background: "#34d39920",
+                        border: "1px solid #34d39950",
+                        borderRadius: 4,
+                        padding: "4px 8px",
+                        fontSize: 9,
+                        fontFamily: "monospace",
+                        fontWeight: 700,
+                        color: "#34d399",
+                        letterSpacing: "0.06em",
+                      }}
+                    >
+                      CREATE
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreating(false);
+                        setNewName("");
+                        setCreateError(null);
+                      }}
+                      style={{
+                        flex: 1,
+                        cursor: "pointer",
+                        background: "transparent",
+                        border: "1px solid #2a2a3a",
+                        borderRadius: 4,
+                        padding: "4px 8px",
+                        fontSize: 9,
+                        fontFamily: "monospace",
+                        fontWeight: 700,
+                        color: "#4a4a6a",
+                        letterSpacing: "0.06em",
+                      }}
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStartCreate}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "8px 10px",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 9,
+                    fontFamily: "monospace",
+                    fontWeight: 700,
+                    color: "#34d399",
+                    letterSpacing: "0.08em",
+                    textAlign: "left",
+                  }}
+                >
+                  + NEW WATCHLIST
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Search input + dropdown */}

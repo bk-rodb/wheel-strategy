@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { watchlistStore, type WatchlistEntry } from "../store/watchlistStore";
+import {
+  watchlistStore,
+  type Watchlist,
+  type WatchlistEntry,
+} from "../store/watchlistStore";
 import { marketData } from "../api/alpacaClient";
 import type { AlpacaSnapshotsResponse, AlpacaBarsResponse } from "../api/alpacaTypes";
 import { isMarketOpen } from "../utils/marketHours";
@@ -69,9 +73,21 @@ async function fetchQuotes(symbols: string[]): Promise<Record<string, WatchlistQ
 }
 
 export function useWatchlist() {
+  const [activeWatchlist, setActiveWatchlist] = useState<Watchlist>(() =>
+    watchlistStore.getActiveWatchlist(),
+  );
+  const [watchlists, setWatchlists] = useState<Watchlist[]>(() =>
+    watchlistStore.getWatchlists(),
+  );
   const [entries, setEntries] = useState<WatchlistEntry[]>(() => watchlistStore.getAll());
   const [quotes, setQuotes] = useState<Record<string, WatchlistQuote>>({});
   const [loadingSymbols, setLoadingSymbols] = useState<Set<string>>(new Set());
+
+  const syncFromStore = useCallback(() => {
+    setWatchlists(watchlistStore.getWatchlists());
+    setActiveWatchlist(watchlistStore.getActiveWatchlist());
+    setEntries(watchlistStore.getAll());
+  }, []);
 
   const refreshQuotes = useCallback(async (symbols: string[]) => {
     if (symbols.length === 0) return;
@@ -101,8 +117,8 @@ export function useWatchlist() {
 
   useEffect(() => {
     const symbols = entries.map((e) => e.symbol);
+    setQuotes({});
     refreshQuotes(symbols);
-    // Refresh every 5 min (matches the bar period)
     const interval = setInterval(() => refreshQuotes(symbols), 5 * 60_000);
     return () => clearInterval(interval);
   }, [entries, refreshQuotes]);
@@ -114,9 +130,9 @@ export function useWatchlist() {
   }));
 
   const add = useCallback((symbol: string) => {
-    const updated = watchlistStore.add(symbol);
-    setEntries(updated);
-  }, []);
+    setEntries(watchlistStore.add(symbol));
+    syncFromStore();
+  }, [syncFromStore]);
 
   const remove = useCallback((symbol: string) => {
     setEntries(watchlistStore.remove(symbol));
@@ -125,7 +141,33 @@ export function useWatchlist() {
       delete next[symbol];
       return next;
     });
-  }, []);
+    syncFromStore();
+  }, [syncFromStore]);
 
-  return { items, add, remove };
+  const selectWatchlist = useCallback((id: string) => {
+    watchlistStore.setActive(id);
+    syncFromStore();
+  }, [syncFromStore]);
+
+  const createWatchlist = useCallback((name: string) => {
+    const result = watchlistStore.create(name);
+    if (result.ok) syncFromStore();
+    return result;
+  }, [syncFromStore]);
+
+  const isNameTaken = useCallback(
+    (name: string, excludeId?: string) => watchlistStore.isNameTaken(name, excludeId),
+    [],
+  );
+
+  return {
+    items,
+    add,
+    remove,
+    watchlists,
+    activeWatchlist,
+    selectWatchlist,
+    createWatchlist,
+    isNameTaken,
+  };
 }
