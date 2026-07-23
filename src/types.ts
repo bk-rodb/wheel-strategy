@@ -58,6 +58,15 @@ export type WheelAnalysis = Omit<
   call: StrikeSuggestion[] | null;
 };
 
+export type HmmRegime = "bear" | "neutral" | "bull" | "unknown";
+
+export type HmmTrendResult = Omit<
+  components["schemas"]["HmmTrendResult"],
+  "currentRegime"
+> & {
+  currentRegime: HmmRegime;
+};
+
 export interface WheelPosition {
   id: string;
   ticker: string;

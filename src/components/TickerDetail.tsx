@@ -5,6 +5,7 @@ import { WheelPhaseIndicator } from "./WheelPhaseIndicator";
 import { PriceTrendChart } from "./PriceTrendChart";
 import { StatRow } from "./StatRow";
 import { OpenOptionsSection } from "./OpenOptionsSection";
+import { ResearchSection } from "./ResearchSection";
 
 export function TickerDetail({
   pos,
@@ -170,6 +171,29 @@ export function TickerDetail({
           <StatRow label="Premium Collected" value={fmt.currency(pos.premiumCollectedTotal)} accent />
           <StatRow label="Prev. Close" value={fmt.currency(pos.previousClose)} />
         </div>
+      </div>
+
+      <div
+        style={{
+          background: "#08081a",
+          border: "1px solid #1a1a30",
+          borderRadius: 6,
+          padding: 14,
+          marginBottom: 16,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 10,
+            color: "#4a4a6a",
+            fontFamily: "monospace",
+            letterSpacing: "0.08em",
+            marginBottom: 12,
+          }}
+        >
+          RESEARCH
+        </div>
+        <ResearchSection symbol={pos.ticker} />
       </div>
 
       <div

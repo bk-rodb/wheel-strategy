@@ -7,6 +7,7 @@ import { useFridayOptionSuggestions } from "../hooks/useFridayOptionSuggestions"
 import { usePendingOptionOrder } from "../hooks/usePendingOptionOrder";
 import type { AccountInfo, OptionLeg, WheelPhase } from "../types";
 import { fmt } from "../utils/formatters";
+import { dteUntil } from "../utils/nextFriday";
 import { OptionCard } from "./OptionCard";
 import { OrderTicket } from "./OrderTicket";
 
@@ -77,12 +78,23 @@ export function OpenOptionsSection({
   const side: "call" | "put" =
     activeOption?.type === "call" || canCoverCall ? "call" : "put";
 
-  const { data, loading, error, refresh } = useFridayOptionSuggestions({
-    symbol,
-    side,
-    shares,
-    enabled: true,
-  });
+  const [selectedExpiration, setSelectedExpiration] = useState<string | null>(null);
+
+  const { data, loading, error, refresh, expirations, defaultExpiration } =
+    useFridayOptionSuggestions({
+      symbol,
+      side,
+      shares,
+      expiration: selectedExpiration,
+      enabled: true,
+    });
+
+  const pickerExpiration = selectedExpiration ?? defaultExpiration;
+
+  useEffect(() => {
+    setSelectedExpiration(null);
+    setTicket(null);
+  }, [symbol, side]);
 
   const {
     order: pendingOrder,
@@ -690,10 +702,36 @@ export function OpenOptionsSection({
             }}
           >
             <span>
-              EXP <b style={{ color: accent }}>{data.expiration}</b>
+              EXP{" "}
+              <select
+                value={pickerExpiration}
+                disabled={loading || locked || expirations.length === 0}
+                onChange={(e) => {
+                  setSelectedExpiration(e.target.value);
+                  setTicket(null);
+                }}
+                style={{
+                  background: "#0c0c1c",
+                  border: `1px solid ${accent}50`,
+                  borderRadius: 3,
+                  color: accent,
+                  fontFamily: "monospace",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "1px 4px",
+                  cursor: loading || locked ? "default" : "pointer",
+                }}
+              >
+                {(expirations.length > 0 ? expirations : [pickerExpiration]).map((exp) => (
+                  <option key={exp} value={exp}>
+                    {exp}
+                    {exp === defaultExpiration ? " (Fri)" : ""}
+                  </option>
+                ))}
+              </select>
             </span>
             <span>
-              DTE <b style={{ color: "#e8e8f8" }}>{data.dte}</b>
+              DTE <b style={{ color: "#e8e8f8" }}>{dteUntil(pickerExpiration)}</b>
             </span>
             <span>
               SPOT <b style={{ color: "#e8e8f8" }}>{fmt.currency(data.spot)}</b>

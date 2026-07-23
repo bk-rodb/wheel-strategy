@@ -21,6 +21,7 @@ builder.Services.AddDbContext<WheelStrategyDbContext>(o => o.UseSqlite(conn));
 builder.Services.AddHttpClient<AlpacaMarketDataClient>();
 builder.Services.AddScoped<IBarCacheService, BarCacheService>();
 builder.Services.AddScoped<IWheelAnalysisService, WheelAnalysisService>();
+builder.Services.AddScoped<IHmmTrendService, HmmTrendService>();
 
 // Serialize enums as strings (matches the frontend's "safe"/"regular"/"risky")
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -68,5 +69,6 @@ app.MapOpenApi();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapWheelAnalysisEndpoints();
+app.MapHmmTrendEndpoints();
 
 app.Run();

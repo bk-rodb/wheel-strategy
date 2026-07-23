@@ -83,10 +83,216 @@
           }
         }
       }
+    },
+    "/api/analysis/hmm": {
+      "get": {
+        "tags": [
+          "WheelStrategy.Api"
+        ],
+        "operationId": "GetHmmTrend",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lookbackDays",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "granularity",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HmmTrendResult"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "HmmForecastHorizon": {
+        "required": [
+          "days",
+          "stateProbs",
+          "expectedReturnPct",
+          "bearProb",
+          "bullProb"
+        ],
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stateProbs": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "expectedReturnPct": {
+            "type": "number",
+            "format": "double"
+          },
+          "bearProb": {
+            "type": "number",
+            "format": "double"
+          },
+          "bullProb": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "HmmStateSnapshot": {
+        "required": [
+          "date",
+          "stateProbs",
+          "dominantState"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "stateProbs": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "dominantState": {
+            "type": "string"
+          }
+        }
+      },
+      "HmmTrendResult": {
+        "required": [
+          "symbol",
+          "currentPrice",
+          "asOf",
+          "lookbackDays",
+          "granularity",
+          "stateLabels",
+          "history",
+          "currentStateProbs",
+          "currentRegime",
+          "transitionMatrix",
+          "forecast",
+          "stateMeans",
+          "stateVols",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "currentPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lookbackDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "granularity": {
+            "type": "string"
+          },
+          "stateLabels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HmmStateSnapshot"
+            }
+          },
+          "currentStateProbs": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "currentRegime": {
+            "type": "string"
+          },
+          "transitionMatrix": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              }
+            }
+          },
+          "forecast": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HmmForecastHorizon"
+            }
+          },
+          "stateMeans": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "stateVols": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "StrikeSuggestion": {
         "required": [
           "level",

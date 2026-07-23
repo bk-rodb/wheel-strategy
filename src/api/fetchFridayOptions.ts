@@ -1,5 +1,9 @@
 import { IS_MOCK } from "../config";
 import type { AnalysisLevel, StrikeSuggestion } from "../types";
+import {
+  buildExpirationPickerList,
+  mockListedExpirations,
+} from "../utils/optionExpirations";
 import { dteUntil, nextFriday, toDateString } from "../utils/nextFriday";
 import { marketData, trading } from "./alpacaClient";
 import type {
@@ -90,10 +94,59 @@ function roundPrice(n: number): number {
   return Math.max(0.01, Math.round(n * 100) / 100);
 }
 
+/** Unique active expiration dates for an underlying (today through ~4 months). */
+export async function fetchListedExpirations(
+  symbol: string,
+  type: OptionSide,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  if (IS_MOCK) return mockListedExpirations();
+
+  const today = toDateString(new Date());
+  const maxDate = new Date();
+  maxDate.setMonth(maxDate.getMonth() + 4);
+  const expirationDateLte = toDateString(maxDate);
+
+  const dates = new Set<string>();
+  let page: string | undefined;
+  do {
+    const params: Record<string, string> = {
+      underlying_symbols: symbol,
+      type,
+      status: "active",
+      expiration_date_gte: today,
+      expiration_date_lte: expirationDateLte,
+      limit: "100",
+    };
+    if (page) params.page_token = page;
+    const res = await trading.get<AlpacaOptionContractsResponse>(
+      "/v2/options/contracts",
+      params,
+    );
+    for (const c of res.option_contracts ?? []) {
+      dates.add(c.expiration_date);
+    }
+    page = res.next_page_token ?? undefined;
+    if (signal?.aborted) break;
+  } while (page);
+
+  return [...dates].sort();
+}
+
+export async function fetchExpirationPicker(
+  symbol: string,
+  type: OptionSide,
+  signal?: AbortSignal,
+): Promise<{ dates: string[]; defaultExpiration: string }> {
+  const listed = await fetchListedExpirations(symbol, type, signal);
+  return buildExpirationPickerList(listed);
+}
+
 async function fetchContracts(
   symbol: string,
   expiration: string,
   type: OptionSide,
+  signal?: AbortSignal,
 ): Promise<AlpacaOptionContract[]> {
   const all: AlpacaOptionContract[] = [];
   let page: string | undefined;
@@ -106,9 +159,13 @@ async function fetchContracts(
       limit: "100",
     };
     if (page) params.page_token = page;
-    const res = await trading.get<AlpacaOptionContractsResponse>("/v2/options/contracts", params);
+    const res = await trading.get<AlpacaOptionContractsResponse>(
+      "/v2/options/contracts",
+      params,
+    );
     all.push(...(res.option_contracts ?? []));
     page = res.next_page_token ?? undefined;
+    if (signal?.aborted) break;
   } while (page);
   return all;
 }
@@ -181,10 +238,11 @@ export async function fetchFridayOptions(opts: {
   symbol: string;
   side: OptionSide;
   shares: number;
+  expiration?: string;
   signal?: AbortSignal;
 }): Promise<FridayOptionsBundle> {
   const symbol = opts.symbol.toUpperCase();
-  const expiration = toDateString(nextFriday());
+  const expiration = opts.expiration ?? toDateString(nextFriday());
   const dte = dteUntil(expiration);
   const contractsQty =
     opts.side === "call" ? Math.max(1, Math.floor(opts.shares / 100)) : 1;
@@ -219,7 +277,7 @@ export async function fetchFridayOptions(opts: {
 
   let contracts: AlpacaOptionContract[] = [];
   try {
-    contracts = await fetchContracts(symbol, expiration, opts.side);
+    contracts = await fetchContracts(symbol, expiration, opts.side, opts.signal);
   } catch (e) {
     warnings.push(
       e instanceof Error ? e.message : "Failed to load option contracts from Alpaca",

@@ -5,6 +5,7 @@ import { OpenOptionsSection } from "./OpenOptionsSection";
 import { PriceTrendChart } from "./PriceTrendChart";
 import { StatRow } from "./StatRow";
 import { WheelAnalysisPanel } from "./WheelAnalysisPanel";
+import { ResearchSection } from "./ResearchSection";
 
 const cardStyle: React.CSSProperties = {
   background: "#08081a",
@@ -168,6 +169,12 @@ export function WatchlistTickerDetail({
           onFocusHandled={onFocusOpenOptionsHandled}
           onPositionRefresh={onPositionRefresh}
         />
+      </div>
+
+      {/* Research — HMM regime analysis and trend forecast */}
+      <div style={{ ...cardStyle, marginBottom: 16 }}>
+        <div style={{ ...cardLabelStyle, marginBottom: 12 }}>RESEARCH</div>
+        <ResearchSection symbol={symbol} />
       </div>
 
       {/* Options entry suggestions — data-driven CSP / covered-call strikes */}
