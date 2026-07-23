@@ -1,33 +1,11 @@
 import type { WheelPosition, WheelPhase, OptionLeg, PricePoint } from "../types";
 import { trading, marketData } from "./alpacaClient";
+import { parseOsiSymbol } from "./optionOrders";
 import type {
   AlpacaPosition,
   AlpacaBarsResponse,
   AlpacaSnapshotsResponse,
 } from "./alpacaTypes";
-
-// ─── OSI symbol parser ────────────────────────────────────────────────────────
-// Format: TSLA  250718C00250000  (underlying padded to 6, YYMMDD, C/P, strike*1000)
-
-function parseOptionSymbol(
-  osi: string,
-): { underlying: string; expiration: string; type: "call" | "put"; strike: number } | null {
-  // OSI is 21 chars: 6 underlying + 6 date + 1 type + 8 strike
-  if (osi.length !== 21) return null;
-  const underlying = osi.slice(0, 6).trim();
-  const dateStr = osi.slice(6, 12); // YYMMDD
-  const optType = osi.slice(12, 13);
-  const strikeRaw = osi.slice(13, 21);
-
-  const year = parseInt(dateStr.slice(0, 2), 10) + 2000;
-  const month = dateStr.slice(2, 4);
-  const day = dateStr.slice(4, 6);
-  const expiration = `${year}-${month}-${day}`;
-  const strike = parseInt(strikeRaw, 10) / 1000;
-  const type = optType === "C" ? "call" : "put";
-
-  return { underlying, expiration, type, strike };
-}
 
 // ─── Phase inference ──────────────────────────────────────────────────────────
 
@@ -75,7 +53,7 @@ export async function fetchWheelPositions(): Promise<WheelPosition[]> {
   // Build a map of underlying → active option leg
   const optionsByUnderlying: Record<string, OptionLeg> = {};
   for (const opt of optionPositions) {
-    const parsed = parseOptionSymbol(opt.symbol);
+    const parsed = parseOsiSymbol(opt.symbol);
     if (!parsed) continue;
     optionsByUnderlying[parsed.underlying] = {
       type: parsed.type,

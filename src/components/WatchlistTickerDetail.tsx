@@ -34,11 +34,13 @@ export function WatchlistTickerDetail({
   account = null,
   focusOpenOptions = false,
   onFocusOpenOptionsHandled,
+  onPositionRefresh,
 }: {
   symbol: string;
   account?: AccountInfo | null;
   focusOpenOptions?: boolean;
   onFocusOpenOptionsHandled?: () => void;
+  onPositionRefresh?: () => void;
 }) {
   const snap = useTickerSnapshot(symbol);
 
@@ -164,6 +166,7 @@ export function WatchlistTickerDetail({
           account={account}
           focusSection={focusOpenOptions}
           onFocusHandled={onFocusOpenOptionsHandled}
+          onPositionRefresh={onPositionRefresh}
         />
       </div>
 

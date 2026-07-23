@@ -56,6 +56,8 @@ interface OpenOptionsSectionProps {
   /** When true, scroll this section into view and briefly highlight. */
   focusSection?: boolean;
   onFocusHandled?: () => void;
+  /** Re-fetch account positions after a sell/buy order fills. */
+  onPositionRefresh?: () => void;
 }
 
 export function OpenOptionsSection({
@@ -66,6 +68,7 @@ export function OpenOptionsSection({
   account = null,
   focusSection = false,
   onFocusHandled,
+  onPositionRefresh,
 }: OpenOptionsSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [highlight, setHighlight] = useState(false);
@@ -108,6 +111,12 @@ export function OpenOptionsSection({
       window.clearTimeout(t1);
     };
   }, [focusSection, onFocusHandled]);
+
+  // After fill, reload positions so the short/long option leg appears as activeOption.
+  useEffect(() => {
+    if (orderPhase !== "filled") return;
+    onPositionRefresh?.();
+  }, [orderPhase, onPositionRefresh]);
 
   const [ticket, setTicket] = useState<TicketDraft | null>(null);
   const [qty, setQty] = useState(1);

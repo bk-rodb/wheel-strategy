@@ -16,6 +16,7 @@ import {
   isOrderOpen,
   newClientOrderId,
   optionUnderlying,
+  parseOsiSymbol,
   placeOptionOrder,
   reconcileSubmission,
 } from "./optionOrders";
@@ -56,6 +57,27 @@ describe("optionOrders status helpers", () => {
     expect(buildOsiSymbol("AAPL", "2025-01-17", "call", 150)).toBe(
       "AAPL  250117C00150000",
     );
+  });
+
+  it("parses padded and compact OSI symbols", () => {
+    expect(parseOsiSymbol("SPCX  260724P00102000")).toEqual({
+      underlying: "SPCX",
+      expiration: "2026-07-24",
+      type: "put",
+      strike: 102,
+    });
+    expect(parseOsiSymbol("SPCX260724P00102000")).toEqual({
+      underlying: "SPCX",
+      expiration: "2026-07-24",
+      type: "put",
+      strike: 102,
+    });
+    expect(parseOsiSymbol("AAPL  250117C00150000")).toEqual({
+      underlying: "AAPL",
+      expiration: "2025-01-17",
+      type: "call",
+      strike: 150,
+    });
   });
 });
 

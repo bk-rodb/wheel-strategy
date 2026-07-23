@@ -11,11 +11,13 @@ export function TickerDetail({
   account = null,
   focusOpenOptions = false,
   onFocusOpenOptionsHandled,
+  onPositionRefresh,
 }: {
   pos: WheelPosition;
   account?: AccountInfo | null;
   focusOpenOptions?: boolean;
   onFocusOpenOptionsHandled?: () => void;
+  onPositionRefresh?: () => void;
 }) {
   const chg = dayChange(pos);
   const chgPct = dayChangePct(pos);
@@ -187,6 +189,7 @@ export function TickerDetail({
           account={account}
           focusSection={focusOpenOptions}
           onFocusHandled={onFocusOpenOptionsHandled}
+          onPositionRefresh={onPositionRefresh}
         />
       </div>
 

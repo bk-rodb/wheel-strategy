@@ -300,6 +300,25 @@ export function optionUnderlying(osi: string): string {
   return osi.trim().split(/\s+/)[0]?.toUpperCase() ?? osi.toUpperCase();
 }
 
+/** Parse padded or compact OSI into legs (Alpaca positions use both forms). */
+export function parseOsiSymbol(
+  osi: string,
+): { underlying: string; expiration: string; type: "call" | "put"; strike: number } | null {
+  const compact = osi.replace(/\s/g, "").toUpperCase();
+  const m = compact.match(/^([A-Z]{1,6})(\d{6})([CP])(\d{8})$/);
+  if (!m) return null;
+
+  const [, underlying, dateStr, optType, strikeRaw] = m;
+  const year = parseInt(dateStr.slice(0, 2), 10) + 2000;
+  const month = dateStr.slice(2, 4);
+  const day = dateStr.slice(4, 6);
+  const expiration = `${year}-${month}-${day}`;
+  const strike = parseInt(strikeRaw, 10) / 1000;
+  const type = optType === "C" ? "call" : "put";
+
+  return { underlying, expiration, type, strike };
+}
+
 /** Build a 21-char OSI symbol from legs (underlying padded to 6). */
 export function buildOsiSymbol(
   underlying: string,

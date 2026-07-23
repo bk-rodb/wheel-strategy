@@ -135,6 +135,7 @@ export default function WheelDashboard() {
                 account={account}
                 focusOpenOptions={focusOpenOptionsFor === activePosition.id}
                 onFocusOpenOptionsHandled={clearOpenOptionsFocus}
+                onPositionRefresh={refresh}
               />
             ) : activeWatchlistTicker ? (
               <WatchlistTickerDetail
@@ -142,6 +143,7 @@ export default function WheelDashboard() {
                 account={account}
                 focusOpenOptions={focusOpenOptionsFor === activeWatchlistTicker}
                 onFocusOpenOptionsHandled={clearOpenOptionsFocus}
+                onPositionRefresh={refresh}
               />
             ) : null}
           </div>
