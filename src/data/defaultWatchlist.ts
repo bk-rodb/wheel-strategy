@@ -1,3 +1,1 @@
-export const DEFAULT_WATCHLIST = [
-  { symbol: "SPCX", notes: "SpaceX" },
-];
+export const DEFAULT_WATCHLIST: { symbol: string; notes?: string }[] = [];

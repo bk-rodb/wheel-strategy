@@ -1,12 +1,4 @@
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { useMemo, useState } from "react";
 import type { HmmTrendResult } from "../types";
 import { fmt } from "../utils/formatters";
 
@@ -16,15 +8,31 @@ const STATE_COLORS = {
   bull: "#34d399",
 } as const;
 
-export function HmmTrendChart({ data }: { data: HmmTrendResult }) {
-  const chartData = data.history.slice(-52).map((h) => ({
-    date: h.date,
-    bear: h.stateProbs[0],
-    neutral: h.stateProbs[1],
-    bull: h.stateProbs[2],
-  }));
+const STATE_KEYS = ["bear", "neutral", "bull"] as const;
+const STATE_LABELS = ["BEAR", "NEUT", "BULL"] as const;
 
-  if (chartData.length === 0) {
+function hexAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function maxProb(probs: readonly number[]): number {
+  return Math.max(...probs);
+}
+
+function tickIndexes(length: number, count = 5): number[] {
+  if (length <= 1) return [0];
+  const slots = Math.min(count, length);
+  return Array.from({ length: slots }, (_, i) => Math.round((i * (length - 1)) / (slots - 1)));
+}
+
+export function HmmTrendChart({ data }: { data: HmmTrendResult }) {
+  const history = useMemo(() => data.history.slice(-52), [data.history]);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  if (history.length === 0) {
     return (
       <div style={{ fontSize: 11, color: "#3a3a5a", fontFamily: "monospace", textAlign: "center", padding: 24 }}>
         NO REGIME HISTORY
@@ -32,64 +40,160 @@ export function HmmTrendChart({ data }: { data: HmmTrendResult }) {
     );
   }
 
+  const ticks = tickIndexes(history.length);
+  const hovered = hoverIdx !== null ? history[hoverIdx] : history[history.length - 1];
+
   return (
-    <ResponsiveContainer width="100%" height={180}>
-      <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid stroke="#1a1a30" vertical={false} />
-        <XAxis
-          dataKey="date"
-          tick={{ fill: "#4a4a6a", fontSize: 9, fontFamily: "monospace" }}
-          tickLine={false}
-          axisLine={false}
-          tickFormatter={(v) => String(v).slice(5)}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          domain={[0, 1]}
-          tick={{ fill: "#4a4a6a", fontSize: 9, fontFamily: "monospace" }}
-          tickLine={false}
-          axisLine={false}
-          tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
-          width={36}
-        />
-        <Tooltip
-          contentStyle={{
-            background: "#0d0d1a",
-            border: "1px solid #2a2a3a",
+    <div style={{ userSelect: "none" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 8,
+          minHeight: 18,
+        }}
+      >
+        <div style={{ fontSize: 9, color: "#4a4a6a", fontFamily: "monospace", letterSpacing: "0.06em" }}>
+          DOMINANT REGIME
+        </div>
+        {hovered && (
+          <div style={{ fontSize: 9, fontFamily: "monospace", color: "#8a8aa8" }}>
+            <span style={{ color: regimeColor(hovered.dominantState), fontWeight: 700 }}>
+              {hovered.dominantState.toUpperCase()}
+            </span>
+            {" · "}
+            {hovered.date}
+            {" · "}
+            {(maxProb(hovered.stateProbs) * 100).toFixed(0)}% conf.
+          </div>
+        )}
+      </div>
+
+      {/* Dominant-regime ribbon */}
+      <div style={{ display: "flex", gap: 1, height: 18, marginBottom: 10, borderRadius: 3, overflow: "hidden" }}>
+        {history.map((snap, i) => {
+          const color = regimeColor(snap.dominantState);
+          const confidence = maxProb(snap.stateProbs);
+          const active = hoverIdx === null || hoverIdx === i;
+          return (
+            <div
+              key={snap.date}
+              title={`${snap.date} · ${snap.dominantState}`}
+              onMouseEnter={() => setHoverIdx(i)}
+              onMouseLeave={() => setHoverIdx(null)}
+              style={{
+                flex: 1,
+                background: color,
+                opacity: active ? 0.35 + confidence * 0.65 : 0.18,
+                outline: hoverIdx === i ? `1px solid ${color}` : "none",
+                outlineOffset: -1,
+                transition: "opacity 0.1s",
+                cursor: "crosshair",
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <div style={{ fontSize: 9, color: "#4a4a6a", fontFamily: "monospace", letterSpacing: "0.06em", marginBottom: 6 }}>
+        STATE PROBABILITIES
+      </div>
+
+      {/* Per-state probability heatmap */}
+      <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ width: 36, flexShrink: 0, display: "flex", flexDirection: "column", gap: 2, paddingTop: 1 }}>
+          {STATE_LABELS.map((label, row) => (
+            <div
+              key={label}
+              style={{
+                height: 20,
+                display: "flex",
+                alignItems: "center",
+                fontSize: 8,
+                fontFamily: "monospace",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                color: STATE_COLORS[STATE_KEYS[row]],
+              }}
+            >
+              {label}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {STATE_KEYS.map((key, row) => (
+            <div key={key} style={{ display: "flex", gap: 1, height: 20, marginBottom: row < 2 ? 2 : 0 }}>
+              {history.map((snap, i) => {
+                const prob = snap.stateProbs[row] ?? 0;
+                const color = STATE_COLORS[key];
+                const active = hoverIdx === null || hoverIdx === i;
+                return (
+                  <div
+                    key={`${snap.date}-${key}`}
+                    onMouseEnter={() => setHoverIdx(i)}
+                    onMouseLeave={() => setHoverIdx(null)}
+                    style={{
+                      flex: 1,
+                      borderRadius: 1,
+                      background: hexAlpha(color, active ? 0.08 + prob * 0.92 : 0.04 + prob * 0.35),
+                      boxShadow: hoverIdx === i ? `inset 0 0 0 1px ${hexAlpha(color, 0.55)}` : "none",
+                      cursor: "crosshair",
+                    }}
+                  />
+                );
+              })}
+            </div>
+          ))}
+
+          <div style={{ display: "flex", marginTop: 6 }}>
+            {history.map((snap, i) => (
+              <div
+                key={`tick-${snap.date}`}
+                style={{
+                  flex: 1,
+                  fontSize: 8,
+                  fontFamily: "monospace",
+                  color: ticks.includes(i) ? "#4a4a6a" : "transparent",
+                  textAlign: i === 0 ? "left" : i === history.length - 1 ? "right" : "center",
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {snap.date.slice(5)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Hover detail strip */}
+      {hovered && (
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            marginTop: 10,
+            padding: "8px 10px",
+            background: "#0a0a18",
+            border: "1px solid #1a1a30",
             borderRadius: 4,
-            fontSize: 10,
-            fontFamily: "monospace",
-            color: "#e0e0f0",
           }}
-          formatter={(v: number, name: string) => [`${(v * 100).toFixed(0)}%`, name.toUpperCase()]}
-          labelStyle={{ color: "#6a6a8a" }}
-        />
-        <Area
-          type="monotone"
-          dataKey="bear"
-          stackId="1"
-          stroke={STATE_COLORS.bear}
-          fill={STATE_COLORS.bear}
-          fillOpacity={0.75}
-        />
-        <Area
-          type="monotone"
-          dataKey="neutral"
-          stackId="1"
-          stroke={STATE_COLORS.neutral}
-          fill={STATE_COLORS.neutral}
-          fillOpacity={0.65}
-        />
-        <Area
-          type="monotone"
-          dataKey="bull"
-          stackId="1"
-          stroke={STATE_COLORS.bull}
-          fill={STATE_COLORS.bull}
-          fillOpacity={0.75}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
+        >
+          {STATE_KEYS.map((key, i) => (
+            <div key={key} style={{ flex: 1 }}>
+              <div style={{ fontSize: 8, color: "#4a4a6a", fontFamily: "monospace", marginBottom: 2 }}>
+                {STATE_LABELS[i]}
+              </div>
+              <div style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: STATE_COLORS[key] }}>
+                {(hovered.stateProbs[i] * 100).toFixed(0)}%
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

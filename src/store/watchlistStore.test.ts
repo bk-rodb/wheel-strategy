@@ -11,11 +11,9 @@ describe("watchlistStore", () => {
     localStorage.clear();
   });
 
-  it("seeds SPCX on first getAll when watchlist is empty", () => {
+  it("starts with an empty default watchlist", () => {
     const entries = watchlistStore.getAll();
-    expect(entries).toHaveLength(1);
-    expect(entries[0].symbol).toBe("SPCX");
-    expect(entries[0].notes).toBe("SpaceX");
+    expect(entries).toEqual([]);
   });
 
   it("creates default watchlist named watchlist", () => {
@@ -23,23 +21,13 @@ describe("watchlistStore", () => {
     expect(active.name).toBe("watchlist");
   });
 
-  it("appends SPCX without removing existing entries", () => {
+  it("preserves existing entries on first load", () => {
     seedLegacy([
       { symbol: "NVDA", addedAt: "2026-01-01T00:00:00.000Z", displayOrder: 0 },
     ]);
 
     const entries = watchlistStore.getAll();
-    expect(entries.map((e) => e.symbol)).toEqual(["NVDA", "SPCX"]);
-  });
-
-  it("does not duplicate SPCX when already present", () => {
-    seedLegacy([
-      { symbol: "SPCX", addedAt: "2026-01-01T00:00:00.000Z", notes: "SpaceX", displayOrder: 0 },
-    ]);
-
-    const entries = watchlistStore.getAll();
-    expect(entries).toHaveLength(1);
-    expect(entries[0].symbol).toBe("SPCX");
+    expect(entries.map((e) => e.symbol)).toEqual(["NVDA"]);
   });
 
   it("migrates legacy flat array into default watchlist", () => {
@@ -50,7 +38,7 @@ describe("watchlistStore", () => {
     const watchlists = watchlistStore.getWatchlists();
     expect(watchlists).toHaveLength(1);
     expect(watchlists[0].name).toBe("watchlist");
-    expect(watchlists[0].entries.map((e) => e.symbol)).toEqual(["AAPL", "SPCX"]);
+    expect(watchlists[0].entries.map((e) => e.symbol)).toEqual(["AAPL"]);
   });
 
   it("creates additional watchlists and switches active", () => {
@@ -78,6 +66,6 @@ describe("watchlistStore", () => {
     expect(watchlistStore.getAll().map((e) => e.symbol)).toEqual(["TSLA"]);
 
     const defaultWl = watchlistStore.getWatchlists().find((w) => w.name === "watchlist");
-    expect(defaultWl?.entries.map((e) => e.symbol)).toEqual(["NVDA", "SPCX"]);
+    expect(defaultWl?.entries.map((e) => e.symbol)).toEqual(["NVDA"]);
   });
 });

@@ -48,7 +48,7 @@ export function TabBar({ tabs, activeTab, positions, onSelect, onClose }: TabBar
             }}
           >
             {tab.label}
-            {pos && (
+            {pos?.activeOption && (
               <span
                 style={{
                   marginLeft: 6,

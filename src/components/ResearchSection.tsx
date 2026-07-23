@@ -115,7 +115,6 @@ export function ResearchSection({ symbol }: { symbol: string }) {
             <ProbPill label="BULL" prob={data.currentStateProbs[2]} color="#34d399" />
           </div>
 
-          <div style={{ ...cardLabelStyle, marginBottom: 4 }}>REGIME PROBABILITIES (STACKED)</div>
           <HmmTrendChart data={data} />
 
           <HmmForecastTable data={data} />

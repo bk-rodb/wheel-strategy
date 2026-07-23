@@ -4,72 +4,15 @@ import {
   type Watchlist,
   type WatchlistEntry,
 } from "../store/watchlistStore";
-import { marketData } from "../api/alpacaClient";
-import type { AlpacaSnapshotsResponse, AlpacaBarsResponse } from "../api/alpacaTypes";
-import { isMarketOpen } from "../utils/marketHours";
+import { fetchStockQuotes, type StockQuote } from "../api/fetchStockQuotes";
 import { MOCK_QUOTES } from "../data/mockQuotes";
 import { IS_MOCK } from "../config";
 
-export interface WatchlistQuote {
-  closePrice: number;   // previous day's close — baseline for all change calcs
-  lastPrice: number;    // last 5-min bar (market hours) or today's close (after hours)
-  change: number;
-  changePct: number;
-  source: "5min" | "close";
-}
+export type WatchlistQuote = StockQuote;
 
 export interface WatchlistItem extends WatchlistEntry {
   quote?: WatchlistQuote;
   loadingQuote: boolean;
-}
-
-
-async function fetchQuotes(symbols: string[]): Promise<Record<string, WatchlistQuote>> {
-  const marketOpen = isMarketOpen();
-
-  // Always need snapshots for prevDailyBar (close) and fallback prices
-  const [snapshots, fiveMinBars] = await Promise.all([
-    marketData.get<AlpacaSnapshotsResponse>("/v2/stocks/snapshots", {
-      symbols: symbols.join(","),
-      feed: "iex",
-    }),
-    marketOpen
-      ? marketData.get<AlpacaBarsResponse>("/v2/stocks/bars", {
-          symbols: symbols.join(","),
-          timeframe: "5Min",
-          limit: "1",
-          sort: "desc",
-          feed: "iex",
-        })
-      : Promise.resolve({ bars: {} } as AlpacaBarsResponse),
-  ]);
-
-  const result: Record<string, WatchlistQuote> = {};
-
-  for (const symbol of symbols) {
-    const snap = snapshots[symbol];
-    if (!snap) continue;
-
-    const closePrice = snap.prevDailyBar.c;
-
-    let lastPrice: number;
-    let source: "5min" | "close";
-
-    if (marketOpen && fiveMinBars.bars[symbol]?.length > 0) {
-      lastPrice = fiveMinBars.bars[symbol][0].c;
-      source = "5min";
-    } else {
-      // After hours — use today's daily bar close (or latest trade if bar not yet settled)
-      lastPrice = snap.dailyBar?.c ?? snap.latestTrade.p;
-      source = "close";
-    }
-
-    const change = lastPrice - closePrice;
-    const changePct = closePrice > 0 ? (change / closePrice) * 100 : 0;
-    result[symbol] = { closePrice, lastPrice, change, changePct, source };
-  }
-
-  return result;
 }
 
 export function useWatchlist() {
@@ -106,7 +49,7 @@ export function useWatchlist() {
               },
             ]),
           )
-        : await fetchQuotes(symbols);
+        : await fetchStockQuotes(symbols);
       setQuotes((prev) => ({ ...prev, ...data }));
     } catch {
       // quotes are best-effort
