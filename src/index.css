@@ -7,4 +7,6 @@ html, body, #root { height: 100%; background: #030310; }
 ::-webkit-scrollbar-track { background: #07071a; }
 ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 2px; }
 
+@import "./theme/tickerTab.css";
+
 button { all: unset; }

@@ -1,11 +1,15 @@
 import { useTickerSnapshot } from "../hooks/useTickerSnapshot";
 import type { AccountInfo } from "../types";
 import { fmt } from "../utils/formatters";
+import { formatAveragePricePair } from "../utils/priceAverages";
 import { OpenOptionsSection } from "./OpenOptionsSection";
-import { PriceTrendChart } from "./PriceTrendChart";
+import { PriceTrendSection } from "./PriceTrendSection";
 import { StatRow } from "./StatRow";
 import { WheelAnalysisPanel } from "./WheelAnalysisPanel";
 import { ResearchSection } from "./ResearchSection";
+import { TickerTabLabel } from "./TickerTabLabel";
+import { CatalystsAndNews } from "./CatalystsAndNews";
+import { VolatilityBar } from "./VolatilityBar";
 
 const cardStyle: React.CSSProperties = {
   background: "#08081a",
@@ -86,38 +90,28 @@ export function WatchlistTickerDetail({
         }}
       >
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: 28,
-                fontFamily: "'Syne', 'Trebuchet MS', sans-serif",
-                fontWeight: 800,
-                color: "#e8e8f8",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              {symbol}
-            </h2>
-            <span
-              style={{
-                fontSize: 10,
-                color: "#8a8aa8",
-                background: "#16162e",
-                border: "1px solid #2a2a3a",
-                padding: "2px 7px",
-                borderRadius: 3,
-                fontFamily: "monospace",
-                fontWeight: 700,
-                letterSpacing: "0.06em",
-              }}
-            >
-              WATCHLIST
-            </span>
-          </div>
-          <div style={{ fontSize: 12, color: "#5a5a7a", fontFamily: "monospace" }}>
-            Not currently held · research view
-          </div>
+          <TickerTabLabel
+            symbol={symbol}
+            companyName={snap.companyName}
+            badge={
+              <span
+                style={{
+                  fontSize: 10,
+                  color: "#8a8aa8",
+                  background: "#16162e",
+                  border: "1px solid #2a2a3a",
+                  padding: "2px 7px",
+                  borderRadius: 3,
+                  fontFamily: "monospace",
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                }}
+              >
+                WATCHLIST
+              </span>
+            }
+            subtitle="Not currently held · research view"
+          />
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 26, fontFamily: "monospace", fontWeight: 700, color: "#e8e8f8" }}>
@@ -131,12 +125,16 @@ export function WatchlistTickerDetail({
 
       {/* Price Chart */}
       <div style={{ ...cardStyle, marginBottom: 16 }}>
-        <div style={cardLabelStyle}>30-DAY PRICE TREND</div>
-        {snap.priceHistory.length > 0 ? (
-          <PriceTrendChart data={snap.priceHistory} costBasis={0} />
-        ) : (
-          <div style={emptyStyle}>NO PRICE HISTORY</div>
-        )}
+        <PriceTrendSection
+          data={snap.priceHistory}
+          currentPrice={snap.lastPrice}
+          costBasis={0}
+        />
+      </div>
+
+      {/* Catalysts & News */}
+      <div style={{ ...cardStyle, marginBottom: 16 }}>
+        <CatalystsAndNews symbol={symbol} />
       </div>
 
       {/* 2-col: stock details + current balance */}
@@ -147,7 +145,12 @@ export function WatchlistTickerDetail({
           <StatRow label="Prev. Close" value={fmt.currency(snap.prevClose)} />
           <StatRow label="Day High" value={fmt.currency(snap.dayHigh)} />
           <StatRow label="Day Low" value={fmt.currency(snap.dayLow)} />
+          <StatRow
+            label="Average Price (1W/1M)"
+            value={formatAveragePricePair(snap.priceHistory)}
+          />
           <StatRow label="Volume" value={fmt.compact(snap.volume)} />
+          <VolatilityBar symbol={symbol} />
         </div>
         <div style={cardStyle}>
           <div style={cardLabelStyle}>CURRENT BALANCE</div>

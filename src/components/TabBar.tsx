@@ -2,7 +2,11 @@ import type { WheelPosition } from "../types";
 import { PHASE_CONFIG } from "../constants";
 import { fmt, dayChange, dayChangePct } from "../utils/formatters";
 
-interface Tab { id: string; label: string; closeable?: boolean; }
+export interface Tab {
+  id: string;
+  label: string;
+  closeable?: boolean;
+}
 
 interface TabBarProps {
   tabs: Tab[];
@@ -32,6 +36,7 @@ export function TabBar({ tabs, activeTab, positions, onSelect, onClose }: TabBar
           <button
             key={tab.id}
             onClick={() => onSelect(tab.id)}
+            className={`ticker-tab-bar__tab${isActive ? " ticker-tab-bar__tab--active" : ""}`}
             style={{
               padding: "10px 18px",
               fontSize: 11,
