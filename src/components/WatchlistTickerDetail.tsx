@@ -141,11 +141,22 @@ export function WatchlistTickerDetail({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
         <div style={cardStyle}>
           <div style={cardLabelStyle}>STOCK DETAILS</div>
-          <StatRow label="Last Price" value={fmt.currency(snap.lastPrice)} />
+          <StatRow
+            label="Last Price"
+            value={
+              <>
+                {fmt.currency(snap.lastPrice)}{" "}
+                <span style={{ color: chgColor }}>
+                  ({snap.change >= 0 ? "+" : ""}
+                  {fmt.currency(snap.change)})
+                </span>
+              </>
+            }
+          />
           <StatRow label="Prev. Close" value={fmt.currency(snap.prevClose)} />
           <StatRow
             label="Day High/Low"
-            value={`${fmt.currency(snap.dayHigh)}, ${fmt.currency(snap.dayLow)}`}
+            value={`${fmt.currency(snap.dayHigh)}/${fmt.currency(snap.dayLow)}`}
           />
           <StatRow
             label="52 Week Range"

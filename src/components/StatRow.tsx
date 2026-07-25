@@ -4,7 +4,7 @@ export function StatRow({
   accent,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   accent?: boolean;
 }) {
   return (

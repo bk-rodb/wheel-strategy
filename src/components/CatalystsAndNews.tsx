@@ -67,6 +67,10 @@ function EventRow({ event }: { event: CatalystEvent }) {
               fontFamily: "monospace",
               color: urgent ? "#e8e8f8" : "#b8b8d0",
               fontWeight: urgent ? 600 : 400,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              minWidth: 0,
             }}
           >
             {event.title}
@@ -109,12 +113,17 @@ function EventRow({ event }: { event: CatalystEvent }) {
   );
 }
 
+/** ~1 headline line + meta + padding per row; 5 rows visible before scroll. */
+const NEWS_ROW_HEIGHT = 44;
+const NEWS_VISIBLE_ROWS = 5;
+
 function NewsRow({ item }: { item: { headline: string; source: string; url: string; publishedAt: string } }) {
   return (
     <a
       href={item.url}
       target="_blank"
       rel="noopener noreferrer"
+      title={item.headline}
       style={{
         display: "block",
         padding: "8px 0",
@@ -130,6 +139,9 @@ function NewsRow({ item }: { item: { headline: string; source: string; url: stri
           color: "#c8c8e0",
           lineHeight: 1.4,
           marginBottom: 3,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}
       >
         {item.headline}
@@ -141,13 +153,26 @@ function NewsRow({ item }: { item: { headline: string; source: string; url: stri
   );
 }
 
+const columnStyle: React.CSSProperties = {
+  minWidth: 0,
+  overflow: "hidden",
+};
+
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: 9,
+  color: "#3a3a5a",
+  fontFamily: "monospace",
+  letterSpacing: "0.06em",
+  marginBottom: 6,
+};
+
 export function CatalystsAndNews({ symbol }: { symbol: string }) {
   const { events, news, loading, error } = useTickerCatalysts(symbol);
 
   const sortedEvents = [...events].sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <div>
+    <div style={{ width: "100%", minWidth: 0 }}>
       <div style={cardLabelStyle}>CATALYSTS &amp; NEWS</div>
       {loading && (
         <div style={emptyStyle}>Loading catalysts…</div>
@@ -158,20 +183,14 @@ export function CatalystsAndNews({ symbol }: { symbol: string }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 2fr)",
           gap: 16,
+          width: "100%",
+          minWidth: 0,
         }}
       >
-        <div>
-          <div
-            style={{
-              fontSize: 9,
-              color: "#3a3a5a",
-              fontFamily: "monospace",
-              letterSpacing: "0.06em",
-              marginBottom: 6,
-            }}
-          >
+        <div style={columnStyle}>
+          <div style={sectionLabelStyle}>
             UPCOMING EVENTS
           </div>
           {sortedEvents.length === 0 && !loading ? (
@@ -180,22 +199,25 @@ export function CatalystsAndNews({ symbol }: { symbol: string }) {
             sortedEvents.map((e) => <EventRow key={e.id} event={e} />)
           )}
         </div>
-        <div>
-          <div
-            style={{
-              fontSize: 9,
-              color: "#3a3a5a",
-              fontFamily: "monospace",
-              letterSpacing: "0.06em",
-              marginBottom: 6,
-            }}
-          >
+        <div style={columnStyle}>
+          <div style={sectionLabelStyle}>
             RECENT NEWS
           </div>
           {news.length === 0 && !loading ? (
-            <div style={emptyStyle}>No recent headlines</div>
+            <div style={emptyStyle}>No headlines in the last 7 days</div>
           ) : (
-            news.map((n) => <NewsRow key={n.id} item={n} />)
+            <div
+              style={{
+                maxHeight: NEWS_ROW_HEIGHT * NEWS_VISIBLE_ROWS,
+                overflowY: "auto",
+                paddingRight: 4,
+                minWidth: 0,
+              }}
+            >
+              {news.map((n) => (
+                <NewsRow key={n.id} item={n} />
+              ))}
+            </div>
           )}
         </div>
       </div>
