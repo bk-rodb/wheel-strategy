@@ -36,9 +36,8 @@ describe("watchlistStore", () => {
     ]);
 
     const watchlists = watchlistStore.getWatchlists();
-    expect(watchlists).toHaveLength(1);
-    expect(watchlists[0].name).toBe("watchlist");
-    expect(watchlists[0].entries.map((e) => e.symbol)).toEqual(["AAPL"]);
+    expect(watchlists).toHaveLength(2);
+    expect(watchlists.find((w) => w.name === "watchlist")?.entries.map((e) => e.symbol)).toEqual(["AAPL"]);
   });
 
   it("creates additional watchlists and switches active", () => {
@@ -46,7 +45,7 @@ describe("watchlistStore", () => {
     expect(result.ok).toBe(true);
 
     expect(watchlistStore.getActiveWatchlist().name).toBe("Tech");
-    expect(watchlistStore.getWatchlists()).toHaveLength(2);
+    expect(watchlistStore.getWatchlists()).toHaveLength(3);
     expect(watchlistStore.getAll()).toEqual([]);
   });
 
@@ -55,7 +54,7 @@ describe("watchlistStore", () => {
     const dup = watchlistStore.create("tech");
     expect(dup.ok).toBe(false);
     if (!dup.ok) expect(dup.error).toBe("duplicate");
-    expect(watchlistStore.getWatchlists()).toHaveLength(2);
+    expect(watchlistStore.getWatchlists()).toHaveLength(3);
   });
 
   it("keeps entries isolated per watchlist", () => {
@@ -67,5 +66,15 @@ describe("watchlistStore", () => {
 
     const defaultWl = watchlistStore.getWatchlists().find((w) => w.name === "watchlist");
     expect(defaultWl?.entries.map((e) => e.symbol)).toEqual(["NVDA"]);
+  });
+
+  it("seeds the target watchlist with wheel candidates", () => {
+    const target = watchlistStore.getWatchlists().find((w) => w.name === "target");
+    expect(target).toBeDefined();
+    expect(target!.entries.length).toBeGreaterThanOrEqual(20);
+    expect(target!.entries.map((e) => e.symbol)).toContain("LRCX");
+    expect(target!.entries.map((e) => e.symbol)).toContain("CMCSA");
+    expect(target!.entries.map((e) => e.symbol)).toContain("QCOM");
+    expect(target!.entries.map((e) => e.symbol)).not.toContain("PFE");
   });
 });

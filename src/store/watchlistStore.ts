@@ -1,4 +1,8 @@
 import { DEFAULT_WATCHLIST } from "../data/defaultWatchlist";
+import {
+  TARGET_WATCHLIST,
+  TARGET_WATCHLIST_NAME,
+} from "../data/targetWatchlist";
 
 export interface WatchlistEntry {
   symbol: string;
@@ -71,9 +75,72 @@ function findByName(state: WatchlistsState, name: string): Watchlist | undefined
   return state.watchlists.find((w) => w.name.toLowerCase() === lower);
 }
 
-function ensureDefaults(entries: WatchlistEntry[]): WatchlistEntry[] {
+function getDefaultWatchlist(state: WatchlistsState): Watchlist {
+  return (
+    state.watchlists.find((w) => w.name.toLowerCase() === DEFAULT_NAME) ??
+    state.watchlists[0]
+  );
+}
+
+function ensureNamedWatchlist(
+  state: WatchlistsState,
+  name: string,
+  seeds: { symbol: string; notes?: string }[],
+  mode: "merge" | "sync" = "merge",
+): { state: WatchlistsState; changed: boolean } {
+  let watchlists = state.watchlists;
+  let existing = findByName({ ...state, watchlists }, name);
+  if (!existing) {
+    existing = { id: newId(), name, entries: [] };
+    watchlists = [...watchlists, existing];
+  }
+  const seeded =
+    mode === "sync"
+      ? syncToSeeds(existing.entries, seeds)
+      : ensureDefaultsFor(existing.entries, seeds);
+  if (seeded === existing.entries) {
+    return { state: { ...state, watchlists }, changed: false };
+  }
+  watchlists = watchlists.map((w) =>
+    w.id === existing!.id ? { ...w, entries: seeded } : w,
+  );
+  return { state: { ...state, watchlists }, changed: true };
+}
+
+function syncToSeeds(
+  entries: WatchlistEntry[],
+  seeds: { symbol: string; notes?: string }[],
+): WatchlistEntry[] {
+  const bySymbol = Object.fromEntries(entries.map((e) => [e.symbol, e]));
+  const next = seeds.map(({ symbol, notes }, displayOrder) => {
+    const sym = symbol.toUpperCase();
+    const prev = bySymbol[sym];
+    if (prev && prev.notes === notes) return { ...prev, displayOrder };
+    if (prev) return { ...prev, notes, displayOrder };
+    return {
+      symbol: sym,
+      addedAt: new Date().toISOString(),
+      notes,
+      displayOrder,
+    };
+  });
+  const unchanged =
+    next.length === entries.length &&
+    next.every(
+      (e, i) =>
+        e.symbol === entries[i]?.symbol &&
+        e.notes === entries[i]?.notes &&
+        e.displayOrder === entries[i]?.displayOrder,
+    );
+  return unchanged ? entries : next;
+}
+
+function ensureDefaultsFor(
+  entries: WatchlistEntry[],
+  seeds: { symbol: string; notes?: string }[],
+): WatchlistEntry[] {
   let updated = entries;
-  for (const { symbol, notes } of DEFAULT_WATCHLIST) {
+  for (const { symbol, notes } of seeds) {
     const sym = symbol.toUpperCase();
     if (updated.some((e) => e.symbol === sym)) continue;
     updated = [
@@ -89,21 +156,22 @@ function ensureDefaults(entries: WatchlistEntry[]): WatchlistEntry[] {
   return updated;
 }
 
-function getDefaultWatchlist(state: WatchlistsState): Watchlist {
-  return (
-    state.watchlists.find((w) => w.name.toLowerCase() === DEFAULT_NAME) ??
-    state.watchlists[0]
-  );
-}
-
 function withDefaultSeeds(state: WatchlistsState): WatchlistsState {
   const defaultWl = getDefaultWatchlist(state);
-  const seeded = ensureDefaults(defaultWl.entries);
-  if (seeded === defaultWl.entries) return state;
-  const watchlists = state.watchlists.map((w) =>
-    w.id === defaultWl.id ? { ...w, entries: seeded } : w,
+  const seededDefault = ensureDefaultsFor(defaultWl.entries, DEFAULT_WATCHLIST);
+  const { state: withTarget, changed: targetChanged } = ensureNamedWatchlist(
+    state,
+    TARGET_WATCHLIST_NAME,
+    TARGET_WATCHLIST,
+    "sync",
   );
-  const next = { ...state, watchlists };
+  const defaultChanged = seededDefault !== defaultWl.entries;
+  if (!defaultChanged && !targetChanged) return withTarget;
+
+  const watchlists = withTarget.watchlists.map((w) =>
+    w.id === defaultWl.id ? { ...w, entries: seededDefault } : w,
+  );
+  const next = { ...withTarget, watchlists };
   save(next);
   return next;
 }
