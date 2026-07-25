@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import type { BrokerType } from "./types";
 import { useWheelPositions } from "./hooks/useWheelPositions";
 import { useAccountDetails } from "./hooks/useAccountDetails";
+import { useAccountActivities } from "./hooks/useAccountActivities";
 import { TopBar } from "./components/TopBar";
 import { AccountHeader } from "./components/AccountHeader";
 import { TabBar } from "./components/TabBar";
@@ -14,6 +15,7 @@ export default function WheelDashboard() {
   const [broker, setBroker] = useState<BrokerType>("alpaca-paper");
   const { positions, loading, error, lastRefresh, refresh, isMock } = useWheelPositions();
   const { account, loading: accountLoading } = useAccountDetails(broker);
+  const { activities, loading: activitiesLoading } = useAccountActivities(broker);
   const [activeTab, setActiveTab] = useState<string>("__summary__");
   const [openedTickers, setOpenedTickers] = useState<string[]>([]);
   const [focusOpenOptionsFor, setFocusOpenOptionsFor] = useState<string | null>(null);
@@ -126,6 +128,9 @@ export default function WheelDashboard() {
             ) : activeTab === "__summary__" ? (
               <SummaryDashboard
                 positions={positions}
+                account={account}
+                activities={activities}
+                activitiesLoading={activitiesLoading}
                 onSelectTicker={handleOpenTicker}
                 onSelectPendingOrder={handleSelectPendingOrder}
               />
