@@ -134,10 +134,102 @@
           }
         }
       }
+    },
+    "/api/catalysts": {
+      "get": {
+        "tags": [
+          "WheelStrategy.Api"
+        ],
+        "operationId": "GetCatalysts",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TickerCatalystsResult"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "CatalystEventDto": {
+        "required": [
+          "id",
+          "type",
+          "scope",
+          "date",
+          "title",
+          "detail",
+          "timing",
+          "conflictsWithExpiry",
+          "yieldPct",
+          "splitRatio"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "timing": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "conflictsWithExpiry": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "yieldPct": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "splitRatio": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "HmmForecastHorizon": {
         "required": [
           "days",
@@ -331,6 +423,24 @@
           "annualizedYield": {
             "type": "number",
             "format": "double"
+          }
+        }
+      },
+      "TickerCatalystsResult": {
+        "required": [
+          "symbol",
+          "events"
+        ],
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalystEventDto"
+            }
           }
         }
       },

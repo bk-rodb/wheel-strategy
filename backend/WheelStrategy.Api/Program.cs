@@ -12,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Options
 builder.Services.Configure<AlpacaOptions>(builder.Configuration.GetSection(AlpacaOptions.SectionName));
 builder.Services.Configure<AnalysisOptions>(builder.Configuration.GetSection(AnalysisOptions.SectionName));
+builder.Services.Configure<FinnhubOptions>(builder.Configuration.GetSection(FinnhubOptions.SectionName));
 
 // Database (SQLite for the runnable default)
 var conn = builder.Configuration.GetConnectionString("Default") ?? "Data Source=wheel.db";
@@ -22,6 +23,7 @@ builder.Services.AddHttpClient<AlpacaMarketDataClient>();
 builder.Services.AddScoped<IBarCacheService, BarCacheService>();
 builder.Services.AddScoped<IWheelAnalysisService, WheelAnalysisService>();
 builder.Services.AddScoped<IHmmTrendService, HmmTrendService>();
+builder.Services.AddHttpClient<ICatalystsService, CatalystsService>();
 
 // Serialize enums as strings (matches the frontend's "safe"/"regular"/"risky")
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -70,5 +72,6 @@ app.MapOpenApi();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapWheelAnalysisEndpoints();
 app.MapHmmTrendEndpoints();
+app.MapCatalystsEndpoints();
 
 app.Run();
