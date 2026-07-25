@@ -143,8 +143,14 @@ export function WatchlistTickerDetail({
           <div style={cardLabelStyle}>STOCK DETAILS</div>
           <StatRow label="Last Price" value={fmt.currency(snap.lastPrice)} />
           <StatRow label="Prev. Close" value={fmt.currency(snap.prevClose)} />
-          <StatRow label="Day High" value={fmt.currency(snap.dayHigh)} />
-          <StatRow label="Day Low" value={fmt.currency(snap.dayLow)} />
+          <StatRow
+            label="Day High/Low"
+            value={`${fmt.currency(snap.dayHigh)}, ${fmt.currency(snap.dayLow)}`}
+          />
+          <StatRow
+            label="52 Week Range"
+            value={`${fmt.currency(snap.week52High)}/${fmt.currency(snap.week52Low)}`}
+          />
           <StatRow
             label="Average Price (1W/1M)"
             value={formatAveragePricePair(snap.priceHistory)}

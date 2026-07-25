@@ -3,6 +3,7 @@ import { trading, marketData } from "./alpacaClient";
 import { fetchAssetNames } from "./searchAssets";
 import { parseOsiSymbol } from "./optionOrders";
 import type {
+  AlpacaBar,
   AlpacaPosition,
   AlpacaBarsResponse,
   AlpacaSnapshotsResponse,
@@ -49,6 +50,65 @@ export async function fetchPriceHistory(symbols: string[]): Promise<Record<strin
     }));
   }
   return result;
+}
+
+const WEEK_52_CALENDAR_DAYS = 370;
+
+/** High/low from daily bars; falls back to close when h/l are missing. */
+export function highLowFromDailyBars(bars: AlpacaBar[]): { high: number; low: number } | null {
+  let high = -Infinity;
+  let low = Infinity;
+  let count = 0;
+
+  for (const bar of bars) {
+    const h = Number.isFinite(bar.h) ? bar.h : bar.c;
+    const l = Number.isFinite(bar.l) ? bar.l : bar.c;
+    if (!Number.isFinite(h) || !Number.isFinite(l)) continue;
+    high = Math.max(high, h);
+    low = Math.min(low, l);
+    count++;
+  }
+
+  if (count === 0) return null;
+  return { high, low };
+}
+
+function barsForSymbol(
+  barsBySymbol: Record<string, AlpacaBar[]> | undefined,
+  symbol: string,
+): AlpacaBar[] {
+  if (!barsBySymbol) return [];
+  const sym = symbol.toUpperCase();
+  return barsBySymbol[sym] ?? barsBySymbol[symbol] ?? [];
+}
+
+/** Up to 52-week high/low; uses all available daily bars when listing is newer. */
+export async function fetch52WeekRange(
+  symbol: string,
+): Promise<{ high: number; low: number } | null> {
+  const sym = symbol.toUpperCase();
+  const start = new Date(Date.now() - WEEK_52_CALENDAR_DAYS * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  const allBars: AlpacaBar[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const params: Record<string, string> = {
+      symbols: sym,
+      timeframe: "1Day",
+      start,
+      limit: "10000",
+      feed: "iex",
+    };
+    if (pageToken) params.page_token = pageToken;
+
+    const data = await marketData.get<AlpacaBarsResponse>("/v2/stocks/bars", params);
+    allBars.push(...barsForSymbol(data.bars, sym));
+    pageToken = data.next_page_token ?? undefined;
+  } while (pageToken);
+
+  return highLowFromDailyBars(allBars);
 }
 
 // ─── Main fetch ───────────────────────────────────────────────────────────────

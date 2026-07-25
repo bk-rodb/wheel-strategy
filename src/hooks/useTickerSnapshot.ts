@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { PricePoint } from "../types";
 import { marketData } from "../api/alpacaClient";
-import { fetchPriceHistory } from "../api/fetchWheelPositions";
+import { fetch52WeekRange, fetchPriceHistory } from "../api/fetchWheelPositions";
 import type { AlpacaSnapshotsResponse } from "../api/alpacaTypes";
 import { fetchAsset } from "../api/searchAssets";
 import { MOCK_QUOTES } from "../data/mockQuotes";
@@ -15,6 +15,8 @@ export interface TickerSnapshot {
   changePct: number;
   dayHigh: number;
   dayLow: number;
+  week52High: number;
+  week52Low: number;
   volume: number;
   companyName: string;
   loading: boolean;
@@ -29,6 +31,8 @@ const EMPTY: Omit<TickerSnapshot, "loading" | "error"> = {
   changePct: 0,
   dayHigh: 0,
   dayLow: 0,
+  week52High: 0,
+  week52Low: 0,
   volume: 0,
   companyName: "",
 };
@@ -43,6 +47,20 @@ function mockHistory(last: number): PricePoint[] {
   }));
 }
 
+function resolveWeek52Range(
+  range: { high: number; low: number } | null,
+  dayHigh: number,
+  dayLow: number,
+  lastPrice: number,
+): { high: number; low: number } {
+  if (range && Number.isFinite(range.high) && Number.isFinite(range.low)) {
+    return range;
+  }
+  const high = Number.isFinite(dayHigh) ? dayHigh : lastPrice;
+  const low = Number.isFinite(dayLow) ? dayLow : lastPrice;
+  return { high, low };
+}
+
 export function useTickerSnapshot(symbol: string): TickerSnapshot {
   const [state, setState] = useState<TickerSnapshot>({
     ...EMPTY,
@@ -51,6 +69,7 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
   });
 
   useEffect(() => {
+    const sym = symbol.toUpperCase();
     let cancelled = false;
     setState({ ...EMPTY, loading: true, error: null });
 
@@ -59,7 +78,7 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
         if (IS_MOCK) {
           const [q, asset] = await Promise.all([
             Promise.resolve(
-              MOCK_QUOTES[symbol] ?? {
+              MOCK_QUOTES[sym] ?? {
                 closePrice: 100,
                 lastPrice: 100 + Math.random() * 10 - 5,
                 change: 0,
@@ -67,11 +86,17 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
                 source: "close" as const,
               },
             ),
-            fetchAsset(symbol),
+            fetchAsset(sym),
           ]);
           const change = q.lastPrice - q.closePrice;
           const changePct = q.closePrice > 0 ? (change / q.closePrice) * 100 : 0;
           if (cancelled) return;
+          const mockRange = resolveWeek52Range(
+            { high: q.lastPrice * 1.25, low: q.lastPrice * 0.75 },
+            q.lastPrice * 1.01,
+            q.lastPrice * 0.99,
+            q.lastPrice,
+          );
           setState({
             priceHistory: mockHistory(q.lastPrice),
             lastPrice: q.lastPrice,
@@ -80,41 +105,49 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
             changePct,
             dayHigh: q.lastPrice * 1.01,
             dayLow: q.lastPrice * 0.99,
+            week52High: mockRange.high,
+            week52Low: mockRange.low,
             volume: 1_000_000,
-            companyName: asset?.name ?? symbol,
+            companyName: asset?.name ?? sym,
             loading: false,
             error: null,
           });
           return;
         }
 
-        const [snapshots, history, asset] = await Promise.all([
+        const [snapshots, history, week52Range, asset] = await Promise.all([
           marketData.get<AlpacaSnapshotsResponse>("/v2/stocks/snapshots", {
-            symbols: symbol,
+            symbols: sym,
             feed: "iex",
           }),
-          fetchPriceHistory([symbol]),
-          fetchAsset(symbol),
+          fetchPriceHistory([sym]),
+          fetch52WeekRange(sym),
+          fetchAsset(sym),
         ]);
 
         if (cancelled) return;
 
-        const snap = snapshots[symbol];
+        const snap = snapshots[sym];
         const prevClose = snap?.prevDailyBar.c ?? 0;
         const lastPrice = snap?.latestTrade.p ?? snap?.dailyBar.c ?? prevClose;
         const change = lastPrice - prevClose;
         const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
+        const dayHigh = snap?.dailyBar.h ?? lastPrice;
+        const dayLow = snap?.dailyBar.l ?? lastPrice;
+        const range = resolveWeek52Range(week52Range, dayHigh, dayLow, lastPrice);
 
         setState({
-          priceHistory: history[symbol] ?? [],
+          priceHistory: history[sym] ?? [],
           lastPrice,
           prevClose,
           change,
           changePct,
-          dayHigh: snap?.dailyBar.h ?? lastPrice,
-          dayLow: snap?.dailyBar.l ?? lastPrice,
+          dayHigh,
+          dayLow,
+          week52High: range.high,
+          week52Low: range.low,
           volume: snap?.dailyBar.v ?? 0,
-          companyName: asset?.name ?? symbol,
+          companyName: asset?.name ?? sym,
           loading: false,
           error: null,
         });
