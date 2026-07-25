@@ -102,20 +102,27 @@ export type CatalystEventType =
 
 export type CatalystScope = "symbol" | "market";
 
-export interface CatalystEvent {
-  id: string;
+export type CatalystEvent = Omit<
+  components["schemas"]["CatalystEventDto"],
+  "type" | "scope" | "timing" | "detail" | "conflictsWithExpiry" | "yieldPct" | "splitRatio"
+> & {
   type: CatalystEventType;
   scope: CatalystScope;
-  date: string;
-  title: string;
-  detail?: string;
+  detail?: string | null;
   /** BMO / AMC for earnings. */
-  timing?: "bmo" | "amc";
+  timing?: "bmo" | "amc" | null;
   /** True when earnings falls before the next Friday option expiry. */
-  conflictsWithExpiry?: boolean;
-  yieldPct?: number;
-  splitRatio?: string;
-}
+  conflictsWithExpiry?: boolean | null;
+  yieldPct?: number | null;
+  splitRatio?: string | null;
+};
+
+export type TickerCatalystsResult = Omit<
+  components["schemas"]["TickerCatalystsResult"],
+  "events"
+> & {
+  events: CatalystEvent[];
+};
 
 export interface NewsItem {
   id: string;
@@ -123,9 +130,4 @@ export interface NewsItem {
   source: string;
   url: string;
   publishedAt: string;
-}
-
-export interface TickerCatalystsResult {
-  symbol: string;
-  events: CatalystEvent[];
 }

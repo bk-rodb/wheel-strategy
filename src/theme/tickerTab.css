@@ -46,3 +46,7 @@
   cursor: pointer;
   transition: color 0.15s;
 }
+
+.ticker-tab-bar__tab--active {
+  background: #0a0a1e;
+}

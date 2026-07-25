@@ -88,7 +88,7 @@ export default function WheelDashboard() {
           lastRefresh={lastRefresh}
           loading={loading}
           isMock={isMock}
-          onRefresh={refresh}
+          onRefresh={() => void refresh()}
         />
 
         <AccountHeader account={account} loading={accountLoading} />
@@ -136,6 +136,7 @@ export default function WheelDashboard() {
               />
             ) : activePosition ? (
               <TickerDetail
+                key={activePosition.id}
                 pos={activePosition}
                 account={account}
                 focusOpenOptions={focusOpenOptionsFor === activePosition.id}
@@ -144,6 +145,7 @@ export default function WheelDashboard() {
               />
             ) : activeWatchlistTicker ? (
               <WatchlistTickerDetail
+                key={activeWatchlistTicker}
                 symbol={activeWatchlistTicker}
                 account={account}
                 focusOpenOptions={focusOpenOptionsFor === activeWatchlistTicker}

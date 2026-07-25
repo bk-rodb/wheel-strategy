@@ -69,29 +69,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/catalysts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetCatalysts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        StrikeSuggestion: {
-            level: string;
-            /** Format: double */
-            strike: number;
-            /** Format: double */
-            pctFromSpot: number;
-            /** Format: double */
-            empiricalAssignmentProb: number;
-            /** Format: double */
-            blackScholesAssignmentProb: number;
-            /** Format: double */
-            estPremium: number;
-            /** Format: double */
-            annualizedYield: number;
-        };
-        HmmStateSnapshot: {
+        CatalystEventDto: {
+            id: string;
+            type: string;
+            scope: string;
             date: string;
-            stateProbs: number[];
-            dominantState: string;
+            title: string;
+            detail: null | string;
+            timing: null | string;
+            conflictsWithExpiry: null | boolean;
+            /** Format: double */
+            yieldPct: null | number;
+            splitRatio: null | string;
         };
         HmmForecastHorizon: {
             /** Format: int32 */
@@ -103,6 +112,11 @@ export interface components {
             bearProb: number;
             /** Format: double */
             bullProb: number;
+        };
+        HmmStateSnapshot: {
+            date: string;
+            stateProbs: number[];
+            dominantState: string;
         };
         HmmTrendResult: {
             symbol: string;
@@ -122,6 +136,25 @@ export interface components {
             stateMeans: number[];
             stateVols: number[];
             warnings: string[];
+        };
+        StrikeSuggestion: {
+            level: string;
+            /** Format: double */
+            strike: number;
+            /** Format: double */
+            pctFromSpot: number;
+            /** Format: double */
+            empiricalAssignmentProb: number;
+            /** Format: double */
+            blackScholesAssignmentProb: number;
+            /** Format: double */
+            estPremium: number;
+            /** Format: double */
+            annualizedYield: number;
+        };
+        TickerCatalystsResult: {
+            symbol: string;
+            events: components["schemas"]["CatalystEventDto"][];
         };
         WheelAnalysisResult: {
             symbol: string;
@@ -203,6 +236,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HmmTrendResult"];
+                };
+            };
+        };
+    };
+    GetCatalysts: {
+        parameters: {
+            query?: {
+                symbol?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TickerCatalystsResult"];
                 };
             };
         };
