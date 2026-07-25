@@ -44,6 +44,7 @@ type TicketDraft = {
   bid: number | null;
   ask: number | null;
   mid: number | null;
+  tradable?: boolean;
   level?: FridayOptionRow["level"];
   /** After close fills, open this sell draft (roll). */
   rollAfter?: Omit<TicketDraft, "rollAfter" | "action"> & { action: "sell_to_open" };
@@ -177,7 +178,7 @@ export function OpenOptionsSection({
       mid: ticket.mid,
       shares,
       account,
-      tradable: !ticket.contractSymbol.startsWith("MOCK"),
+      tradable: ticket.tradable !== false,
       catalystEvents,
     });
   }, [ticket, qty, shares, account, catalystEvents]);
@@ -198,6 +199,7 @@ export function OpenOptionsSection({
       bid: row.bid,
       ask: row.ask,
       mid: row.mid,
+      tradable: row.tradable,
       level: row.level,
     });
   };
@@ -264,6 +266,7 @@ export function OpenOptionsSection({
         bid: openRow.bid,
         ask: openRow.ask,
         mid: openRow.mid,
+        tradable: openRow.tradable,
         level: openRow.level,
       },
     });

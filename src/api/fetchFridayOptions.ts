@@ -5,6 +5,7 @@ import {
   mockListedExpirations,
 } from "../utils/optionExpirations";
 import { dteUntil, nextFriday, toDateString } from "../utils/nextFriday";
+import { buildOsiSymbol } from "./optionOrders";
 import { marketData, trading } from "./alpacaClient";
 import type {
   AlpacaOptionContract,
@@ -30,6 +31,7 @@ export interface FridayOptionRow {
   /** Limit price suggested for a sell (mid, else bid, else est). */
   sellLimit: number;
   contractSymbol: string;
+  tradable: boolean;
   openInterest: number | null;
 }
 
@@ -183,6 +185,11 @@ function buildRowsFromSuggestions(
   contracts: AlpacaOptionContract[],
   snapshots: Record<string, AlpacaOptionSnapshot>,
   mockPrices: boolean,
+  symbol: string,
+  expiration: string,
+  optionType: OptionSide,
+  /** When rows are synthesized without a listed contract (mock mode only). */
+  simulateTradable: boolean,
 ): FridayOptionRow[] {
   const rows: FridayOptionRow[] = [];
   for (const level of LEVEL_ORDER) {
@@ -194,7 +201,8 @@ function buildRowsFromSuggestions(
     const strike = contract ? parseFloat(contract.strike_price) : sug.strike;
     const contractSymbol =
       contract?.symbol ??
-      `MOCK${level.toUpperCase()}${Math.round(strike * 1000).toString().padStart(8, "0")}`;
+      buildOsiSymbol(symbol, expiration, optionType, strike);
+    const tradable = contract != null ? contract.tradable : simulateTradable;
     const snap = snapshots[contractSymbol];
     const prices = mockPrices
       ? {
@@ -218,6 +226,7 @@ function buildRowsFromSuggestions(
       mid: prices.mid,
       sellLimit: prices.sellLimit,
       contractSymbol,
+      tradable,
       openInterest: contract?.open_interest != null ? parseInt(contract.open_interest, 10) : null,
     });
   }
@@ -259,7 +268,16 @@ export async function fetchFridayOptions(opts: {
 
   if (IS_MOCK) {
     const rows = withSpotPct(
-      buildRowsFromSuggestions(suggestions, [], {}, true),
+      buildRowsFromSuggestions(
+        suggestions,
+        [],
+        {},
+        true,
+        symbol,
+        expiration,
+        opts.side,
+        true,
+      ),
       analysis.currentPrice,
     );
     warnings.push("Mock mode: premiums are Black-Scholes estimates; orders are simulated.");
@@ -287,7 +305,16 @@ export async function fetchFridayOptions(opts: {
   if (contracts.length === 0) {
     warnings.push(`No listed ${opts.side}s for ${symbol} expiring ${expiration}.`);
     const rows = withSpotPct(
-      buildRowsFromSuggestions(suggestions, [], {}, true),
+      buildRowsFromSuggestions(
+        suggestions,
+        [],
+        {},
+        true,
+        symbol,
+        expiration,
+        opts.side,
+        false,
+      ),
       analysis.currentPrice,
     );
     return {
@@ -319,7 +346,16 @@ export async function fetchFridayOptions(opts: {
   }
 
   const rows = withSpotPct(
-    buildRowsFromSuggestions(suggestions, contracts, snapshots, false),
+    buildRowsFromSuggestions(
+      suggestions,
+      contracts,
+      snapshots,
+      false,
+      symbol,
+      expiration,
+      opts.side,
+      false,
+    ),
     analysis.currentPrice,
   );
 
