@@ -21,6 +21,10 @@ export interface AccountInfo {
   longMarketValue: number;
   dayPnL: number;
   dayPnLPct: number;
+  /** Sum of |cost_basis| across all open positions. */
+  costBasis: number;
+  /** Sum of unrealized_pl across all open positions. */
+  unrealizedPnL: number;
 }
 
 export interface OptionLeg {
@@ -88,4 +92,40 @@ export interface WheelPosition {
   unrealizedPnL: number;
   dataSource: DataSource;
   lastUpdated: string;
+}
+
+export type CatalystEventType =
+  | "earnings"
+  | "ex_dividend"
+  | "split"
+  | "macro";
+
+export type CatalystScope = "symbol" | "market";
+
+export interface CatalystEvent {
+  id: string;
+  type: CatalystEventType;
+  scope: CatalystScope;
+  date: string;
+  title: string;
+  detail?: string;
+  /** BMO / AMC for earnings. */
+  timing?: "bmo" | "amc";
+  /** True when earnings falls before the next Friday option expiry. */
+  conflictsWithExpiry?: boolean;
+  yieldPct?: number;
+  splitRatio?: string;
+}
+
+export interface NewsItem {
+  id: string;
+  headline: string;
+  source: string;
+  url: string;
+  publishedAt: string;
+}
+
+export interface TickerCatalystsResult {
+  symbol: string;
+  events: CatalystEvent[];
 }

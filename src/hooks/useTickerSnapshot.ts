@@ -3,6 +3,7 @@ import type { PricePoint } from "../types";
 import { marketData } from "../api/alpacaClient";
 import { fetchPriceHistory } from "../api/fetchWheelPositions";
 import type { AlpacaSnapshotsResponse } from "../api/alpacaTypes";
+import { fetchAsset } from "../api/searchAssets";
 import { MOCK_QUOTES } from "../data/mockQuotes";
 import { IS_MOCK } from "../config";
 
@@ -15,6 +16,7 @@ export interface TickerSnapshot {
   dayHigh: number;
   dayLow: number;
   volume: number;
+  companyName: string;
   loading: boolean;
   error: string | null;
 }
@@ -28,6 +30,7 @@ const EMPTY: Omit<TickerSnapshot, "loading" | "error"> = {
   dayHigh: 0,
   dayLow: 0,
   volume: 0,
+  companyName: "",
 };
 
 // Synthesize a 30-day series ending near `last`, for mock mode.
@@ -54,13 +57,18 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
     async function load() {
       try {
         if (IS_MOCK) {
-          const q = MOCK_QUOTES[symbol] ?? {
-            closePrice: 100,
-            lastPrice: 100 + Math.random() * 10 - 5,
-            change: 0,
-            changePct: 0,
-            source: "close" as const,
-          };
+          const [q, asset] = await Promise.all([
+            Promise.resolve(
+              MOCK_QUOTES[symbol] ?? {
+                closePrice: 100,
+                lastPrice: 100 + Math.random() * 10 - 5,
+                change: 0,
+                changePct: 0,
+                source: "close" as const,
+              },
+            ),
+            fetchAsset(symbol),
+          ]);
           const change = q.lastPrice - q.closePrice;
           const changePct = q.closePrice > 0 ? (change / q.closePrice) * 100 : 0;
           if (cancelled) return;
@@ -73,18 +81,20 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
             dayHigh: q.lastPrice * 1.01,
             dayLow: q.lastPrice * 0.99,
             volume: 1_000_000,
+            companyName: asset?.name ?? symbol,
             loading: false,
             error: null,
           });
           return;
         }
 
-        const [snapshots, history] = await Promise.all([
+        const [snapshots, history, asset] = await Promise.all([
           marketData.get<AlpacaSnapshotsResponse>("/v2/stocks/snapshots", {
             symbols: symbol,
             feed: "iex",
           }),
           fetchPriceHistory([symbol]),
+          fetchAsset(symbol),
         ]);
 
         if (cancelled) return;
@@ -104,6 +114,7 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
           dayHigh: snap?.dailyBar.h ?? lastPrice,
           dayLow: snap?.dailyBar.l ?? lastPrice,
           volume: snap?.dailyBar.v ?? 0,
+          companyName: asset?.name ?? symbol,
           loading: false,
           error: null,
         });

@@ -1,5 +1,6 @@
 import type { WheelPosition, WheelPhase, OptionLeg, PricePoint } from "../types";
 import { trading, marketData } from "./alpacaClient";
+import { fetchAssetNames } from "./searchAssets";
 import { parseOsiSymbol } from "./optionOrders";
 import type {
   AlpacaPosition,
@@ -7,7 +8,11 @@ import type {
   AlpacaSnapshotsResponse,
 } from "./alpacaTypes";
 
-// ─── Phase inference ──────────────────────────────────────────────────────────
+function stripOptionPnL(opt: OptionLeg & { unrealizedPnL: number }): OptionLeg {
+  const { unrealizedPnL: _pnl, ...leg } = opt;
+  return leg;
+}
+
 
 function inferPhase(
   hasStock: boolean,
@@ -18,17 +23,21 @@ function inferPhase(
   return "stock-holding";
 }
 
-// ─── 30-day bar history ───────────────────────────────────────────────────────
+// ─── Daily bar history (60 sessions for SMA50; chart uses last 30) ───────────
+
+const PRICE_HISTORY_DAYS = 60;
 
 export async function fetchPriceHistory(symbols: string[]): Promise<Record<string, PricePoint[]>> {
   if (symbols.length === 0) return {};
 
-  const start = new Date(Date.now() - 31 * 86400000).toISOString().slice(0, 10);
+  const start = new Date(Date.now() - (PRICE_HISTORY_DAYS + 5) * 86400000)
+    .toISOString()
+    .slice(0, 10);
   const data = await marketData.get<AlpacaBarsResponse>("/v2/stocks/bars", {
     symbols: symbols.join(","),
     timeframe: "1Day",
     start,
-    limit: "30",
+    limit: String(PRICE_HISTORY_DAYS),
     feed: "iex",
   });
 
@@ -51,17 +60,20 @@ export async function fetchWheelPositions(): Promise<WheelPosition[]> {
   const optionPositions = allPositions.filter((p) => p.asset_class === "us_option");
 
   // Build a map of underlying → active option leg
-  const optionsByUnderlying: Record<string, OptionLeg> = {};
+  const optionsByUnderlying: Record<string, OptionLeg & { unrealizedPnL: number }> = {};
   for (const opt of optionPositions) {
     const parsed = parseOsiSymbol(opt.symbol);
     if (!parsed) continue;
+    const contracts = Math.abs(parseInt(opt.qty, 10));
+    const premiumReceived = Math.abs(parseFloat(opt.avg_entry_price));
     optionsByUnderlying[parsed.underlying] = {
       type: parsed.type,
       strike: parsed.strike,
       expiration: parsed.expiration,
-      premiumReceived: Math.abs(parseFloat(opt.avg_entry_price)),
-      contracts: Math.abs(parseInt(opt.qty, 10)),
+      premiumReceived,
+      contracts,
       currentOptionPrice: parseFloat(opt.current_price),
+      unrealizedPnL: parseFloat(opt.unrealized_pl),
     };
   }
 
@@ -74,7 +86,7 @@ export async function fetchWheelPositions(): Promise<WheelPosition[]> {
   );
   const allSymbols = [...equitySymbols, ...cspOnlySymbols];
 
-  const [snapshots, priceHistory] = await Promise.all([
+  const [snapshots, priceHistory, assetNames] = await Promise.all([
     allSymbols.length > 0
       ? marketData.get<AlpacaSnapshotsResponse>("/v2/stocks/snapshots", {
           symbols: allSymbols.join(","),
@@ -82,6 +94,7 @@ export async function fetchWheelPositions(): Promise<WheelPosition[]> {
         })
       : Promise.resolve({} as AlpacaSnapshotsResponse),
     fetchPriceHistory(allSymbols),
+    fetchAssetNames(allSymbols),
   ]);
 
   const now = new Date().toISOString();
@@ -89,7 +102,8 @@ export async function fetchWheelPositions(): Promise<WheelPosition[]> {
   // Build WheelPosition for each equity holding
   const positions: WheelPosition[] = equityPositions.map((pos) => {
     const snap = snapshots[pos.symbol];
-    const activeOption = optionsByUnderlying[pos.symbol];
+    const optData = optionsByUnderlying[pos.symbol];
+    const activeOption = optData ? stripOptionPnL(optData) : undefined;
     const shares = parseInt(pos.qty, 10);
     const costBasis = parseFloat(pos.avg_entry_price);
     const currentPrice = snap?.latestTrade.p ?? parseFloat(pos.current_price);
@@ -99,7 +113,7 @@ export async function fetchWheelPositions(): Promise<WheelPosition[]> {
     return {
       id: pos.symbol,
       ticker: pos.symbol,
-      companyName: pos.symbol,
+      companyName: assetNames[pos.symbol] ?? pos.symbol,
       sector: "—",
       phase: inferPhase(true, activeOption),
       shares,
@@ -112,9 +126,12 @@ export async function fetchWheelPositions(): Promise<WheelPosition[]> {
       marketCap: 0,
       priceHistory: priceHistory[pos.symbol] ?? [],
       activeOption,
-      premiumCollectedTotal: 0, // Alpaca doesn't expose cumulative — track via closed orders if needed
+      premiumCollectedTotal: activeOption
+        ? activeOption.premiumReceived * activeOption.contracts * 100
+        : 0,
       cashDeployed,
-      unrealizedPnL: parseFloat(pos.unrealized_pl),
+      unrealizedPnL:
+        parseFloat(pos.unrealized_pl) + (optData?.unrealizedPnL ?? 0),
       dataSource: "alpaca",
       lastUpdated: now,
     };
@@ -123,16 +140,17 @@ export async function fetchWheelPositions(): Promise<WheelPosition[]> {
   // Build WheelPosition for CSP-only underlyings (no stock held yet)
   for (const symbol of cspOnlySymbols) {
     const snap = snapshots[symbol];
-    const activeOption = optionsByUnderlying[symbol];
-    if (!activeOption) continue;
+    const optData = optionsByUnderlying[symbol];
+    if (!optData) continue;
+    const activeOption = stripOptionPnL(optData);
     const currentPrice = snap?.latestTrade.p ?? 0;
     const prevClose = snap?.prevDailyBar.c ?? currentPrice;
-    const cashDeployed = activeOption.strike * activeOption.contracts * 100;
+    const cashDeployed = optData.strike * optData.contracts * 100;
 
     positions.push({
       id: symbol,
       ticker: symbol,
-      companyName: symbol,
+      companyName: assetNames[symbol] ?? symbol,
       sector: "—",
       phase: "cash-secured-put",
       shares: 0,
@@ -145,9 +163,9 @@ export async function fetchWheelPositions(): Promise<WheelPosition[]> {
       marketCap: 0,
       priceHistory: priceHistory[symbol] ?? [],
       activeOption,
-      premiumCollectedTotal: 0,
+      premiumCollectedTotal: optData.premiumReceived * optData.contracts * 100,
       cashDeployed,
-      unrealizedPnL: 0,
+      unrealizedPnL: optData.unrealizedPnL,
       dataSource: "alpaca",
       lastUpdated: now,
     });

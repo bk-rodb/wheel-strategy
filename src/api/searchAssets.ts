@@ -44,6 +44,33 @@ const MOCK_ASSETS: AssetResult[] = [
 
 const USE_MOCK = !import.meta.env.VITE_ALPACA_API_KEY_ID;
 
+export async function fetchAsset(symbol: string): Promise<AssetResult | null> {
+  const sym = symbol.toUpperCase();
+
+  if (USE_MOCK) {
+    return MOCK_ASSETS.find((a) => a.symbol === sym) ?? { symbol: sym, name: sym, exchange: "" };
+  }
+
+  try {
+    const asset = await trading.get<AlpacaAsset>(`/v2/assets/${sym}`);
+    if (!asset.tradable) return null;
+    return { symbol: asset.symbol, name: asset.name, exchange: asset.exchange };
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchAssetNames(symbols: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(symbols.map((s) => s.toUpperCase()))];
+  const entries = await Promise.all(
+    unique.map(async (sym) => {
+      const asset = await fetchAsset(sym);
+      return [sym, asset?.name ?? sym] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
+}
+
 export async function searchAssets(query: string): Promise<AssetResult[]> {
   if (query.length < 1) return [];
 

@@ -10,4 +10,6 @@ export const MOCK_ACCOUNT: AccountInfo = {
   longMarketValue: 137285,
   dayPnL: 5490,
   dayPnLPct: 3.55,
+  costBasis: 152000,
+  unrealizedPnL: 7285,
 };
