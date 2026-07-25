@@ -1,5 +1,6 @@
-import type { AccountInfo } from "../types";
+import type { AccountInfo, CatalystEvent } from "../types";
 import { isMarketOpen } from "../utils/marketHours";
+import { catalystWarningsForExpiry } from "../utils/catalystWarnings";
 
 export type OrderAction = "sell_to_open" | "buy_to_close";
 
@@ -20,6 +21,8 @@ export interface PreTradeInput {
   account: AccountInfo | null;
   /** Contract known tradable; default true when unknown. */
   tradable?: boolean;
+  /** Upcoming earnings / ex-div events for catalyst warnings. */
+  catalystEvents?: CatalystEvent[];
 }
 
 export interface PreTradeResult {
@@ -118,6 +121,16 @@ export function preTradeCheck(input: PreTradeInput): PreTradeResult {
 
   if (input.bid == null && input.ask == null) {
     warnings.push("No live bid/ask — using estimated premium");
+  }
+
+  if (input.action === "sell_to_open" && input.catalystEvents?.length) {
+    warnings.push(
+      ...catalystWarningsForExpiry(
+        input.catalystEvents,
+        input.expiration,
+        input.optionType,
+      ),
+    );
   }
 
   return {

@@ -12,6 +12,8 @@ const account: AccountInfo = {
   longMarketValue: 0,
   dayPnL: 0,
   dayPnLPct: 0,
+  costBasis: 0,
+  unrealizedPnL: 0,
 };
 
 describe("preTradeCheck", () => {
@@ -110,5 +112,34 @@ describe("preTradeCheck", () => {
     });
     expect(r.ok).toBe(false);
     expect(r.blockers.some((b) => b.includes("debit"))).toBe(true);
+  });
+
+  it("warns on earnings before expiration", () => {
+    const r = preTradeCheck({
+      action: "sell_to_open",
+      optionType: "put",
+      contractSymbol: "AAPL  260724P00100000",
+      strike: 100,
+      expiration: "2026-08-15",
+      qty: 1,
+      limitPrice: 0.3,
+      bid: 0.28,
+      ask: 0.32,
+      mid: 0.3,
+      shares: 0,
+      account,
+      catalystEvents: [
+        {
+          id: "e1",
+          type: "earnings",
+          scope: "symbol",
+          date: "2026-08-01",
+          title: "Q3 earnings",
+          timing: "amc",
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    expect(r.warnings.some((w) => w.includes("Earnings"))).toBe(true);
   });
 });

@@ -5,6 +5,7 @@ import { preTradeCheck, type OrderAction } from "../api/preTradeCheck";
 import { IS_MOCK } from "../config";
 import { useFridayOptionSuggestions } from "../hooks/useFridayOptionSuggestions";
 import { usePendingOptionOrder } from "../hooks/usePendingOptionOrder";
+import { useTickerCatalysts } from "../hooks/useTickerCatalysts";
 import type { AccountInfo, OptionLeg, WheelPhase } from "../types";
 import { fmt } from "../utils/formatters";
 import { dteUntil } from "../utils/nextFriday";
@@ -88,6 +89,8 @@ export function OpenOptionsSection({
       expiration: selectedExpiration,
       enabled: true,
     });
+
+  const { events: catalystEvents } = useTickerCatalysts(symbol);
 
   const pickerExpiration = selectedExpiration ?? defaultExpiration;
 
@@ -175,8 +178,9 @@ export function OpenOptionsSection({
       shares,
       account,
       tradable: !ticket.contractSymbol.startsWith("MOCK"),
+      catalystEvents,
     });
-  }, [ticket, qty, shares, account]);
+  }, [ticket, qty, shares, account, catalystEvents]);
 
   const openSellTicket = (row: FridayOptionRow) => {
     if (locked) return;
