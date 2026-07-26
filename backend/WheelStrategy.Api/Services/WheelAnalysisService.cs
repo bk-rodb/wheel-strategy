@@ -32,7 +32,12 @@ public class WheelAnalysisService(
         var symbol = req.Symbol.ToUpperInvariant();
         var warnings = new List<string>();
 
-        var weekly = req.Granularity.Equals("daily", StringComparison.OrdinalIgnoreCase) ? false : true;
+        var weekly = true;
+        if (req.Granularity.Equals("daily", StringComparison.OrdinalIgnoreCase))
+            weekly = false;
+        else if (!req.Granularity.Equals("weekly", StringComparison.OrdinalIgnoreCase))
+            warnings.Add($"Unrecognized granularity '{req.Granularity}'; defaulting to weekly.");
+
         var timeframe = weekly ? BarTimeframe.Week : BarTimeframe.Day;
         var periodsPerYear = weekly ? 52.0 : 252.0;
         // Horizon in bar-periods matching the option's days-to-expiration.
@@ -51,11 +56,17 @@ public class WheelAnalysisService(
         DateTimeOffset asOf;
         var latest = await alpaca.GetLatestPriceAsync(symbol, ct);
         if (latest is { } l) { spot = l.price; asOf = l.asOf; }
-        else if (series.Count > 0) { spot = series[^1].Close; asOf = DateTime.UtcNow; }
+        else if (series.Count > 0)
+        {
+            var lastBar = series[^1];
+            spot = lastBar.Close;
+            asOf = new DateTimeOffset(lastBar.BarStart.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            warnings.Add("Spot price from cached bar close; asOf reflects last bar date, not a live quote.");
+        }
         else
         {
             warnings.Add("No price data available for symbol.");
-            return Empty(symbol, 0m, DateTimeOffset.UtcNow, req, horizon, weekly, 0, 0, r, warnings);
+            return Empty(symbol, 0m, DateTimeOffset.UtcNow, req, horizon, weekly, 0, null, r, warnings);
         }
 
         warnings.Add("IEX feed: single-venue bars; OHLC may differ slightly from consolidated tape.");
@@ -66,7 +77,9 @@ public class WheelAnalysisService(
         var logReturns = new List<double>(Math.Max(0, closes.Count - 1));
         for (int i = 1; i < closes.Count; i++)
             if (closes[i] > 0 && closes[i - 1] > 0) logReturns.Add(Math.Log(closes[i] / closes[i - 1]));
-        var sigmaAnnual = StatMath.StdDev(logReturns) * Math.Sqrt(periodsPerYear);
+        var sigmaAnnual = logReturns.Count >= 2
+            ? StatMath.StdDev(logReturns) * Math.Sqrt(periodsPerYear)
+            : double.NaN;
 
         // Overlapping forward returns over the horizon.
         var fwd = new List<double>(Math.Max(0, closes.Count - horizon));
@@ -76,10 +89,16 @@ public class WheelAnalysisService(
         if (fwd.Count < _opts.MinSamples)
         {
             warnings.Add($"Insufficient history: {fwd.Count} forward-return samples (< {_opts.MinSamples} required).");
-            return Empty(symbol, spot, asOf, req, horizon, weekly, fwd.Count, sigmaAnnual, r, warnings);
+            return Empty(symbol, spot, asOf, req, horizon, weekly, fwd.Count, RoundVol(sigmaAnnual), r, warnings);
         }
 
         warnings.Add("Forward-return windows overlap; empirical percentiles are indicative — Black-Scholes prob is the harder estimate.");
+        warnings.Add(
+            $"Overlapping windows: effective independent sample size is roughly {fwd.Count / horizon} " +
+            $"(sampleCount {fwd.Count} / horizon {horizon}), not {fwd.Count}.");
+        warnings.Add("Premiums use realized volatility; listed options typically trade at higher implied vol.");
+        warnings.Add("Black-Scholes assignment uses risk-neutral probabilities; empirical frequencies reflect the stock's own history.");
+        warnings.Add("CSP annualized yield uses strike as collateral; CC yield uses spot — yields are not directly comparable.");
 
         var sorted = fwd.OrderBy(x => x).ToList();
         var s = (double)spot;
@@ -104,9 +123,9 @@ public class WheelAnalysisService(
                 var empirical = StatMath.FractionBelow(fwd, k / s - 1.0);
                 var bsProb = StatMath.PutAssignmentProb(s, k, t, r, sigmaAnnual);
                 var premium = StatMath.PutPrice(s, k, t, r, sigmaAnnual);
-                var annYield = k > 0 && req.Dte > 0 ? premium / k * (365.0 / req.Dte) : 0;
-                puts.Add(new StrikeSuggestion(name, strike, k / s - 1.0,
-                    Round(empirical), Round(bsProb), RoundMoney(premium), Round(annYield)));
+                var annYield = k > 0 && req.Dte > 0 ? premium / k * (365.0 / req.Dte) : double.NaN;
+                puts.Add(new StrikeSuggestion(name, strike, PctFromSpot(s, k),
+                    RoundProb(empirical), RoundProb(bsProb), RoundMoney(premium), RoundProb(annYield)));
             }
             // CALL: upside — strike above spot; upper-tail (1-p) percentile.
             {
@@ -116,31 +135,40 @@ public class WheelAnalysisService(
                 var empirical = StatMath.FractionAbove(fwd, k / s - 1.0);
                 var bsProb = StatMath.CallAssignmentProb(s, k, t, r, sigmaAnnual);
                 var premium = StatMath.CallPrice(s, k, t, r, sigmaAnnual);
-                var annYield = s > 0 && req.Dte > 0 ? premium / s * (365.0 / req.Dte) : 0;
-                calls.Add(new StrikeSuggestion(name, strike, k / s - 1.0,
-                    Round(empirical), Round(bsProb), RoundMoney(premium), Round(annYield)));
+                var annYield = s > 0 && req.Dte > 0 ? premium / s * (365.0 / req.Dte) : double.NaN;
+                calls.Add(new StrikeSuggestion(name, strike, PctFromSpot(s, k),
+                    RoundProb(empirical), RoundProb(bsProb), RoundMoney(premium), RoundProb(annYield)));
             }
         }
 
         return new WheelAnalysisResult(
             symbol, spot, asOf, req.LookbackDays, req.Dte, horizon,
-            weekly ? "weekly" : "daily", fwd.Count, Round(sigmaAnnual), r,
+            weekly ? "weekly" : "daily", fwd.Count, RoundVol(sigmaAnnual), r,
             puts, calls, warnings);
     }
 
     private static WheelAnalysisResult Empty(
         string symbol, decimal spot, DateTimeOffset asOf, AnalysisRequest req,
-        int horizon, bool weekly, int sampleCount, double sigma, double r, List<string> warnings)
+        int horizon, bool weekly, int sampleCount, double? sigma, double r, List<string> warnings)
         => new(symbol, spot, asOf, req.LookbackDays, req.Dte, horizon,
-            weekly ? "weekly" : "daily", sampleCount, Round(sigma), r, null, null, warnings);
+            weekly ? "weekly" : "daily", sampleCount, sigma, r, null, null, warnings);
 
     /// <summary>Round to a sane option strike grid: $1 at/above $25, else $0.50.</summary>
     private static decimal RoundStrike(double price)
     {
         var grid = price >= 25 ? 1.0 : 0.5;
-        return (decimal)(Math.Round(price / grid) * grid);
+        return (decimal)(Math.Round(price / grid, MidpointRounding.AwayFromZero) * grid);
     }
 
-    private static double Round(double x) => double.IsNaN(x) ? 0 : Math.Round(x, 4);
-    private static decimal RoundMoney(double x) => double.IsNaN(x) ? 0m : Math.Round((decimal)x, 2);
+    private static double? PctFromSpot(double spot, double strike) =>
+        spot > 0 && double.IsFinite(strike) ? strike / spot - 1.0 : null;
+
+    private static double? RoundProb(double x) =>
+        double.IsFinite(x) ? Math.Round(x, 4) : null;
+
+    private static double? RoundVol(double x) =>
+        double.IsFinite(x) && x >= 0 ? Math.Round(x, 4) : null;
+
+    private static decimal? RoundMoney(double x) =>
+        double.IsFinite(x) ? Math.Round((decimal)x, 2) : null;
 }

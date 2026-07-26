@@ -45,7 +45,6 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
   useEffect(() => {
     if (debouncedQuery.length < 1) {
       setSuggestions([]);
-      setSuggestions([]);
       return;
     }
     let cancelled = false;

@@ -25,7 +25,7 @@ export async function fetchAtmImpliedVol(
   if (!regular) return null;
 
   if (IS_MOCK) {
-    return analysis.realizedVolAnnual * 1.25;
+    return analysis.realizedVolAnnual != null ? analysis.realizedVolAnnual * 1.25 : null;
   }
 
   let contracts: AlpacaOptionContract[] = [];

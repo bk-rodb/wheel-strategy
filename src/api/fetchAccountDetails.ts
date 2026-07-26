@@ -5,7 +5,7 @@ import type { AlpacaAccount, AlpacaPosition } from "./alpacaTypes";
 export async function fetchAlpacaAccount(broker: BrokerType): Promise<AccountInfo> {
   const [raw, positions] = await Promise.all([
     trading.get<AlpacaAccount>("/v2/account"),
-    trading.get<AlpacaPosition[]>("/v2/positions").catch(() => [] as AlpacaPosition[]),
+    trading.get<AlpacaPosition[]>("/v2/positions"),
   ]);
 
   const equity = parseFloat(raw.equity);

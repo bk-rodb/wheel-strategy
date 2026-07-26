@@ -128,9 +128,12 @@ export function buildTrendSnapshot(
     }
   }
 
-  const periodLow = Math.min(...window30.map((d) => d.price));
-  const periodHigh = Math.max(...window30.map((d) => d.price));
-  if (periodLow > 0) {
+  const windowPrices = window30.map((d) => d.price);
+  if (windowPrices.length === 0) return { chips };
+
+  const periodLow = Math.min(...windowPrices);
+  const periodHigh = Math.max(...windowPrices);
+  if (Number.isFinite(periodLow) && periodLow > 0) {
     const fromLow = pctFromLevel(currentPrice, periodLow);
     chips.push({
       label: "from 30D low",

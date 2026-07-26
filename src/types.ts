@@ -50,16 +50,30 @@ export type AnalysisGranularity = "weekly" | "daily";
 // The analysis contract is the single source of truth in the backend
 // (Contracts/WheelAnalysisDtos.cs) and is generated into src/api/generated/analysis.ts
 // via `npm run gen:api`. Re-exported here under stable names, narrowing `level`.
-export type StrikeSuggestion = Omit<components["schemas"]["StrikeSuggestion"], "level"> & {
+export type StrikeSuggestion = Omit<
+  components["schemas"]["StrikeSuggestion"],
+  | "level"
+  | "pctFromSpot"
+  | "empiricalAssignmentProb"
+  | "blackScholesAssignmentProb"
+  | "estPremium"
+  | "annualizedYield"
+> & {
   level: AnalysisLevel;
+  pctFromSpot: number | null;
+  empiricalAssignmentProb: number | null;
+  blackScholesAssignmentProb: number | null;
+  estPremium: number | null;
+  annualizedYield: number | null;
 };
 
 export type WheelAnalysis = Omit<
   components["schemas"]["WheelAnalysisResult"],
-  "put" | "call"
+  "put" | "call" | "realizedVolAnnual"
 > & {
   put: StrikeSuggestion[] | null;
   call: StrikeSuggestion[] | null;
+  realizedVolAnnual: number | null;
 };
 
 export type HmmRegime = "bear" | "neutral" | "bull" | "unknown";
@@ -87,6 +101,8 @@ export interface WheelPosition {
   marketCap: number;
   priceHistory: PricePoint[];
   activeOption?: OptionLeg;
+  /** Present when more than one option leg is open on this underlying. */
+  optionLegCount?: number;
   premiumCollectedTotal: number;
   cashDeployed: number;
   unrealizedPnL: number;

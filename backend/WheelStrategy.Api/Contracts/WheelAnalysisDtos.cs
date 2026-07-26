@@ -6,11 +6,11 @@ public enum AnalysisLevel { Safe, Regular, Risky }
 public record StrikeSuggestion(
     string Level,
     decimal Strike,
-    double PctFromSpot,
-    double EmpiricalAssignmentProb,
-    double BlackScholesAssignmentProb,
-    decimal EstPremium,
-    double AnnualizedYield);
+    double? PctFromSpot,
+    double? EmpiricalAssignmentProb,
+    double? BlackScholesAssignmentProb,
+    decimal? EstPremium,
+    double? AnnualizedYield);
 
 /// <summary>Full analysis response for a symbol.</summary>
 public record WheelAnalysisResult(
@@ -22,7 +22,7 @@ public record WheelAnalysisResult(
     int HorizonPeriods,
     string Granularity,
     int SampleCount,
-    double RealizedVolAnnual,
+    double? RealizedVolAnnual,
     double RiskFreeRate,
     IReadOnlyList<StrikeSuggestion>? Put,
     IReadOnlyList<StrikeSuggestion>? Call,

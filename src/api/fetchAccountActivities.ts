@@ -9,6 +9,10 @@ export interface BalanceActivity {
   symbol?: string;
   /** Signed cash impact: positive = credit, negative = debit. */
   amount: number;
+  /** Present on trade fills. */
+  side?: "buy" | "sell";
+  /** Contracts/shares filled (trade fills only). */
+  qty?: number;
 }
 
 interface AlpacaActivityBase {
@@ -67,7 +71,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
   ACATC: "ACATS cash",
 };
 
-function formatActivityLabel(activity: AlpacaActivity, amount: number): string {
+function formatActivityLabel(activity: AlpacaActivity, _amount: number): string {
   if (isTradeActivity(activity)) {
     const verb = activity.side === "sell" ? "Sell" : "Buy";
     const parsed = activity.symbol ? parseOsiSymbol(activity.symbol) : null;
@@ -82,7 +86,7 @@ function formatActivityLabel(activity: AlpacaActivity, amount: number): string {
   const desc = "description" in activity ? activity.description : undefined;
   if (desc) return desc;
   if (activity.symbol) return `${base} · ${activity.symbol}`;
-  return amount >= 0 ? base : base;
+  return base;
 }
 
 function activityTimestamp(activity: AlpacaActivity): string {
@@ -105,6 +109,12 @@ function normalizeActivity(activity: AlpacaActivity): BalanceActivity | null {
 
   if (!Number.isFinite(amount) || amount === 0) return null;
 
+  const side =
+    isTradeActivity(activity) && (activity.side === "buy" || activity.side === "sell")
+      ? activity.side
+      : undefined;
+  const qty = isTradeActivity(activity) ? parseFloat(activity.qty) : undefined;
+
   return {
     id: activity.id,
     timestamp: activityTimestamp(activity),
@@ -112,6 +122,8 @@ function normalizeActivity(activity: AlpacaActivity): BalanceActivity | null {
     label: formatActivityLabel(activity, amount),
     symbol: activity.symbol,
     amount,
+    side,
+    qty: Number.isFinite(qty) ? qty : undefined,
   };
 }
 
@@ -127,11 +139,47 @@ export async function fetchAccountActivities(pageSize = 40): Promise<BalanceActi
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
-/** Sum credits from option sell fills (wheel premium). */
+/** Sum credits from sell-to-open option fills (wheel premium). */
 export function sumOptionPremiumCollected(activities: BalanceActivity[]): number {
-  return activities.reduce((sum, a) => {
-    if (a.activityType !== "FILL" || a.amount <= 0) return sum;
+  const chronological = [...activities].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+  const position = new Map<string, number>();
+
+  return chronological.reduce((sum, a) => {
+    if (a.activityType !== "FILL") return sum;
     if (!a.symbol || !parseOsiSymbol(a.symbol)) return sum;
+
+    if (a.side == null || a.qty == null) {
+      if (a.amount > 0) return sum + a.amount;
+      return sum;
+    }
+
+    const qty = a.qty;
+    let pos = position.get(a.symbol) ?? 0;
+
+    if (a.side === "buy") {
+      pos += qty;
+      position.set(a.symbol, pos);
+      return sum;
+    }
+
+    if (a.amount <= 0) return sum;
+
+    if (pos > 0) {
+      const closeQty = Math.min(pos, qty);
+      pos -= closeQty;
+      const openQty = qty - closeQty;
+      if (openQty > 0) {
+        pos -= openQty;
+        sum += a.amount * (openQty / qty);
+      }
+      position.set(a.symbol, pos);
+      return sum;
+    }
+
+    pos -= qty;
+    position.set(a.symbol, pos);
     return sum + a.amount;
   }, 0);
 }

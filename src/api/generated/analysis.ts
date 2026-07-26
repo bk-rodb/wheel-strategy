@@ -142,15 +142,15 @@ export interface components {
             /** Format: double */
             strike: number;
             /** Format: double */
-            pctFromSpot: number;
+            pctFromSpot: null | number;
             /** Format: double */
-            empiricalAssignmentProb: number;
+            empiricalAssignmentProb: null | number;
             /** Format: double */
-            blackScholesAssignmentProb: number;
+            blackScholesAssignmentProb: null | number;
             /** Format: double */
-            estPremium: number;
+            estPremium: null | number;
             /** Format: double */
-            annualizedYield: number;
+            annualizedYield: null | number;
         };
         TickerCatalystsResult: {
             symbol: string;
@@ -172,7 +172,7 @@ export interface components {
             /** Format: int32 */
             sampleCount: number;
             /** Format: double */
-            realizedVolAnnual: number;
+            realizedVolAnnual: null | number;
             /** Format: double */
             riskFreeRate: number;
             put: null | components["schemas"]["StrikeSuggestion"][];

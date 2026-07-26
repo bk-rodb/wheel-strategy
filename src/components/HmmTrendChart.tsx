@@ -234,11 +234,11 @@ export function HmmForecastTable({ data }: { data: HmmTrendResult }) {
           <tr key={row.days}>
             <td style={tdStyle}>{row.days}d</td>
             <td style={{ ...tdStyle, color: row.expectedReturnPct >= 0 ? "#34d399" : "#f87171" }}>
-              {fmt.pct(row.expectedReturnPct / 100)}
+              {fmt.pct(row.expectedReturnPct)}
             </td>
-            <td style={tdStyle}>{fmt.pct(row.bearProb)}</td>
-            <td style={tdStyle}>{fmt.pct(row.stateProbs[1])}</td>
-            <td style={tdStyle}>{fmt.pct(row.bullProb)}</td>
+            <td style={tdStyle}>{fmt.pctFromRatio(row.bearProb)}</td>
+            <td style={tdStyle}>{fmt.pctFromRatio(row.stateProbs[1])}</td>
+            <td style={tdStyle}>{fmt.pctFromRatio(row.bullProb)}</td>
           </tr>
         ))}
       </tbody>

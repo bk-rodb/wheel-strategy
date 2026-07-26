@@ -2,18 +2,25 @@ import type { WheelPosition } from "../types";
 
 export const fmt = {
   currency: (n: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-    }).format(n),
+    Number.isFinite(n)
+      ? new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 2,
+        }).format(n)
+      : "—",
   compact: (n: number) =>
-    new Intl.NumberFormat("en-US", {
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(n),
-  pct: (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`,
-  num: (n: number) => n.toLocaleString("en-US"),
+    Number.isFinite(n)
+      ? new Intl.NumberFormat("en-US", {
+          notation: "compact",
+          maximumFractionDigits: 1,
+        }).format(n)
+      : "—",
+  pct: (n: number) =>
+    Number.isFinite(n) ? `${n >= 0 ? "+" : ""}${n.toFixed(2)}%` : "—",
+  /** Format a 0–1 ratio as a percentage (e.g. 0.62 → "+62.00%"). */
+  pctFromRatio: (r: number) => (Number.isFinite(r) ? fmt.pct(r * 100) : "—"),
+  num: (n: number) => (Number.isFinite(n) ? n.toLocaleString("en-US") : "—"),
 };
 
 export const dayChange = (pos: WheelPosition) =>
@@ -23,7 +30,7 @@ export const dayChangePct = (pos: WheelPosition) =>
   ((pos.currentPrice - pos.previousClose) / pos.previousClose) * 100;
 
 export const dte = (expiration: string): number => {
-  const diff = new Date(expiration).getTime() - Date.now();
+  const diff = new Date(`${expiration}T16:00:00`).getTime() - Date.now();
   return Math.max(0, Math.ceil(diff / 86400000));
 };
 

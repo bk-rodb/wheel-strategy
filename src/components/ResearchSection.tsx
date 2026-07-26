@@ -170,7 +170,7 @@ function ProbPill({ label, prob, color }: { label: string; prob: number; color: 
   return (
     <div>
       <div style={{ fontSize: 9, color: "#4a4a6a", fontFamily: "monospace", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 12, fontFamily: "monospace", color }}>{fmt.pct(prob)}</div>
+      <div style={{ fontSize: 12, fontFamily: "monospace", color }}>{fmt.pctFromRatio(prob)}</div>
     </div>
   );
 }
@@ -201,7 +201,7 @@ function TransitionMatrix({
               <td style={{ ...tdMini, textTransform: "uppercase", color: regimeColor(labels[i]) }}>{labels[i].slice(0, 4)}</td>
               {row.map((p, j) => (
                 <td key={j} style={tdMini}>
-                  {fmt.pct(p)}
+                  {fmt.pctFromRatio(p)}
                 </td>
               ))}
             </tr>

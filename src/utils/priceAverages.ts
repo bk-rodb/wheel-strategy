@@ -4,7 +4,8 @@ import type { PricePoint } from "../types";
 export function averageClosingPrice(data: PricePoint[], tradingDays: number): number | null {
   if (data.length === 0 || tradingDays <= 0) return null;
   const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
-  const slice = sorted.slice(-Math.min(tradingDays, sorted.length));
+  if (sorted.length < tradingDays) return null;
+  const slice = sorted.slice(-tradingDays);
   const sum = slice.reduce((s, p) => s + p.price, 0);
   return sum / slice.length;
 }

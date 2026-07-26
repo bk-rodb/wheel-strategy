@@ -194,7 +194,7 @@ function buildRowsFromSuggestions(
   const rows: FridayOptionRow[] = [];
   for (const level of LEVEL_ORDER) {
     const sug = suggestions.find((s) => s.level === level);
-    if (!sug) continue;
+    if (!sug || sug.estPremium == null) continue;
     const contract = nearestContract(contracts, sug.strike);
     if (!contract && !mockPrices) continue;
 
@@ -217,9 +217,9 @@ function buildRowsFromSuggestions(
       level,
       label: LEVEL_LABEL[level],
       strike,
-      pctFromSpot: sug.pctFromSpot,
-      empiricalAssignmentProb: sug.empiricalAssignmentProb,
-      blackScholesAssignmentProb: sug.blackScholesAssignmentProb,
+      pctFromSpot: sug.pctFromSpot ?? 0,
+      empiricalAssignmentProb: sug.empiricalAssignmentProb ?? 0,
+      blackScholesAssignmentProb: sug.blackScholesAssignmentProb ?? 0,
       estPremium: sug.estPremium,
       bid: prices.bid,
       ask: prices.ask,

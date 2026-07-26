@@ -32,6 +32,7 @@ public static class GaussianHmm
         var n = sorted.Length;
         var means = new[] { sorted[n / 6], sorted[n / 2], sorted[Math.Min(5 * n / 6, n - 1)] };
         var overallVar = Math.Max(StatMath.StdDev(obs) * StatMath.StdDev(obs), 1e-10);
+        var minVar = overallVar * 0.01;
         var vars = new[] { overallVar, overallVar, overallVar };
 
         var start = Enumerable.Repeat(1.0 / NumStates, NumStates).ToArray();
@@ -41,6 +42,7 @@ public static class GaussianHmm
 
         double[][] gamma = new double[T][];
         double prevLl = double.NegativeInfinity;
+        double ll = double.NegativeInfinity;
 
         for (var iter = 0; iter < maxIter; iter++)
         {
@@ -75,8 +77,12 @@ public static class GaussianHmm
                             xi[t][i][j] /= sum;
             }
 
-            var ll = -scale.Sum(Math.Log);
-            if (iter > 0 && Math.Abs(ll - prevLl) < tol) break;
+            ll = scale.Sum(Math.Log);
+            if (iter > 0 && Math.Abs(ll - prevLl) < tol)
+            {
+                prevLl = ll;
+                break;
+            }
             prevLl = ll;
 
             for (var i = 0; i < NumStates; i++)
@@ -131,14 +137,13 @@ public static class GaussianHmm
                     varSum += gamma[t][j] * d * d;
                     weight += gamma[t][j];
                 }
-                vars[j] = weight > 1e-12 ? Math.Max(varSum / weight, 1e-10) : vars[j];
+                vars[j] = weight > 1e-12 ? Math.Max(varSum / weight, minVar) : vars[j];
             }
         }
 
         var model = new Model(start, transition, means, vars);
         var relabeled = RelabelByMean(model, gamma);
-        var viterbi = Viterbi(obs, relabeled.Model.Start, relabeled.Model.Transition, relabeled.Model.Means, relabeled.Model.Variances);
-        return new FitResult(relabeled.Model, relabeled.StateProbs, viterbi, prevLl);
+        return new FitResult(relabeled.Model, relabeled.StateProbs, Array.Empty<int>(), ll);
     }
 
     /// <summary>State distribution after <paramref name="steps"/> Markov transitions.</summary>
@@ -156,6 +161,22 @@ public static class GaussianHmm
         for (var i = 0; i < NumStates; i++)
             sum += stateProbs[i] * model.Means[i];
         return sum;
+    }
+
+    /// <summary>
+    /// Expected cumulative log return over <paramref name="horizonPeriods"/> by accumulating
+    /// period-by-period along the forecast path (H-14).
+    /// </summary>
+    public static double ForecastCumulativeLogReturn(Model model, IReadOnlyList<double> current, int horizonPeriods)
+    {
+        var probs = current.ToArray();
+        var cumLogReturn = 0.0;
+        for (var h = 0; h < horizonPeriods; h++)
+        {
+            probs = ForecastStateProbs(model, probs, 1);
+            cumLogReturn += ExpectedPeriodReturn(model, probs);
+        }
+        return cumLogReturn;
     }
 
     private static FitResult RelabelByMean(Model model, double[][] gamma)
@@ -236,42 +257,6 @@ public static class GaussianHmm
         return beta;
     }
 
-    private static int[] Viterbi(double[] obs, double[] start, double[][] transition, double[] means, double[] vars)
-    {
-        var T = obs.Length;
-        var delta = new double[T][];
-        var psi = new int[T][];
-
-        delta[0] = new double[NumStates];
-        psi[0] = new int[NumStates];
-        for (var i = 0; i < NumStates; i++)
-            delta[0][i] = Math.Log(start[i]) + Math.Log(Emission(obs[0], means[i], vars[i]));
-
-        for (var t = 1; t < T; t++)
-        {
-            delta[t] = new double[NumStates];
-            psi[t] = new int[NumStates];
-            for (var j = 0; j < NumStates; j++)
-            {
-                var best = double.NegativeInfinity;
-                var bestI = 0;
-                for (var i = 0; i < NumStates; i++)
-                {
-                    var score = delta[t - 1][i] + Math.Log(transition[i][j]);
-                    if (score > best) { best = score; bestI = i; }
-                }
-                delta[t][j] = best + Math.Log(Emission(obs[t], means[j], vars[j]));
-                psi[t][j] = bestI;
-            }
-        }
-
-        var path = new int[T];
-        path[T - 1] = ArgMax(delta[T - 1]);
-        for (var t = T - 2; t >= 0; t--)
-            path[t] = psi[t + 1][path[t + 1]];
-        return path;
-    }
-
     private static double Emission(double x, double mean, double variance)
     {
         var v = Math.Max(variance, 1e-10);
@@ -282,7 +267,7 @@ public static class GaussianHmm
     private static double Normalize(double[] xs)
     {
         var sum = xs.Sum();
-        if (sum <= 0)
+        if (!double.IsFinite(sum) || sum <= 0)
         {
             var u = 1.0 / xs.Length;
             for (var i = 0; i < xs.Length; i++) xs[i] = u;
@@ -290,13 +275,5 @@ public static class GaussianHmm
         }
         for (var i = 0; i < xs.Length; i++) xs[i] /= sum;
         return sum;
-    }
-
-    private static int ArgMax(double[] xs)
-    {
-        var best = 0;
-        for (var i = 1; i < xs.Length; i++)
-            if (xs[i] > xs[best]) best = i;
-        return best;
     }
 }

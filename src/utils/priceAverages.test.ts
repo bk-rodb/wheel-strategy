@@ -17,4 +17,10 @@ describe("priceAverages", () => {
     expect(formatAveragePricePair(history)).toBe("118.00/110.00");
     expect(formatAveragePricePair([])).toBe("—");
   });
+
+  it("returns null when fewer bars than the requested window", () => {
+    const short = history.slice(0, 6);
+    expect(averageClosingPrice(short, 21)).toBeNull();
+    expect(formatAveragePricePair(short)).toBe("103.00/—");
+  });
 });

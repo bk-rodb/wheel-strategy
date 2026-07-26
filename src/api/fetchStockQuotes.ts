@@ -1,4 +1,5 @@
 import { marketData } from "./alpacaClient";
+import { MARKET_DATA_FEED } from "./fetchWheelPositions";
 import type { AlpacaSnapshotsResponse, AlpacaBarsResponse } from "./alpacaTypes";
 import { isMarketOpen } from "../utils/marketHours";
 
@@ -18,15 +19,15 @@ export async function fetchStockQuotes(symbols: string[]): Promise<Record<string
   const [snapshots, fiveMinBars] = await Promise.all([
     marketData.get<AlpacaSnapshotsResponse>("/v2/stocks/snapshots", {
       symbols: symbols.join(","),
-      feed: "iex",
+      feed: MARKET_DATA_FEED,
     }),
     marketOpen
       ? marketData.get<AlpacaBarsResponse>("/v2/stocks/bars", {
           symbols: symbols.join(","),
           timeframe: "5Min",
-          limit: "1",
+          limit: String(symbols.length),
           sort: "desc",
-          feed: "iex",
+          feed: MARKET_DATA_FEED,
         })
       : Promise.resolve({ bars: {} } as AlpacaBarsResponse),
   ]);
@@ -37,18 +38,21 @@ export async function fetchStockQuotes(symbols: string[]): Promise<Record<string
     const snap = snapshots[symbol];
     if (!snap) continue;
 
-    const closePrice = snap.prevDailyBar.c;
+    const closePrice = snap.prevDailyBar?.c;
+    if (closePrice == null) continue;
 
-    let lastPrice: number;
+    let lastPrice: number | undefined;
     let source: "5min" | "close";
 
     if (marketOpen && fiveMinBars.bars[symbol]?.length > 0) {
       lastPrice = fiveMinBars.bars[symbol][0].c;
       source = "5min";
     } else {
-      lastPrice = snap.dailyBar?.c ?? snap.latestTrade.p;
+      lastPrice = snap.dailyBar?.c ?? snap.latestTrade?.p;
       source = "close";
     }
+
+    if (lastPrice == null) continue;
 
     const change = lastPrice - closePrice;
     const changePct = closePrice > 0 ? (change / closePrice) * 100 : 0;

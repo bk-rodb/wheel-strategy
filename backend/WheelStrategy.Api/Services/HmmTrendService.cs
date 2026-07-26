@@ -37,7 +37,13 @@ public class HmmTrendService(
         DateTimeOffset asOf;
         var latest = await alpaca.GetLatestPriceAsync(symbol, ct);
         if (latest is { } l) { spot = l.price; asOf = l.asOf; }
-        else if (series.Count > 0) { spot = series[^1].Close; asOf = DateTime.UtcNow; }
+        else if (series.Count > 0)
+        {
+            var lastBar = series[^1];
+            spot = lastBar.Close;
+            asOf = new DateTimeOffset(lastBar.BarStart.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            warnings.Add("Spot price from cached bar close; asOf reflects last bar date, not a live quote.");
+        }
         else
         {
             warnings.Add("No price data available for symbol.");
@@ -45,12 +51,16 @@ public class HmmTrendService(
         }
 
         var logReturns = new List<double>(Math.Max(0, series.Count - 1));
+        var returnBarIndices = new List<int>(Math.Max(0, series.Count - 1));
         for (var i = 1; i < series.Count; i++)
         {
             var prev = (double)series[i - 1].Close;
             var curr = (double)series[i].Close;
             if (prev > 0 && curr > 0)
+            {
                 logReturns.Add(Math.Log(curr / prev));
+                returnBarIndices.Add(i);
+            }
         }
 
         if (logReturns.Count < _opts.MinSamples)
@@ -77,8 +87,8 @@ public class HmmTrendService(
         var history = new List<HmmStateSnapshot>();
         for (var t = 0; t < fit.StateProbs.Length; t++)
         {
-            var probs = fit.StateProbs[t];
-            var barDate = series[t + 1].BarStart.ToString("yyyy-MM-dd");
+            var probs = SanitizeProbs(fit.StateProbs[t]);
+            var barDate = series[returnBarIndices[t]].BarStart.ToString("yyyy-MM-dd");
             history.Add(new HmmStateSnapshot(barDate, probs, GaussianHmm.StateLabels[ArgMax(probs)]));
         }
 
@@ -86,23 +96,23 @@ public class HmmTrendService(
         foreach (var days in ForecastHorizons)
         {
             var horizonPeriods = weekly
-                ? Math.Max(1, (int)Math.Round(days / 7.0))
-                : Math.Max(1, days);
+                ? Math.Max(1, (int)Math.Ceiling(days / 7.0))
+                : Math.Max(1, (int)Math.Round(days * 5.0 / 7.0));
 
-            var stateProbs = GaussianHmm.ForecastStateProbs(model, current, horizonPeriods);
-            var periodReturn = GaussianHmm.ExpectedPeriodReturn(model, stateProbs);
-            var expectedPct = (Math.Exp(periodReturn * horizonPeriods) - 1.0) * 100.0;
+            var cumLogReturn = GaussianHmm.ForecastCumulativeLogReturn(model, current, horizonPeriods);
+            var expectedPct = Sanitize((Math.Exp(cumLogReturn) - 1.0) * 100.0);
+            var terminalProbs = SanitizeProbs(GaussianHmm.ForecastStateProbs(model, current, horizonPeriods));
 
             forecast.Add(new HmmForecastHorizon(
                 Days: days,
-                StateProbs: stateProbs,
+                StateProbs: terminalProbs,
                 ExpectedReturnPct: expectedPct,
-                BearProb: stateProbs[0],
-                BullProb: stateProbs[2]));
+                BearProb: terminalProbs[0],
+                BullProb: terminalProbs[2]));
         }
 
         var stateVols = model.Variances
-            .Select(v => Math.Sqrt(v) * Math.Sqrt(periodsPerYear) * 100.0)
+            .Select(v => Sanitize(Math.Sqrt(v) * Math.Sqrt(periodsPerYear) * 100.0))
             .ToList();
 
         warnings.Add("HMM regimes are descriptive, not predictive — use as one input among many.");
@@ -115,11 +125,15 @@ public class HmmTrendService(
             Granularity: weekly ? "weekly" : "daily",
             StateLabels: GaussianHmm.StateLabels,
             History: history,
-            CurrentStateProbs: current,
+            CurrentStateProbs: SanitizeProbs(current),
             CurrentRegime: currentRegime,
-            TransitionMatrix: model.Transition.Select(row => (IReadOnlyList<double>)row.ToList()).ToList(),
+            TransitionMatrix: model.Transition
+                .Select(row => (IReadOnlyList<double>)SanitizeProbs(row))
+                .ToList(),
             Forecast: forecast,
-            StateMeans: model.Means.Select(m => m * periodsPerYear * 100.0).ToList(),
+            StateMeans: model.Means
+                .Select(m => Sanitize((Math.Exp(m * periodsPerYear) - 1.0) * 100.0))
+                .ToList(),
             StateVols: stateVols,
             Warnings: warnings);
     }
@@ -148,5 +162,20 @@ public class HmmTrendService(
         for (var i = 1; i < xs.Count; i++)
             if (xs[i] > xs[best]) best = i;
         return best;
+    }
+
+    private static double Sanitize(double x) =>
+        double.IsFinite(x) ? Math.Round(x, 6) : 0;
+
+    private static double[] SanitizeProbs(IReadOnlyList<double> probs)
+    {
+        var sanitized = probs.Select(Sanitize).ToArray();
+        var sum = sanitized.Sum();
+        if (sum > 0)
+        {
+            for (var i = 0; i < sanitized.Length; i++)
+                sanitized[i] /= sum;
+        }
+        return sanitized;
     }
 }

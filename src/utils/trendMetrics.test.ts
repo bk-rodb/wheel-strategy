@@ -41,4 +41,9 @@ describe("trendMetrics", () => {
     expect(snap.chips.some((c) => c.label === "vs basis")).toBe(true);
     expect(snap.chips.some((c) => c.label === "vs SMA20")).toBe(true);
   });
+
+  it("returns no chips for empty history", () => {
+    const snap = buildTrendSnapshot([], 100, 0);
+    expect(snap.chips).toEqual([]);
+  });
 });

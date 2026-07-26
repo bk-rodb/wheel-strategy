@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { PricePoint } from "../types";
 import { marketData } from "../api/alpacaClient";
-import { fetch52WeekRange, fetchPriceHistory } from "../api/fetchWheelPositions";
+import { fetch52WeekRange, fetchPriceHistory, MARKET_DATA_FEED } from "../api/fetchWheelPositions";
 import type { AlpacaSnapshotsResponse } from "../api/alpacaTypes";
 import { fetchAsset } from "../api/searchAssets";
 import { MOCK_QUOTES } from "../data/mockQuotes";
@@ -118,7 +118,7 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
         const [snapshots, history, week52Range, asset] = await Promise.all([
           marketData.get<AlpacaSnapshotsResponse>("/v2/stocks/snapshots", {
             symbols: sym,
-            feed: "iex",
+            feed: MARKET_DATA_FEED,
           }),
           fetchPriceHistory([sym]),
           fetch52WeekRange(sym),
@@ -128,12 +128,12 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
         if (cancelled) return;
 
         const snap = snapshots[sym];
-        const prevClose = snap?.prevDailyBar.c ?? 0;
-        const lastPrice = snap?.latestTrade.p ?? snap?.dailyBar.c ?? prevClose;
+        const prevClose = snap?.prevDailyBar?.c ?? 0;
+        const lastPrice = snap?.latestTrade?.p ?? snap?.dailyBar?.c ?? prevClose;
         const change = lastPrice - prevClose;
         const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
-        const dayHigh = snap?.dailyBar.h ?? lastPrice;
-        const dayLow = snap?.dailyBar.l ?? lastPrice;
+        const dayHigh = snap?.dailyBar?.h ?? lastPrice;
+        const dayLow = snap?.dailyBar?.l ?? lastPrice;
         const range = resolveWeek52Range(week52Range, dayHigh, dayLow, lastPrice);
 
         setState({
@@ -146,7 +146,7 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
           dayLow,
           week52High: range.high,
           week52Low: range.low,
-          volume: snap?.dailyBar.v ?? 0,
+          volume: snap?.dailyBar?.v ?? 0,
           companyName: asset?.name ?? sym,
           loading: false,
           error: null,

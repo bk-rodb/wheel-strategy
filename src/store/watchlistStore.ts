@@ -24,10 +24,49 @@ interface WatchlistsState {
 }
 
 const KEY = "wheel-watchlist";
+const WATCHLIST_EVENT = "wheel-watchlist";
 const DEFAULT_NAME = "watchlist";
 
 function newId(): string {
-  return crypto.randomUUID();
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function isValidEntry(e: unknown): e is WatchlistEntry {
+  if (!e || typeof e !== "object") return false;
+  const o = e as Record<string, unknown>;
+  return (
+    typeof o.symbol === "string" &&
+    o.symbol.length > 0 &&
+    typeof o.addedAt === "string" &&
+    typeof o.displayOrder === "number" &&
+    Number.isFinite(o.displayOrder) &&
+    (o.notes === undefined || typeof o.notes === "string")
+  );
+}
+
+function isValidWatchlist(w: unknown): w is Watchlist {
+  if (!w || typeof w !== "object") return false;
+  const o = w as Record<string, unknown>;
+  return (
+    typeof o.id === "string" &&
+    o.id.length > 0 &&
+    typeof o.name === "string" &&
+    Array.isArray(o.entries) &&
+    o.entries.every(isValidEntry)
+  );
+}
+
+function isValidWatchlistsState(raw: unknown): raw is WatchlistsState {
+  if (!raw || typeof raw !== "object") return false;
+  const o = raw as Record<string, unknown>;
+  if (o.version !== 2) return false;
+  if (!Array.isArray(o.watchlists) || o.watchlists.length === 0) return false;
+  if (!o.watchlists.every(isValidWatchlist)) return false;
+  if (typeof o.activeId !== "string" || o.activeId.length === 0) return false;
+  return o.watchlists.some((w) => w.id === o.activeId);
 }
 
 function loadRaw(): unknown {
@@ -39,27 +78,34 @@ function loadRaw(): unknown {
   }
 }
 
-function migrate(raw: unknown): WatchlistsState {
-  if (
-    raw &&
-    typeof raw === "object" &&
-    "version" in raw &&
-    (raw as WatchlistsState).version === 2
-  ) {
-    return raw as WatchlistsState;
-  }
-
-  const legacyEntries = Array.isArray(raw) ? (raw as WatchlistEntry[]) : [];
+function freshState(entries: WatchlistEntry[] = []): WatchlistsState {
   const defaultId = newId();
   return {
     version: 2,
     activeId: defaultId,
-    watchlists: [{ id: defaultId, name: DEFAULT_NAME, entries: legacyEntries }],
+    watchlists: [{ id: defaultId, name: DEFAULT_NAME, entries }],
   };
 }
 
-function save(state: WatchlistsState) {
-  localStorage.setItem(KEY, JSON.stringify(state));
+function migrate(raw: unknown): WatchlistsState {
+  if (isValidWatchlistsState(raw)) {
+    return raw;
+  }
+
+  const legacyEntries = Array.isArray(raw)
+    ? (raw as unknown[]).filter(isValidEntry)
+    : [];
+  return freshState(legacyEntries);
+}
+
+function save(state: WatchlistsState): boolean {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    window.dispatchEvent(new Event(WATCHLIST_EVENT));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function load(): WatchlistsState {
@@ -90,15 +136,17 @@ function ensureNamedWatchlist(
 ): { state: WatchlistsState; changed: boolean } {
   let watchlists = state.watchlists;
   let existing = findByName({ ...state, watchlists }, name);
+  let created = false;
   if (!existing) {
     existing = { id: newId(), name, entries: [] };
     watchlists = [...watchlists, existing];
+    created = true;
   }
   const seeded =
     mode === "sync"
       ? syncToSeeds(existing.entries, seeds)
       : ensureDefaultsFor(existing.entries, seeds);
-  if (seeded === existing.entries) {
+  if (!created && seeded === existing.entries) {
     return { state: { ...state, watchlists }, changed: false };
   }
   watchlists = watchlists.map((w) =>
@@ -156,24 +204,44 @@ function ensureDefaultsFor(
   return updated;
 }
 
-function withDefaultSeeds(state: WatchlistsState): WatchlistsState {
+function withDefaultSeeds(state: WatchlistsState): { state: WatchlistsState; changed: boolean } {
   const defaultWl = getDefaultWatchlist(state);
   const seededDefault = ensureDefaultsFor(defaultWl.entries, DEFAULT_WATCHLIST);
+  const defaultChanged = seededDefault !== defaultWl.entries;
+
+  let next = state;
+  if (defaultChanged) {
+    next = {
+      ...next,
+      watchlists: next.watchlists.map((w) =>
+        w.id === defaultWl.id ? { ...w, entries: seededDefault } : w,
+      ),
+    };
+  }
+
   const { state: withTarget, changed: targetChanged } = ensureNamedWatchlist(
-    state,
+    next,
     TARGET_WATCHLIST_NAME,
     TARGET_WATCHLIST,
-    "sync",
+    "merge",
   );
-  const defaultChanged = seededDefault !== defaultWl.entries;
-  if (!defaultChanged && !targetChanged) return withTarget;
 
-  const watchlists = withTarget.watchlists.map((w) =>
-    w.id === defaultWl.id ? { ...w, entries: seededDefault } : w,
-  );
-  const next = { ...withTarget, watchlists };
-  save(next);
-  return next;
+  return { state: withTarget, changed: defaultChanged || targetChanged };
+}
+
+let seedPersistScheduled = false;
+
+function scheduleSeedPersist(state: WatchlistsState) {
+  if (seedPersistScheduled) return;
+  seedPersistScheduled = true;
+  queueMicrotask(() => {
+    seedPersistScheduled = false;
+    save(state);
+  });
+}
+
+function loadSeeded(): WatchlistsState {
+  return withDefaultSeeds(load()).state;
 }
 
 function activeWatchlist(state: WatchlistsState): Watchlist {
@@ -198,7 +266,9 @@ export type CreateWatchlistResult =
 
 export const watchlistStore = {
   getState(): WatchlistsState {
-    return withDefaultSeeds(load());
+    const { state, changed } = withDefaultSeeds(load());
+    if (changed) scheduleSeedPersist(state);
+    return state;
   },
 
   getWatchlists(): Watchlist[] {
@@ -217,7 +287,7 @@ export const watchlistStore = {
   },
 
   setActive(id: string): WatchlistsState {
-    const state = load();
+    const state = loadSeeded();
     if (!findById(state, id)) return state;
     const next = { ...state, activeId: id };
     save(next);
@@ -228,7 +298,7 @@ export const watchlistStore = {
     const trimmed = name.trim();
     if (!trimmed) return { ok: false, error: "empty" };
 
-    const state = load();
+    const state = loadSeeded();
     if (findByName(state, trimmed)) return { ok: false, error: "duplicate" };
 
     const watchlist: Watchlist = { id: newId(), name: trimmed, entries: [] };
@@ -250,7 +320,7 @@ export const watchlistStore = {
   },
 
   add(symbol: string, notes?: string): WatchlistEntry[] {
-    const state = load();
+    const state = loadSeeded();
     const active = activeWatchlist(state);
     if (active.entries.some((e) => e.symbol === symbol.toUpperCase())) {
       return active.entries;
@@ -267,7 +337,7 @@ export const watchlistStore = {
   },
 
   remove(symbol: string): WatchlistEntry[] {
-    const state = load();
+    const state = loadSeeded();
     const active = activeWatchlist(state);
     const updated = active.entries
       .filter((e) => e.symbol !== symbol.toUpperCase())
@@ -278,7 +348,7 @@ export const watchlistStore = {
   },
 
   updateNotes(symbol: string, notes: string): WatchlistEntry[] {
-    const state = load();
+    const state = loadSeeded();
     const active = activeWatchlist(state);
     const updated = active.entries.map((e) =>
       e.symbol === symbol.toUpperCase() ? { ...e, notes } : e,
@@ -289,7 +359,7 @@ export const watchlistStore = {
   },
 
   reorder(symbols: string[]): WatchlistEntry[] {
-    const state = load();
+    const state = loadSeeded();
     const active = activeWatchlist(state);
     const map = Object.fromEntries(active.entries.map((e) => [e.symbol, e]));
     const updated = symbols
@@ -298,5 +368,16 @@ export const watchlistStore = {
     return updateActiveEntries(state, updated).watchlists.find(
       (w) => w.id === state.activeId,
     )!.entries;
+  },
+
+  /** Notify listeners after watchlist mutations (same-tab + cross-tab via storage). */
+  subscribe(onChange: () => void): () => void {
+    const handler = () => onChange();
+    window.addEventListener(WATCHLIST_EVENT, handler);
+    window.addEventListener("storage", handler);
+    return () => {
+      window.removeEventListener(WATCHLIST_EVENT, handler);
+      window.removeEventListener("storage", handler);
+    };
   },
 };

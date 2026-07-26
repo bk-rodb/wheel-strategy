@@ -140,7 +140,7 @@ function Header({
           <>
             <div style={{ fontSize: 11, fontFamily: "monospace", color: "#5a5a7a", marginTop: 6, display: "flex", gap: 16, flexWrap: "wrap" }}>
               <span>SPOT <b style={{ color: "#e8e8f8" }}>{fmt.currency(data.currentPrice)}</b></span>
-              <span>IV(realized) <b style={{ color: "#e8e8f8" }}>{(data.realizedVolAnnual * 100).toFixed(1)}%</b></span>
+              <span>IV(realized) <b style={{ color: "#e8e8f8" }}>{data.realizedVolAnnual != null ? `${(data.realizedVolAnnual * 100).toFixed(1)}%` : "—"}</b></span>
               <span>HORIZON <b style={{ color: "#e8e8f8" }}>{data.horizonPeriods}× {data.granularity}</b></span>
               <span>LOOKBACK <b style={{ color: "#e8e8f8" }}>{(data.lookbackDays / 365).toFixed(1)}y</b></span>
               <span>SAMPLES <b style={{ color: "#e8e8f8" }}>{data.sampleCount}</b></span>
@@ -260,14 +260,16 @@ function SideCard({
             <div key={r.level} style={gridRow(false)}>
               <span style={{ color: LEVEL_COLOR[r.level], fontWeight: 700 }}>{r.level.toUpperCase()}</span>
               <span style={{ textAlign: "right", color: "#e8e8f8", fontWeight: 700 }}>{fmt.currency(r.strike)}</span>
-              <span style={{ textAlign: "right", color: r.pctFromSpot >= 0 ? "#34d399" : "#f87171" }}>
-                {(r.pctFromSpot * 100).toFixed(1)}%
+              <span style={{ textAlign: "right", color: (r.pctFromSpot ?? 0) >= 0 ? "#34d399" : "#f87171" }}>
+                {r.pctFromSpot != null ? `${(r.pctFromSpot * 100).toFixed(1)}%` : "—"}
               </span>
               <span style={{ textAlign: "right", color: "#a0a0c0" }}>
-                {(r.empiricalAssignmentProb * 100).toFixed(0)}% / {(r.blackScholesAssignmentProb * 100).toFixed(0)}%
+                {r.empiricalAssignmentProb != null && r.blackScholesAssignmentProb != null
+                  ? `${(r.empiricalAssignmentProb * 100).toFixed(0)}% / ${(r.blackScholesAssignmentProb * 100).toFixed(0)}%`
+                  : "—"}
               </span>
-              <span style={{ textAlign: "right", color: "#a0a0c0" }}>{fmt.currency(r.estPremium)}</span>
-              <span style={{ textAlign: "right", color: "#34d399" }}>{(r.annualizedYield * 100).toFixed(1)}%</span>
+              <span style={{ textAlign: "right", color: "#a0a0c0" }}>{r.estPremium != null ? fmt.currency(r.estPremium) : "—"}</span>
+              <span style={{ textAlign: "right", color: "#34d399" }}>{r.annualizedYield != null ? `${(r.annualizedYield * 100).toFixed(1)}%` : "—"}</span>
             </div>
           ))}
           <div style={{ padding: "8px 14px 4px", fontSize: 8, fontFamily: "monospace", color: "#3a3a5a", letterSpacing: "0.04em" }}>
