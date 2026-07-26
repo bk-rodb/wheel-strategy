@@ -1,5 +1,15 @@
-const TRADING_URL = import.meta.env.VITE_ALPACA_BASE_URL;
-const DATA_URL = import.meta.env.VITE_ALPACA_DATA_URL;
+/**
+ * Alpaca access goes through the backend proxy, never straight to Alpaca.
+ *
+ * Vite inlines every VITE_-prefixed variable into the bundle as a literal string,
+ * so a browser-held key — one that also authorizes POST /v2/orders — shipped in
+ * every dist/ build. WheelStrategy.Api attaches the APCA-* headers server-side
+ * from user-secrets; nothing here is a credential.
+ */
+import { API_BASE } from "../config";
+
+const TRADING_URL = `${API_BASE}/api/alpaca/trading`;
+const DATA_URL = `${API_BASE}/api/alpaca/data`;
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 400;
@@ -18,17 +28,7 @@ export class AlpacaHttpError extends Error {
   }
 }
 
-function authHeaders(withJson = false): HeadersInit {
-  // No Content-Type on GET: it isn't needed (no body) and adding it triggers a
-  // CORS preflight that Alpaca's data API rejects
-  // ("content-type is not allowed by Access-Control-Allow-Headers").
-  const headers: Record<string, string> = {
-    "APCA-API-KEY-ID": import.meta.env.VITE_ALPACA_API_KEY_ID,
-    "APCA-API-SECRET-KEY": import.meta.env.VITE_ALPACA_API_SECRET_KEY,
-  };
-  if (withJson) headers["Content-Type"] = "application/json";
-  return headers;
-}
+const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
 
 function isRetryable(status: number): boolean {
   return status === 429 || status >= 500;
@@ -64,10 +64,9 @@ async function get<T>(baseUrl: string, path: string, params?: Record<string, str
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   }
-  const res = await withRetry(
-    () => fetch(url.toString(), { headers: authHeaders() }),
-    true,
-  );
+  // No Content-Type on a GET: there is no body, and adding one would provoke a
+  // CORS preflight for nothing.
+  const res = await withRetry(() => fetch(url.toString()), true);
   if (!res.ok) {
     const text = await res.text();
     throw new AlpacaHttpError(path, res.status, text);
@@ -81,7 +80,7 @@ async function post<T>(baseUrl: string, path: string, body: unknown): Promise<T>
     () =>
       fetch(`${baseUrl}${path}`, {
         method: "POST",
-        headers: authHeaders(true),
+        headers: JSON_HEADERS,
         body: JSON.stringify(body),
       }),
     false,
@@ -96,10 +95,7 @@ async function post<T>(baseUrl: string, path: string, body: unknown): Promise<T>
 async function del(baseUrl: string, path: string): Promise<void> {
   const res = await withRetry(
     () =>
-      fetch(`${baseUrl}${path}`, {
-        method: "DELETE",
-        headers: authHeaders(),
-      }),
+      fetch(`${baseUrl}${path}`, { method: "DELETE" }),
     true,
   );
   // 204 = cancel accepted; 404 already gone — treat as success for UI unlock path.

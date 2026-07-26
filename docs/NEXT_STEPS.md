@@ -50,6 +50,18 @@ place, poll, and cancel simulated sell-to-open orders end to end. **Lane 1.3 lan
 ESLint + `react-hooks`, GitHub CI, xunit scaffold, `.gitattributes`; H-19 complete. Phase 0 (key
 rotation) deferred.
 
+**2026-07-25 (later) — Phase 5 complete: credentials are off the browser.** Lane 5.1 landed,
+retiring [C-1](./CODE_REVIEW.md#c-1--alpaca-api-key-and-secret-are-compiled-into-the-shipped-javascript),
+the last open Critical. All Alpaca traffic now goes `Browser → WheelStrategy.Api
+(/api/alpaca/…) → Alpaca`, with the `APCA-*` headers attached server-side from user-secrets.
+A clean `npm run build` contains no key, no secret, no `APCA-*` header name and no Alpaca
+hostname. Routes are allowlisted in `Alpaca/AlpacaProxyPolicy.cs` (so `DELETE /v2/positions`
+is unreachable) and order bodies are validated against qty / limit / notional caps with
+unknown fields rejected. `IS_MOCK` is now an explicit `VITE_USE_MOCK` flag; the
+`trade_updates` websocket is inert because Alpaca authenticates it with an in-band secret —
+polling at 5s already drove the phase machine, and an SSE relay is the follow-up. **74**
+backend tests (63 new for the proxy policy), 73 frontend tests, lint and `check:api` pass.
+
 **2026-07-25 (later) — Phase 3 complete** (`8e67f26`). Lanes 3.1–3.3
 landed in one pass: order state machine (C-2, C-3 hook-side, H-9, H-10 hook, M-8/12/19/23), order
 semantics and pricing (H-7, H-12, H-13, M-15, M-16, `fetchContractSnapshot`), and order UI (H-8,
@@ -97,7 +109,7 @@ graph LR
 
 | Phase | Lane | Scope | Findings | Tier | Blocked by | Status |
 |---|---|---|---|---|---|---|
-| 0 | — | Rotate keys (manual, no agent) | C-1, H-20 partial | human | — | open |
+| 0 | — | Rotate keys (manual, no agent) | C-1, H-20 partial | human | — | **open** |
 | 1 | 1.1 | Quick wins | 5 | 3 | — | **done** `5ca1bcd` |
 | 1 | 1.2 | Mock-mode unlock | 1 | 2 | — | **done** `9b9b9c7` |
 | 1 | 1.3 | Scaffolds: tests, lint, CI | 4 | 3 | — | **done** `4fba68b` |
@@ -113,7 +125,7 @@ graph LR
 | 4 | 4.2 | Tests | 1 | 2 | 1.2, 1.3, 2.x, 3.x | open |
 | 4 | 4.3 | Fetch and transport hardening | 13 | 2 | 2.1 | open |
 | 4 | 4.4 | Perf and accessibility | 5 | 3 | 1.1 | open |
-| 5 | 5.1 | Credential proxy | 1 | **1** | everything | open |
+| 5 | 5.1 | Credential proxy | 1 | **1** | everything | **done** (C-1 retired) |
 
 Peak useful concurrency is **5 agents** (Phase 2). Tier refers to the
 [model selection guide](#model-selection-guide). Counts sum to 111 because four findings
@@ -417,7 +429,8 @@ fetch, so the header can never advertise 55 DTE above 6-DTE contracts; fix the i
 
 ## Agent handoff — where to pick up
 
-**Phases 0–3 are complete except Phase 0 (manual key rotation) and the Lane 3.2 partials above.**
+**Phases 1–3 and Phase 5 are complete. Only Phase 0 (manual key rotation), Phase 4, and the
+Lane 3.2 partials remain.** All five Criticals are now retired.
 
 ### Done (do not re-do)
 
@@ -426,6 +439,7 @@ fetch, so the header can never advertise 55 DTE above 6-DTE contracts; fix the i
 | 1 | `5ca1bcd`, `9b9b9c7`, `4fba68b` | Quick wins, mock sell-to-open, ESLint/CI/xunit |
 | 2 | `928c673`, `d2ee56d` | Market data, bar cache, stats/nullable DTOs, watchlist, display/utils |
 | 3 | `8e67f26` | Order state machine, semantics/pricing, order UI |
+| 5 | (this change) | Alpaca credential proxy — C-1 retired; browser holds no keys |
 
 **Verification gate** (run from `C:/repos/wheel-strategy`):
 
@@ -436,27 +450,36 @@ dotnet test backend/WheelStrategy.Api.Tests/WheelStrategy.Api.Tests.csproj
 
 ### Next work (priority order)
 
-1. **Phase 0 (human)** — Rotate Alpaca + Finnhub keys; treat any existing `dist/` as compromised.
-   No code change; blocks nothing technically but should happen before deploy or live keys.
+1. **Phase 0 (human, still open)** — Rotate the Alpaca key/secret and the Finnhub token.
+   Phase 5 stops *new* bundles from carrying credentials; it cannot un-leak the ones already
+   built, and the keys currently in user-secrets are the same pair that sat in `dist/` and
+   (briefly, uncommitted) in a git-tracked `.env.example`. Rotate, then
+   `dotnet user-secrets set` the new values. Treat any existing `dist/` as compromised.
 
 2. **Phase 4 (four concurrent lanes)** — Platform hardening and tests. Start anywhere unblocked:
-   - **4.1** Backend platform (H-18, H-20, L-33 migrations) — needs 2.2, 2.3 ✓
+   - **4.1** Backend platform (H-18, H-20, L-33 migrations) — needs 2.2, 2.3 ✓. Note it now
+     shares `Program.cs` with the landed proxy; the proxy's own timeout is already set.
    - **4.2** Tests — **`usePendingOptionOrder` still has no dedicated test file** (H-21); highest
      value now that mock mode and Phase 3 fixes are in place
-   - **4.3** Fetch/transport (H-6, H-5 hook half, timeouts, stale indicators)
+   - **4.3** Fetch/transport (H-6, H-5 hook half, timeouts, stale indicators). `alpacaClient.ts`
+     is now a proxy client — add `AbortSignal.timeout` and `Retry-After` handling there; the
+     proxy already forwards `Retry-After` and exposes it via CORS.
    - **4.4** Perf/a11y (M-41, M-42, bundle split)
 
-3. **Phase 5 (exclusive)** — Credential proxy (C-1). Nothing else in flight; collides with 4.1 and 4.3.
+3. **Lane 3.2 partials** (optional, low urgency) — M-11, M-13, L-11, L-14, L-17–L-19.
 
-4. **Lane 3.2 partials** (optional, low urgency) — M-11, M-13, L-11, L-14, L-17–L-19.
+4. **SSE relay for `trade_updates`** (new, optional) — restores push-latency order updates
+   without a browser credential. `src/api/tradeUpdatesStream.ts` keeps its surface
+   specifically so this is one implementation swap. Polling at 5s covers correctness today.
 
-5. **Feature roadmap** — Unblocked after Phase 3. See [Feature roadmap](#feature-roadmap) below;
+5. **Feature roadmap** — Unblocked. See [Feature roadmap](#feature-roadmap) below;
    daily-granularity toggle and distribution viz are good first picks.
 
 ### Hot files (still avoid co-editing across lanes)
 
 `alpacaClient.ts`, `Program.cs`, `usePendingOptionOrder.ts`, `OpenOptionsSection.tsx`,
-`fetchWheelPositions.ts`, `formatters.ts`.
+`fetchWheelPositions.ts`, `formatters.ts`, and now
+`Endpoints/AlpacaProxyEndpoints.cs` / `Alpaca/AlpacaProxyPolicy.cs`.
 
 ---
 
@@ -544,9 +567,9 @@ encoding to the HMM regime ribbon.
 
 ---
 
-## Phase 5 — credential proxy (exclusive; nothing else runs)
+## Phase 5 — credential proxy (exclusive; nothing else runs) — **done**
 
-### Lane 5.1 — move Alpaca credentials server-side
+### Lane 5.1 — move Alpaca credentials server-side — **done**
 
 - **Findings:** [C-1](./CODE_REVIEW.md#c-1--alpaca-api-key-and-secret-are-compiled-into-the-shipped-javascript)
 - **Owns:** new `Endpoints/AlpacaProxyEndpoints.cs`, `Program.cs`,
@@ -571,6 +594,30 @@ must validate the order body rather than forwarding it blind. Point `alpacaClien
 unnecessary. Switch `config.ts` from deriving `IS_MOCK` off key presence to an explicit
 `VITE_USE_MOCK` flag, and strip the secrets from `.env.example`, `vite-env.d.ts`, and
 `PRE_LAUNCH.md`.
+
+> **Status: done.** As landed:
+>
+> - `Endpoints/AlpacaProxyEndpoints.cs` — `/api/alpaca/trading/{**path}` (GET/POST/DELETE)
+>   and `/api/alpaca/data/{**path}` (GET). Query string forwarded verbatim; upstream
+>   status/body/`Retry-After` passed straight back so `AlpacaHttpError` still carries
+>   Alpaca's message; timeout → 504, transport → 502, no credentials → 503. Excluded from
+>   the OpenAPI document, so `check:api` is unaffected.
+> - `Alpaca/AlpacaProxyPolicy.cs` — pure allowlist + order validation, 63 tests. Unlisted
+>   routes 404 (notably `DELETE /v2/positions`), traversal and multi-segment smuggling are
+>   refused, and unknown order fields are **rejected rather than stripped**.
+> - `Options/AlpacaProxyOptions.cs` — `MaxOrderQty` 50, `MaxLimitPrice` 1000,
+>   `MaxOrderNotional` 250k (on the 100-share multiplier), `TimeoutSeconds` 15, and
+>   `AllowOrderPlacement` as a read-only kill switch. `Alpaca:TradingBaseUrl` added.
+> - Frontend: `alpacaClient.ts` targets the proxy with no auth headers; `config.ts` uses
+>   `VITE_USE_MOCK` (defaulting to mock so a fresh clone does not fire failing calls);
+>   `vite-env.d.ts` and `.env.example` declare no secrets.
+> - **Verified:** a clean `npm run build` contains none of the key, secret, `APCA-*` header
+>   names, or Alpaca hostnames — it targets only `/api/alpaca/*` and `API_BASE`.
+>
+> **Two items intentionally left open.** The `trade_updates` websocket is inert rather than
+> relayed (Alpaca authenticates it with an in-band secret; 5s polling already drove the
+> phase machine) — an SSE relay is the follow-up. And Phase 0 key rotation is still
+> outstanding, which this cannot substitute for.
 
 ---
 

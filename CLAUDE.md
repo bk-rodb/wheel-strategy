@@ -41,8 +41,8 @@ A React + TypeScript SPA (Vite) — the **Wheel Strategy trading desk**: it trac
 
 - **[src/WheelDashboard.tsx](src/WheelDashboard.tsx)** — root component: broker/account state, tab system (Dashboard + per-position tabs + closeable opened-watchlist-ticker tabs).
 - **[src/data/mockPositions.ts](src/data/mockPositions.ts)** — mock `WheelPosition[]`. **[src/utils/formatters.ts](src/utils/formatters.ts)** — `fmt` currency/compact/percent helpers.
-- The browser calls Alpaca directly via [src/api/alpacaClient.ts](src/api/alpacaClient.ts) for prices/positions/**option chains and orders**; it calls the .NET backend via [src/api/fetchWheelAnalysis.ts](src/api/fetchWheelAnalysis.ts) for analysis. `API_BASE` comes from `VITE_API_BASE_URL` (default `http://localhost:5099`).
-- **`alpacaClient` exposes two clients:** `trading` (base `VITE_ALPACA_BASE_URL`, e.g. `paper-api.alpaca.markets` — accounts, positions, **option contracts, orders**) and `marketData` (base `VITE_ALPACA_DATA_URL`, e.g. `data.alpaca.markets` — quotes, bars, **option snapshots**). `trading.post`/`delete` send `Content-Type: application/json`; every GET omits it (see the CORS note under the analysis backend).
+- **The browser holds no credentials.** All Alpaca traffic — prices, positions, **option chains and orders** — goes through the backend proxy via [src/api/alpacaClient.ts](src/api/alpacaClient.ts); analysis goes through [src/api/fetchWheelAnalysis.ts](src/api/fetchWheelAnalysis.ts). Both target `API_BASE`, from `VITE_API_BASE_URL` (default `http://localhost:5099`). See **Alpaca credential proxy** below.
+- **`alpacaClient` exposes two clients:** `trading` (base `${API_BASE}/api/alpaca/trading` — accounts, positions, **option contracts, orders**) and `marketData` (base `${API_BASE}/api/alpaca/data` — quotes, bars, **option snapshots**). Paths are unchanged Alpaca paths (`/v2/positions`, `/v1beta1/options/snapshots`), so the proxy is transparent to callers. `trading.post` sends `Content-Type: application/json`; GETs omit it (no body).
 
 ### Order execution layer
 
@@ -59,7 +59,24 @@ The desk can sell-to-open the next-Friday put/call and manage that order — end
 
 **Analysis contract is single-sourced from the backend.** The wire shape lives in `Contracts/WheelAnalysisDtos.cs` (`WheelAnalysisResult`/`StrikeSuggestion`). On `dotnet build` the API emits `backend/WheelStrategy.Api/WheelStrategy.Api.json` (OpenAPI); `npm run gen:api` turns that into `src/api/generated/analysis.ts`, which `src/types.ts` re-exports as `WheelAnalysis`/`StrikeSuggestion` (narrowing `level` to the `"safe"|"regular"|"risky"` union). **Do not hand-edit the analysis types in `src/types.ts` or the generated file** — change the C# DTO, rebuild, and run `npm run gen:api`. `npm run check:api` fails the build if either committed artifact is stale. A schema transformer in `Program.cs` collapses .NET 10's `number|string` numeric unions so generated fields stay `number`. Note: `EnsureCreated` builds only the `HistoricalBar` cache table — the backend has no other persistence layer.
 
-⚠️ Alpaca's market-data API rejects a `Content-Type` header on GET requests (CORS preflight fails). Both the browser and backend clients deliberately omit it.
+⚠️ Alpaca's market-data API rejects a `Content-Type` header on GET requests (CORS preflight fails). The backend clients deliberately omit it.
+
+### Alpaca credential proxy
+
+**No Alpaca credential exists in the frontend.** Vite inlines every `VITE_`-prefixed variable into the bundle as a literal string, so a browser-held key — one that also authorizes `POST /v2/orders` — used to ship in every `dist/` build. The browser now calls the backend, which attaches the `APCA-*` headers from user-secrets:
+
+`Browser` → `WheelStrategy.Api` (`/api/alpaca/…`) → `Alpaca`
+
+- **[Endpoints/AlpacaProxyEndpoints.cs](backend/WheelStrategy.Api/Endpoints/AlpacaProxyEndpoints.cs)** — `/api/alpaca/trading/{**path}` (GET/POST/DELETE) and `/api/alpaca/data/{**path}` (GET). Forwards the query string verbatim, passes the upstream status/body/`Retry-After` straight back so `AlpacaHttpError` still sees Alpaca's own message, and maps timeout → 504, transport failure → 502, missing credentials → 503. Excluded from the OpenAPI doc, so it does not affect `npm run check:api`.
+- **[Alpaca/AlpacaProxyPolicy.cs](backend/WheelStrategy.Api/Alpaca/AlpacaProxyPolicy.cs)** — pure, tested policy. Routes are an **allowlist**, not a filter: anything unlisted is refused with 404, so `DELETE /v2/positions` (liquidate-all) is unreachable. Order bodies are validated field-by-field, and **unknown fields are rejected rather than stripped** — dropping one silently would place an order the caller did not describe.
+- **`AlpacaProxy` in appsettings** ([AlpacaProxyOptions.cs](backend/WheelStrategy.Api/Options/AlpacaProxyOptions.cs)) — `MaxOrderQty`, `MaxLimitPrice`, `MaxOrderNotional` (fat-finger caps, notional on the 100-share multiplier), `TimeoutSeconds`, and `AllowOrderPlacement` as a read-only kill switch.
+- **`Alpaca:TradingBaseUrl`** is what makes the desk live: paper by default, and switching it to `api.alpaca.markets` is the only change needed to trade real money.
+
+Adding an Alpaca route means adding it to `AlpacaProxyPolicy` — otherwise it 404s at the proxy regardless of what the frontend sends.
+
+`IS_MOCK` is now an explicit `VITE_USE_MOCK` flag in [src/config.ts](src/config.ts), defaulting to **mock on** (a fresh clone with no `.env` shows mock data instead of failing calls). It is no longer inferred from key presence, because there is no key to infer from.
+
+⚠️ **The `trade_updates` websocket is inert.** Alpaca authenticates it with an in-band frame carrying the key and secret, so a browser socket meant shipping the secret. [tradeUpdatesStream.ts](src/api/tradeUpdatesStream.ts) keeps its surface but never connects; order state comes from the 5s `ORDER_STATUS_POLL_MS` polling that already drove the phase machine. A server-side SSE relay is the follow-up.
 
 ### Data flow
 
@@ -72,7 +89,7 @@ The hook is wired for real API integration. Comments in `useWheelPositions` docu
 - E\*TRADE `/v1/market/optionchains` for the active option leg
 - yFinance (via a .NET proxy) as a price history fallback
 
-The refresh interval is 5 minutes. When `VITE_ALPACA_API_KEY_ID` is unset (`IS_MOCK`), mock positions are returned after a simulated 600 ms delay; otherwise positions load from Alpaca via `fetchWheelPositions`.
+The refresh interval is 5 minutes. Under `IS_MOCK` (`VITE_USE_MOCK` anything but `"false"`), mock positions are returned after a simulated 600 ms delay; otherwise positions load through the Alpaca proxy via `fetchWheelPositions`.
 
 ### Phase color coding
 

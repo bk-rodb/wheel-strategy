@@ -38,6 +38,7 @@ Tracked in [NEXT_STEPS.md](./NEXT_STEPS.md). As of Phase 3 (see commit after thi
 
 | ID | Status | Commit | Notes |
 |---|---|---|---|
+| C-1 | **fixed** | Phase 5 | Alpaca proxy on `WheelStrategy.Api`; browser bundle verified free of keys, `APCA-*` headers and Alpaca hostnames. **Key rotation (Phase 0) still owed.** |
 | C-2 | **fixed** | Phase 3 | Client order ID in ref; split resume/trade effects; no abort from effect cleanup |
 | C-3 | **fixed** | `5ca1bcd`, Phase 3 | `key` on detail views + hook clears state on `underlying` change |
 | C-4 | **fixed** | `5ca1bcd` | `@import` moved to top of `index.css`; ticker-tab rules in production CSS |
@@ -105,7 +106,7 @@ The recurring theme across all five areas is worth stating on its own: **this co
 
 | ID | Finding | Severity |
 |---|---|---|
-| [C-1](#c-1--alpaca-api-key-and-secret-are-compiled-into-the-shipped-javascript) | Alpaca key **and secret** inlined into the production bundle | **Critical** |
+| [C-1](#c-1--alpaca-api-key-and-secret-are-compiled-into-the-shipped-javascript) | ~~Alpaca key **and secret** inlined into the production bundle~~ | ~~**Critical**~~ *fixed Phase 5; rotation still owed* |
 | [C-2](#c-2--place-aborts-its-own-acceptance-wait-leaving-a-live-unmonitored-order) | ~~`place()` aborts its own acceptance wait~~ | ~~**Critical**~~ *fixed Phase 3* |
 | [C-3](#c-3--order-state-leaks-between-ticker-tabs) | ~~Order state leaks between ticker tabs~~ | ~~**Critical**~~ *fixed `5ca1bcd` + Phase 3* |
 | [C-5](#c-5--the-bar-cache-never-backfills-analysis-silently-runs-on-truncated-history) | ~~Bar cache never backfills~~ | ~~**Critical**~~ *fixed `928c673`* |
@@ -118,6 +119,15 @@ The recurring theme across all five areas is worth stating on its own: **this co
 ## 3. Critical
 
 ### C-1 — Alpaca API key and secret are compiled into the shipped JavaScript
+
+> **Remediation:** **Fixed** Phase 5. All Alpaca traffic goes through
+> `/api/alpaca/...` on `WheelStrategy.Api`, which attaches the `APCA-*` headers from
+> user-secrets; routes are allowlisted and order bodies validated in
+> `Alpaca/AlpacaProxyPolicy.cs`. A clean `npm run build` contains no key, no secret, no
+> `APCA-*` header name and no Alpaca hostname. The `trade_updates` websocket is inert
+> rather than relayed, since Alpaca authenticates it with an in-band secret.
+> **The keys described below still need rotating** — a proxy cannot un-leak bundles that
+> were already built.
 
 **Files:** `src/api/alpacaClient.ts:25-28`, `src/api/tradeUpdatesStream.ts:96-99`, `.env`
 

@@ -1,3 +1,4 @@
+import { IS_MOCK } from "../config";
 import { trading } from "./alpacaClient";
 
 export interface AssetResult {
@@ -42,12 +43,10 @@ const MOCK_ASSETS: AssetResult[] = [
   { symbol: "SPCX",  name: "Space Exploration Technologies Corp.", exchange: "NASDAQ" },
 ];
 
-const USE_MOCK = !import.meta.env.VITE_ALPACA_API_KEY_ID;
-
 export async function fetchAsset(symbol: string): Promise<AssetResult | null> {
   const sym = symbol.toUpperCase();
 
-  if (USE_MOCK) {
+  if (IS_MOCK) {
     return MOCK_ASSETS.find((a) => a.symbol === sym) ?? { symbol: sym, name: sym, exchange: "" };
   }
 
@@ -74,7 +73,7 @@ export async function fetchAssetNames(symbols: string[]): Promise<Record<string,
 export async function searchAssets(query: string): Promise<AssetResult[]> {
   if (query.length < 1) return [];
 
-  if (USE_MOCK) {
+  if (IS_MOCK) {
     const q = query.toUpperCase();
     const startsWith = MOCK_ASSETS.filter((a) => a.symbol.startsWith(q));
     const contains = MOCK_ASSETS.filter(
