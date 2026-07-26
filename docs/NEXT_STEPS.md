@@ -34,7 +34,7 @@ data that is quietly wrong, React wiring around the order state machine, failure
 render as confident numbers, and the absence of a safe environment to test execution in.
 **Remediation now leads this roadmap; features resume after Phase 3.**
 
-**2026-07-25 (later) — Phase 2 complete** (lanes 2.1–2.5). Market data pagination and
+**2026-07-25 (later) — Phase 2 complete** (`928c673`, lanes 2.1–2.5). Market data pagination and
 adjusted bars (H-1, H-2), multi-leg P&L (H-3), snapshot optional chaining (H-4), bar-cache
 backfill (C-5), HMM forecast path fix (H-14), nullable analysis DTOs (M-26), watchlist store
 hardening, display/utils fixes (H-15, M-17), and 11 backend golden-value tests.
@@ -93,11 +93,11 @@ graph LR
 | 1 | 1.1 | Quick wins | 5 | 3 | — | **done** `5ca1bcd` |
 | 1 | 1.2 | Mock-mode unlock | 1 | 2 | — | **done** `9b9b9c7` |
 | 1 | 1.3 | Scaffolds: tests, lint, CI | 4 | 3 | — | **done** `4fba68b` |
-| 2 | 2.1 | Market data correctness | 8 | 2 | 1.1 | **done** |
-| 2 | 2.2 | Backend bar cache | 3 | 2 (.NET) | — | **done** |
-| 2 | 2.3 | Backend statistics | 18 | **1** | 1.3 | **done** |
-| 2 | 2.4 | Watchlist store | 7 | 2 | — | **done** |
-| 2 | 2.5 | Display and utils | 9 | 2 | — | **done** |
+| 2 | 2.1 | Market data correctness | 8 | 2 | 1.1 | **done** `928c673` |
+| 2 | 2.2 | Backend bar cache | 3 | 2 (.NET) | — | **done** `928c673` |
+| 2 | 2.3 | Backend statistics | 18 | **1** | 1.3 | **done** `928c673` |
+| 2 | 2.4 | Watchlist store | 7 | 2 | — | **done** `928c673` |
+| 2 | 2.5 | Display and utils | 9 | 2 | — | **done** `928c673` |
 | 3 | 3.1 | Order state machine | 8 | **1** | 1.1, 1.2 | open |
 | 3 | 3.2 | Order semantics and pricing | 12 | **1** | 1.2, 3.1 | open |
 | 3 | 3.3 | Order UI | 8 | 2 | 3.2 | open |
