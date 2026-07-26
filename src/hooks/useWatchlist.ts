@@ -7,6 +7,7 @@ import {
 import { fetchStockQuotes, type StockQuote } from "../api/fetchStockQuotes";
 import { MOCK_QUOTES } from "../data/mockQuotes";
 import { IS_MOCK } from "../config";
+import { QUOTE_REFRESH_MS } from "../utils/marketHours";
 
 export type WatchlistQuote = StockQuote;
 
@@ -78,7 +79,7 @@ export function useWatchlist() {
       return next;
     });
     void refreshQuotes(symbols);
-    const interval = setInterval(() => void refreshQuotes(symbols), 5 * 60_000);
+    const interval = setInterval(() => void refreshQuotes(symbols), QUOTE_REFRESH_MS);
     return () => {
       clearInterval(interval);
       seqRef.current += 1;

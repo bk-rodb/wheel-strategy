@@ -5,6 +5,7 @@ import {
   type FridayOptionsBundle,
   type OptionSide,
 } from "../api/fetchFridayOptions";
+import { shouldIgnoreFetchError } from "../utils/abort";
 import { nextFriday, toDateString } from "../utils/nextFriday";
 
 /** Re-fetch ladder quotes when older than this (ms). */
@@ -27,6 +28,7 @@ export function useFridayOptionSuggestions(opts: {
   );
   const [expirationsLoading, setExpirationsLoading] = useState(false);
   const fetchedAtRef = useRef<number | null>(null);
+  const refreshAbortRef = useRef<AbortController | null>(null);
 
   const effectiveExpiration = expiration ?? defaultExpiration;
 
@@ -40,12 +42,11 @@ export function useFridayOptionSuggestions(opts: {
           setExpirations(picker.dates);
           setDefaultExpiration(picker.defaultExpiration);
         }
-      } catch {
-        if (!signal?.aborted) {
-          const fallback = toDateString(nextFriday());
-          setExpirations([fallback]);
-          setDefaultExpiration(fallback);
-        }
+      } catch (e) {
+        if (shouldIgnoreFetchError(signal, e)) return;
+        const fallback = toDateString(nextFriday());
+        setExpirations([fallback]);
+        setDefaultExpiration(fallback);
       } finally {
         if (!signal?.aborted) setExpirationsLoading(false);
       }
@@ -59,7 +60,6 @@ export function useFridayOptionSuggestions(opts: {
       if (!opts?.silent) {
         setLoading(true);
         setError(null);
-        setData(null);
       }
       try {
         const bundle = await fetchFridayOptions({
@@ -74,12 +74,11 @@ export function useFridayOptionSuggestions(opts: {
           fetchedAtRef.current = Date.now();
         }
       } catch (e) {
-        if (!signal?.aborted) {
-          setError(e instanceof Error ? e.message : "Failed to load Friday options");
-          setData(null);
-        }
+        if (shouldIgnoreFetchError(signal, e)) return;
+        setError(e instanceof Error ? e.message : "Failed to load Friday options");
+        if (!opts?.silent) setData(null);
       } finally {
-        if (!signal?.aborted && !opts?.silent) setLoading(false);
+        if (!opts?.silent) setLoading(false);
       }
     },
     [symbol, side, shares, effectiveExpiration, enabled],
@@ -110,24 +109,36 @@ export function useFridayOptionSuggestions(opts: {
   // Refresh stale quotes while the ladder is visible.
   useEffect(() => {
     if (!enabled || !data) return;
+    let staleCtrl: AbortController | null = null;
     const id = window.setInterval(() => {
       const age = fetchedAtRef.current ? Date.now() - fetchedAtRef.current : Infinity;
       if (age >= QUOTE_STALE_MS) {
-        const ctrl = new AbortController();
-        void load(ctrl.signal, { silent: true });
+        staleCtrl?.abort();
+        staleCtrl = new AbortController();
+        void load(staleCtrl.signal, { silent: true });
       }
     }, QUOTE_STALE_MS);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+      staleCtrl?.abort();
+    };
   }, [enabled, data, load]);
+
+  useEffect(() => () => refreshAbortRef.current?.abort(), []);
+
+  const refresh = useCallback(() => {
+    refreshAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    refreshAbortRef.current = ctrl;
+    void loadExpirations(ctrl.signal);
+    void load(ctrl.signal);
+  }, [loadExpirations, load]);
 
   return {
     data,
     loading: loading || expirationsLoading,
     error,
-    refresh: () => {
-      void loadExpirations();
-      void load();
-    },
+    refresh,
     expirations,
     defaultExpiration,
     quotedAt: data?.quotedAt ?? null,

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchCatalysts } from "../api/fetchCatalysts";
 import { fetchTickerNews } from "../api/fetchTickerNews";
+import { shouldIgnoreFetchError } from "../utils/abort";
 import type { CatalystEvent, NewsItem } from "../types";
 
 export function useTickerCatalysts(symbol: string) {
@@ -24,11 +25,10 @@ export function useTickerCatalysts(symbol: string) {
         setWarnings(catalysts.warnings ?? []);
         setNews(headlines);
       } catch (e) {
-        if (!signal?.aborted) {
-          setError(e instanceof Error ? e.message : "Failed to load catalysts");
-        }
+        if (shouldIgnoreFetchError(signal, e)) return;
+        setError(e instanceof Error ? e.message : "Failed to load catalysts");
       } finally {
-        if (!signal?.aborted) setLoading(false);
+        setLoading(false);
       }
     },
     [symbol],

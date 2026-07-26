@@ -87,5 +87,8 @@ export async function fetchWheelAnalysis(
     params.granularity ?? "",
     params.riskFreeRate ?? "",
   ].join("|");
-  return inflightDeduped(key, () => fetchWheelAnalysisOnce(params, signal));
+  // Deduped GETs are not tied to one caller's abort signal — unmounting one
+  // consumer must not cancel the shared fetch for others (Phase 4 regression).
+  void signal;
+  return inflightDeduped(key, () => fetchWheelAnalysisOnce(params));
 }

@@ -40,3 +40,6 @@ export const PENDING_ORDER_POSITION_POLL_MS = 5000;
 
 /** Default refresh when no working orders. */
 export const POSITIONS_POLL_MS = 5 * 60 * 1000;
+
+/** Watchlist quotes and ticker detail headers share this cadence. */
+export const QUOTE_REFRESH_MS = 5 * 60 * 1000;

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchWheelAnalysis, type WheelAnalysisParams } from "../api/fetchWheelAnalysis";
+import { shouldIgnoreFetchError } from "../utils/abort";
 import type { AnalysisGranularity, WheelAnalysis } from "../types";
 
 interface UseWheelAnalysisOptions {
@@ -28,11 +29,10 @@ export function useWheelAnalysis(opts: UseWheelAnalysisOptions) {
         const result = await fetchWheelAnalysis(params, ctrl.signal);
         if (!ctrl.signal.aborted) setData(result);
       } catch (e) {
-        if (!ctrl.signal.aborted) {
-          setError(e instanceof Error ? e.message : "Failed to load analysis");
-        }
+        if (shouldIgnoreFetchError(ctrl.signal, e)) return;
+        setError(e instanceof Error ? e.message : "Failed to load analysis");
       } finally {
-        if (!ctrl.signal.aborted) setLoading(false);
+        setLoading(false);
       }
     },
     [symbol, dte, lookbackDays, granularity],

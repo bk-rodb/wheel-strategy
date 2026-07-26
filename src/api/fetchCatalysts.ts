@@ -50,5 +50,7 @@ export async function fetchCatalysts(
   signal?: AbortSignal,
 ): Promise<TickerCatalystsResult> {
   const sym = symbol.toUpperCase();
-  return inflightDeduped(`catalysts|${sym}`, () => fetchCatalystsOnce(sym, signal));
+  // Deduped GETs are not tied to one caller's abort signal (see fetchWheelAnalysis).
+  void signal;
+  return inflightDeduped(`catalysts|${sym}`, () => fetchCatalystsOnce(sym));
 }

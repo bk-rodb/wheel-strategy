@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchAtmImpliedVol } from "../api/fetchAtmImpliedVol";
 import { fetchWheelAnalysis } from "../api/fetchWheelAnalysis";
+import { shouldIgnoreFetchError } from "../utils/abort";
 
 export function useVolatilityMetrics(symbol: string) {
   const [realizedVol, setRealizedVol] = useState<number | null>(null);
@@ -21,11 +22,10 @@ export function useVolatilityMetrics(symbol: string) {
         setRealizedVol(analysis.realizedVolAnnual);
         setImpliedVol(iv);
       } catch (e) {
-        if (!signal?.aborted) {
-          setError(e instanceof Error ? e.message : "Failed to load volatility");
-        }
+        if (shouldIgnoreFetchError(signal, e)) return;
+        setError(e instanceof Error ? e.message : "Failed to load volatility");
       } finally {
-        if (!signal?.aborted) setLoading(false);
+        setLoading(false);
       }
     },
     [symbol],

@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import type { PricePoint } from "../types";
 import { marketData } from "../api/alpacaClient";
+import { resolveStockQuote } from "../api/resolveStockQuote";
 import { fetch52WeekRange, fetchPriceHistory, MARKET_DATA_FEED } from "../api/fetchWheelPositions";
-import type { AlpacaSnapshotsResponse } from "../api/alpacaTypes";
+import type { AlpacaBarsResponse, AlpacaSnapshotsResponse } from "../api/alpacaTypes";
 import { fetchAsset } from "../api/searchAssets";
 import { MOCK_QUOTES } from "../data/mockQuotes";
 import { IS_MOCK } from "../config";
+import { isMarketOpen, QUOTE_REFRESH_MS } from "../utils/marketHours";
 
 export interface TickerSnapshot {
   priceHistory: PricePoint[];
@@ -71,9 +73,13 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
   useEffect(() => {
     const sym = symbol.toUpperCase();
     let cancelled = false;
-    setState({ ...EMPTY, loading: true, error: null });
+    let isInitial = true;
 
     async function load() {
+      if (isInitial) {
+        setState({ ...EMPTY, loading: true, error: null });
+      }
+
       try {
         if (IS_MOCK) {
           const [q, asset] = await Promise.all([
@@ -115,11 +121,21 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
           return;
         }
 
-        const [snapshots, history, week52Range, asset] = await Promise.all([
+        const marketOpen = isMarketOpen();
+        const [snapshots, fiveMinBars, history, week52Range, asset] = await Promise.all([
           marketData.get<AlpacaSnapshotsResponse>("/v2/stocks/snapshots", {
             symbols: sym,
             feed: MARKET_DATA_FEED,
           }),
+          marketOpen
+            ? marketData.get<AlpacaBarsResponse>("/v2/stocks/bars", {
+                symbols: sym,
+                timeframe: "5Min",
+                limit: "1",
+                sort: "desc",
+                feed: MARKET_DATA_FEED,
+              })
+            : Promise.resolve({ bars: {} } as AlpacaBarsResponse),
           fetchPriceHistory([sym]),
           fetch52WeekRange(sym),
           fetchAsset(sym),
@@ -128,20 +144,21 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
         if (cancelled) return;
 
         const snap = snapshots[sym];
-        const prevClose = snap?.prevDailyBar?.c ?? 0;
-        const lastPrice = snap?.latestTrade?.p ?? snap?.dailyBar?.c ?? prevClose;
-        const change = lastPrice - prevClose;
-        const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
-        const dayHigh = snap?.dailyBar?.h ?? lastPrice;
-        const dayLow = snap?.dailyBar?.l ?? lastPrice;
-        const range = resolveWeek52Range(week52Range, dayHigh, dayLow, lastPrice);
+        const quote = resolveStockQuote(snap, fiveMinBars.bars[sym]?.[0]?.c, marketOpen);
+        if (!quote) {
+          throw new Error(`No quote data for ${sym}`);
+        }
+
+        const dayHigh = snap?.dailyBar?.h ?? quote.lastPrice;
+        const dayLow = snap?.dailyBar?.l ?? quote.lastPrice;
+        const range = resolveWeek52Range(week52Range, dayHigh, dayLow, quote.lastPrice);
 
         setState({
           priceHistory: history[sym] ?? [],
-          lastPrice,
-          prevClose,
-          change,
-          changePct,
+          lastPrice: quote.lastPrice,
+          prevClose: quote.closePrice,
+          change: quote.change,
+          changePct: quote.changePct,
           dayHigh,
           dayLow,
           week52High: range.high,
@@ -158,12 +175,16 @@ export function useTickerSnapshot(symbol: string): TickerSnapshot {
           loading: false,
           error: e instanceof Error ? e.message : "Failed to load ticker",
         });
+      } finally {
+        isInitial = false;
       }
     }
 
-    load();
+    void load();
+    const interval = setInterval(() => void load(), QUOTE_REFRESH_MS);
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
   }, [symbol]);
 

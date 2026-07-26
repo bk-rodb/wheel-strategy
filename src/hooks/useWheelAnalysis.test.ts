@@ -76,4 +76,21 @@ describe("useWheelAnalysis", () => {
     expect(result.current.data).toEqual(analysis);
     expect(result.current.error).toBeNull();
   });
+
+  it("does not surface AbortError from a superseded in-flight load", async () => {
+    vi.mocked(fetchWheelAnalysis).mockRejectedValueOnce(
+      new DOMException("signal is aborted without reason", "AbortError"),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ granularity }: { granularity: AnalysisGranularity }) =>
+        useWheelAnalysis({ symbol: "NVDA", dte: 35, granularity }),
+      { initialProps: { granularity: "weekly" satisfies AnalysisGranularity } },
+    );
+
+    rerender({ granularity: "daily" });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBeNull();
+  });
 });

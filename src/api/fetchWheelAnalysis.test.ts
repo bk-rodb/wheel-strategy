@@ -40,14 +40,40 @@ describe("fetchWheelAnalysis", () => {
     expect(String(url)).not.toContain("granularity=");
   });
 
-  it("passes an abort signal to fetch (merged with timeout)", async () => {
+  it("passes an abort signal to fetch on refresh (merged with timeout)", async () => {
     const ctrl = new AbortController();
-    await fetchWheelAnalysis({ symbol: "NVDA", granularity: "daily" }, ctrl.signal);
+    await fetchWheelAnalysis({ symbol: "NVDA", granularity: "daily", refresh: true }, ctrl.signal);
 
     expect(fetch).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+  });
+
+  it("deduped fetch is not cancelled when one subscriber aborts", async () => {
+    let resolveFetch!: (value: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    vi.mocked(fetch).mockReturnValueOnce(pending);
+
+    const aborted = new AbortController();
+    const shared = fetchWheelAnalysis(
+      { symbol: "NVDA", dte: 35, granularity: "daily" },
+      aborted.signal,
+    );
+    const peer = fetchWheelAnalysis({ symbol: "NVDA", dte: 35, granularity: "daily" });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    aborted.abort();
+    resolveFetch({
+      ok: true,
+      json: () => Promise.resolve(mockWheelAnalysis()),
+    } as Response);
+
+    await expect(shared).resolves.toEqual(mockWheelAnalysis());
+    await expect(peer).resolves.toEqual(mockWheelAnalysis());
   });
 
   it("throws with API detail on non-OK response", async () => {
