@@ -40,7 +40,7 @@ the `key` half of [C-3](./CODE_REVIEW.md#c-3--order-state-leaks-between-ticker-t
 [H-17](./CODE_REVIEW.md#h-17--the-topbar-refresh-button-silently-swallows-every-error),
 M-39, M-43, and regenerated API types (partial [H-19](./CODE_REVIEW.md#h-19--generated-api-types-are-stale-and-the-contract-rule-is-being-bypassed)).
 Lane 1.2 fixed [H-11](./CODE_REVIEW.md#h-11--sell-to-open-is-unreachable-in-mock-mode) — mock mode can
-place, poll, and cancel simulated sell-to-open orders end to end. **Lane 1.3 landed** (`TBD`) —
+place, poll, and cancel simulated sell-to-open orders end to end. **Lane 1.3 landed** (`4fba68b`) —
 ESLint + `react-hooks`, GitHub CI, xunit scaffold, `.gitattributes`; H-19 complete. Phase 0 (key
 rotation) deferred; Phase 2 and Phase 3.1 are unblocked.
 
@@ -87,7 +87,7 @@ graph LR
 | 0 | — | Rotate keys (manual, no agent) | C-1, H-20 partial | human | — | open |
 | 1 | 1.1 | Quick wins | 5 | 3 | — | **done** `5ca1bcd` |
 | 1 | 1.2 | Mock-mode unlock | 1 | 2 | — | **done** `9b9b9c7` |
-| 1 | 1.3 | Scaffolds: tests, lint, CI | 4 | 3 | — | **done** |
+| 1 | 1.3 | Scaffolds: tests, lint, CI | 4 | 3 | — | **done** `4fba68b` |
 | 2 | 2.1 | Market data correctness | 8 | 2 | 1.1 | open |
 | 2 | 2.2 | Backend bar cache | 3 | 2 (.NET) | — | open |
 | 2 | 2.3 | Backend statistics | 18 | **1** | 1.3 | open |
