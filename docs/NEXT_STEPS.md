@@ -34,6 +34,15 @@ data that is quietly wrong, React wiring around the order state machine, failure
 render as confident numbers, and the absence of a safe environment to test execution in.
 **Remediation now leads this roadmap; features resume after Phase 3.**
 
+**2026-07-25 (later) — Phase 1 lanes 1.1–1.2 landed** (`5ca1bcd`, `9b9b9c7`). Lane 1.1
+retired [C-4](./CODE_REVIEW.md#c-4--tickertabcss-is-dropped-from-the-production-bundle-breaking-every-detail-page-header),
+the `key` half of [C-3](./CODE_REVIEW.md#c-3--order-state-leaks-between-ticker-tabs),
+[H-17](./CODE_REVIEW.md#h-17--the-topbar-refresh-button-silently-swallows-every-error),
+M-39, M-43, and regenerated API types (partial [H-19](./CODE_REVIEW.md#h-19--generated-api-types-are-stale-and-the-contract-rule-is-being-bypassed)).
+Lane 1.2 fixed [H-11](./CODE_REVIEW.md#h-11--sell-to-open-is-unreachable-in-mock-mode) — mock mode can
+place, poll, and cancel simulated sell-to-open orders end to end. Phase 0 (key rotation) and
+Lane 1.3 (CI, ESLint, xunit) remain open; Phase 3 is unblocked pending 1.3 for tests only.
+
 ---
 
 ## How to use this document
@@ -72,25 +81,25 @@ graph LR
 
 ## Launch board
 
-| Phase | Lane | Scope | Findings | Tier | Blocked by |
-|---|---|---|---|---|---|
-| 0 | — | Rotate keys (manual, no agent) | C-1, H-20 partial | human | — |
-| 1 | 1.1 | Quick wins | 5 | 3 | — |
-| 1 | 1.2 | Mock-mode unlock | 1 | 2 | — |
-| 1 | 1.3 | Scaffolds: tests, lint, CI | 4 | 3 | — |
-| 2 | 2.1 | Market data correctness | 8 | 2 | 1.1 |
-| 2 | 2.2 | Backend bar cache | 3 | 2 (.NET) | — |
-| 2 | 2.3 | Backend statistics | 18 | **1** | 1.3 |
-| 2 | 2.4 | Watchlist store | 7 | 2 | — |
-| 2 | 2.5 | Display and utils | 9 | 2 | — |
-| 3 | 3.1 | Order state machine | 8 | **1** | 1.1, 1.2 |
-| 3 | 3.2 | Order semantics and pricing | 12 | **1** | 1.2, 3.1 |
-| 3 | 3.3 | Order UI | 8 | 2 | 3.2 |
-| 4 | 4.1 | Backend platform | 8 | 2 (.NET) | 2.2, 2.3 |
-| 4 | 4.2 | Tests | 1 | 2 | 1.2, 1.3, 2.x, 3.x |
-| 4 | 4.3 | Fetch and transport hardening | 13 | 2 | 2.1 |
-| 4 | 4.4 | Perf and accessibility | 5 | 3 | 1.1 |
-| 5 | 5.1 | Credential proxy | 1 | **1** | everything |
+| Phase | Lane | Scope | Findings | Tier | Blocked by | Status |
+|---|---|---|---|---|---|---|
+| 0 | — | Rotate keys (manual, no agent) | C-1, H-20 partial | human | — | open |
+| 1 | 1.1 | Quick wins | 5 | 3 | — | **done** `5ca1bcd` |
+| 1 | 1.2 | Mock-mode unlock | 1 | 2 | — | **done** `9b9b9c7` |
+| 1 | 1.3 | Scaffolds: tests, lint, CI | 4 | 3 | — | partial (H-19 in 1.1) |
+| 2 | 2.1 | Market data correctness | 8 | 2 | 1.1 | open |
+| 2 | 2.2 | Backend bar cache | 3 | 2 (.NET) | — | open |
+| 2 | 2.3 | Backend statistics | 18 | **1** | 1.3 | open |
+| 2 | 2.4 | Watchlist store | 7 | 2 | — | open |
+| 2 | 2.5 | Display and utils | 9 | 2 | — | open |
+| 3 | 3.1 | Order state machine | 8 | **1** | 1.1, 1.2 | open |
+| 3 | 3.2 | Order semantics and pricing | 12 | **1** | 1.2, 3.1 | open |
+| 3 | 3.3 | Order UI | 8 | 2 | 3.2 | open |
+| 4 | 4.1 | Backend platform | 8 | 2 (.NET) | 2.2, 2.3 | open |
+| 4 | 4.2 | Tests | 1 | 2 | 1.2, 1.3, 2.x, 3.x | open |
+| 4 | 4.3 | Fetch and transport hardening | 13 | 2 | 2.1 | open |
+| 4 | 4.4 | Perf and accessibility | 5 | 3 | 1.1 | open |
+| 5 | 5.1 | Credential proxy | 1 | **1** | everything | open |
 
 Peak useful concurrency is **5 agents** (Phase 2). Tier refers to the
 [model selection guide](#model-selection-guide). Counts sum to 111 because four findings
@@ -124,12 +133,12 @@ Do these by hand before launching anything. They are not code changes.
 
 ## Phase 1 — unblock (3 lanes, all concurrent)
 
-### Lane 1.1 — quick wins
+### Lane 1.1 — quick wins — **done** (`5ca1bcd`)
 
-- **Findings:** [C-3](./CODE_REVIEW.md#c-3--order-state-leaks-between-ticker-tabs) (`key` prop half),
-  [C-4](./CODE_REVIEW.md#c-4--tickertabcss-is-dropped-from-the-production-bundle-breaking-every-detail-page-header),
-  [H-17](./CODE_REVIEW.md#h-17--the-topbar-refresh-button-silently-swallows-every-error),
-  M-39, M-43
+- **Findings:** [C-3](./CODE_REVIEW.md#c-3--order-state-leaks-between-ticker-tabs) (`key` prop half) ✓,
+  [C-4](./CODE_REVIEW.md#c-4--tickertabcss-is-dropped-from-the-production-bundle-breaking-every-detail-page-header) ✓,
+  [H-17](./CODE_REVIEW.md#h-17--the-topbar-refresh-button-silently-swallows-every-error) ✓,
+  M-39 ✓, M-43 ✓
 - **Owns:** [src/WheelDashboard.tsx](../src/WheelDashboard.tsx), [src/index.css](../src/index.css),
   [src/theme/tickerTab.css](../src/theme/tickerTab.css), and deletion of the root `WheelDashboard.tsx`
 - **Blocked by:** nothing
@@ -143,9 +152,9 @@ wrap `onRefresh={() => void refresh()}`, restore a `:focus-visible` rule after
 missing `.ticker-tab-bar__tab--active` rule that `TabBar.tsx:39` applies but the stylesheet
 never defined. Verify by confirming the built CSS grew beyond 394 bytes.
 
-### Lane 1.2 — mock-mode unlock
+### Lane 1.2 — mock-mode unlock — **done** (`9b9b9c7`)
 
-- **Findings:** [H-11](./CODE_REVIEW.md#h-11--sell-to-open-is-unreachable-in-mock-mode)
+- **Findings:** [H-11](./CODE_REVIEW.md#h-11--sell-to-open-is-unreachable-in-mock-mode) ✓
 - **Owns:** [src/api/fetchFridayOptions.ts](../src/api/fetchFridayOptions.ts),
   [src/api/preTradeCheck.ts](../src/api/preTradeCheck.ts), and the single `tradable:` expression
   in [src/components/OpenOptionsSection.tsx](../src/components/OpenOptionsSection.tsx)
@@ -161,7 +170,7 @@ prefix. Keep the `tradable` blocker itself; it is correct and valuable in live m
 
 ### Lane 1.3 — scaffolds
 
-- **Findings:** [H-19](./CODE_REVIEW.md#h-19--generated-api-types-are-stale-and-the-contract-rule-is-being-bypassed),
+- **Findings:** [H-19](./CODE_REVIEW.md#h-19--generated-api-types-are-stale-and-the-contract-rule-is-being-bypassed) **partial** (`5ca1bcd` — `gen:api` + catalyst types; CI/ESLint/xunit still open),
   M-44, M-45, L-34
 - **Owns:** new `backend/WheelStrategy.Api.Tests/` project, new `eslint.config.js`, new
   `.github/workflows/ci.yml`, new `.gitattributes`, [package.json](../package.json),
@@ -169,9 +178,10 @@ prefix. Keep the `tradable` blocker itself; it is correct and valuable in live m
 - **Blocked by:** nothing
 - **Model:** Tier 3
 
-Almost entirely new files, so conflict-free. Run `npm run gen:api` and commit the result,
+Almost entirely new files, so conflict-free. ~~Run `npm run gen:api` and commit the result,
 then delete the hand-written `CatalystEvent` / `TickerCatalystsResult` duplicates in
-`types.ts:97-130` and point `fetchCatalysts.ts` at the generated types. Add
+`types.ts:97-130` and point `fetchCatalysts.ts` at the generated types.~~ **Done in `5ca1bcd`.**
+Add
 `typescript-eslint` with the `react-hooks` plugin — `exhaustive-deps` is directly relevant
 to C-2. Wire `npm run check:api`, `npm run build`, `npm test`, and `dotnet build` into CI
 so the guard that already exists actually gates something. Create the xunit project as an

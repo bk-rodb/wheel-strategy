@@ -65,7 +65,7 @@ Edit `.env` (see [.env.example](../.env.example) for defaults):
 
 Paper keys: [Alpaca paper dashboard](https://app.alpaca.markets/paper-trading).
 
-**Mock mode:** Leave `VITE_ALPACA_API_KEY_ID` empty to run on mock positions, quotes, and account data (top bar shows **MOCK DATA**). No keys required to explore the UI.
+**Mock mode:** Leave `VITE_ALPACA_API_KEY_ID` empty to run on mock positions, quotes, account data, and **simulated option orders** (top bar shows **MOCK DATA**). Sell-to-open uses an in-browser order store — place → accept → cancel works without Alpaca keys. Strike suggestions still come from the analysis API when it is running. No keys required to explore the UI or test the order state machine.
 
 Restart `npm run dev` after any `.env` change — Vite reads env vars at startup.
 
@@ -101,7 +101,7 @@ Alpaca's market-data API rejects a `Content-Type` header on GET requests. Fronte
 
 ## Architecture (quick reference)
 
-- **Live app entry:** `src/WheelDashboard.tsx` (not the root-level `WheelDashboard.tsx` duplicate)
+- **Live app entry:** `src/WheelDashboard.tsx` (rendered by `src/main.tsx`)
 - **Browser → Alpaca:** prices, positions, watchlist snapshots via `src/api/alpacaClient.ts`
 - **Browser → Analysis API:** strike suggestions via `src/api/fetchWheelAnalysis.ts`
 - **Analysis API → Alpaca:** historical bars cached in SQLite (`HistoricalBar`)

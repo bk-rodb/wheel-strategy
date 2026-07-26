@@ -41,7 +41,8 @@ npm run dev
 2. **Mock mode:** top bar shows **MOCK DATA**; sample positions and watchlist quotes load
 3. **Live mode:** top bar does **not** say MOCK DATA; positions/prices from Alpaca paper
 4. **Wheel Analysis:** open a watchlist ticker tab — strike panel loads (backend must be running)
-5. Backend health: `curl http://localhost:5099/health`
+5. **Mock orders (H-11):** in mock mode, open a watchlist ticker → **OPEN OPTIONS** ladder → **SELL** on a row → check the acknowledgment box → **SIMULATE ORDER** → **CANCEL ORDER** on the working banner (no Alpaca keys required; analysis API must be running for the ladder)
+6. Backend health: `curl http://localhost:5099/health`
 
 If the Wheel Analysis panel errors, confirm the API terminal is running and `VITE_API_BASE_URL` matches (default `http://localhost:5099`).
 

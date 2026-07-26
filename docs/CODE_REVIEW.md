@@ -18,7 +18,7 @@ Full-repository review of the React/TypeScript trading desk and the .NET analysi
 
 Findings were **verified by running the code, the toolchain, or against vendor documentation** — not inferred from reading alone. Reproduction commands are in [§7](#7-reproducing-the-findings).
 
-Baseline state at review time:
+Baseline state at review time (commit `f52f980`):
 
 | Check | Result |
 |---|---|
@@ -32,6 +32,23 @@ Baseline state at review time:
 | Linter | **None configured** — no ESLint, Prettier, or Biome |
 | CI | **None** — no `.github/workflows` |
 
+### Remediation progress (updates after `f52f980`)
+
+Tracked in [NEXT_STEPS.md](./NEXT_STEPS.md). As of `9b9b9c7`:
+
+| ID | Status | Commit | Notes |
+|---|---|---|---|
+| C-3 | **partial** | `5ca1bcd` | `key` on `TickerDetail` / `WatchlistTickerDetail`; hook-side clear still Lane 3.1 |
+| C-4 | **fixed** | `5ca1bcd` | `@import` moved to top of `index.css`; ticker-tab rules in production CSS |
+| H-11 | **fixed** | `9b9b9c7` | Mock sell-to-open via OSI symbols + `row.tradable` |
+| H-17 | **fixed** | `5ca1bcd` | `onRefresh={() => void refresh()}` |
+| H-19 | **partial** | `5ca1bcd` | `check:api` passes; catalyst types from OpenAPI; CI/ESLint still open (Lane 1.3) |
+| M-39 | **fixed** | `5ca1bcd` | Global `button:focus-visible` rule |
+| M-43 | **fixed** | `5ca1bcd` | Root `WheelDashboard.tsx` deleted |
+
+Current toolchain (post-remediation): `npm run build` passes with no CSS `@import` warning;
+`npm run check:api` passes.
+
 ---
 
 ## 2. Executive summary
@@ -42,11 +59,9 @@ The defects cluster in five places:
 
 1. **Secrets.** The Alpaca key *and secret* are compiled verbatim into the shipped JavaScript, and the Finnhub token is written into request URLs that get logged.
 2. **Market data that is quietly wrong.** A misunderstanding of Alpaca's `limit` semantics means most symbols receive **no bars at all**; bar requests omit `adjustment=all`, so a post-split 52-week range renders ~10× too high; only one option leg per underlying survives, so portfolio P&L is not merely incomplete but incorrect.
-3. **React wiring around the order state machine.** The logic is sound; the wiring undermines it. One dependency-array mistake aborts the first order of every session, and one missing `key` prop lets a working order on one ticker be cancelled under another.
+3. **React wiring around the order state machine.** The logic is sound; the wiring undermines it. One dependency-array mistake aborts the first order of every session (**C-2**, open), and a missing `key` prop lets a working order on one ticker be cancelled under another (**C-3** — `key` half fixed in `5ca1bcd`; hook-side clear still open).
 4. **Failures that render as confident numbers.** Errors collapse into `$0.00`, `NaN` becomes `0`, regime probabilities display 100× too small, and a stale mark is dressed up as a live quote.
-5. **Verification.** The statistical engine has no tests, the order state machine has none, and — critically — sell-to-open is *unreachable in mock mode*, so the whole execution path can only be exercised against a live broker.
-
-That last point explains much of the rest. Nearly every serious execution bug below survives because there is no safe environment in which to hit it.
+5. **Verification.** The statistical engine has no tests, the order state machine has none. ~~Sell-to-open was unreachable in mock mode~~ (**H-11** fixed in `9b9b9c7` — simulated orders work; automated tests still open per **H-21**).
 
 The recurring theme across all five areas is worth stating on its own: **this codebase is much better at computing the right answer than at admitting when it can't.** Almost every failure path substitutes a plausible-looking number — zero, a stale price, an unadjusted high — for "I don't know". On a trading desk those are not equivalent, and the fix is usually a nullable field and a visible indicator rather than new logic.
 
@@ -56,8 +71,8 @@ The recurring theme across all five areas is worth stating on its own: **this co
 |---|---|---|
 | [C-1](#c-1--alpaca-api-key-and-secret-are-compiled-into-the-shipped-javascript) | Alpaca key **and secret** inlined into the production bundle | **Critical** |
 | [C-2](#c-2--place-aborts-its-own-acceptance-wait-leaving-a-live-unmonitored-order) | `place()` aborts its own acceptance wait, leaving a live unmonitored order | **Critical** |
-| [C-3](#c-3--order-state-leaks-between-ticker-tabs) | Order state leaks between ticker tabs — cancel the wrong symbol's order | **Critical** |
-| [C-4](#c-4--tickertabcss-is-dropped-from-the-production-bundle-breaking-every-detail-page-header) | `tickerTab.css` dropped from the bundle — every detail header is broken | **Critical** |
+| [C-3](#c-3--order-state-leaks-between-ticker-tabs) | Order state leaks between ticker tabs — cancel the wrong symbol's order | **Critical** — *partial (`5ca1bcd`)* |
+| [C-4](#c-4--tickertabcss-is-dropped-from-the-production-bundle-breaking-every-detail-page-header) | `tickerTab.css` dropped from the bundle — every detail header is broken | ~~**Critical**~~ *fixed `5ca1bcd`* |
 | [C-5](#c-5--the-bar-cache-never-backfills-analysis-silently-runs-on-truncated-history) | Bar cache never backfills — analysis silently runs on truncated history | **Critical** |
 | [H-1](#h-1--the-multi-symbol-bar-limit-is-a-total-not-per-symbol-so-most-symbols-get-nothing) | Multi-symbol bar `limit` is a total — most symbols get no bars | **High** |
 | [H-3](#h-3--only-one-option-leg-per-underlying-survives) | Only one option leg per underlying survives — P&L is wrong | **High** |
@@ -174,6 +189,8 @@ Put the resume logic in an effect keyed only on `[underlying, enabled]`, and let
 
 ### C-3 — Order state leaks between ticker tabs
 
+> **Remediation:** `key={activePosition.id}` / `key={activeWatchlistTicker}` on detail views landed in `5ca1bcd` (Lane 1.1). Hook-side state clear remains Lane 3.1.
+
 **Files:** `src/WheelDashboard.tsx:137-152`, `src/components/OpenOptionsSection.tsx:97-100`, `src/hooks/usePendingOptionOrder.ts:169-250`
 
 The detail views are rendered without a `key`:
@@ -216,6 +233,8 @@ Switching from ticker A to ticker B renders the same component type in the same 
 Independently, `usePendingOptionOrder` should clear `order`/`phase`/`error` at the top of its `underlying` effect so a stale order can never survive a symbol change.
 
 ### C-4 — `tickerTab.css` is dropped from the production bundle, breaking every detail-page header
+
+> **Remediation:** **Fixed** in `5ca1bcd` — `@import "./theme/tickerTab.css"` moved to the top of `index.css` (before any non-`@import` rules).
 
 **Files:** `src/index.css:10`, `src/theme/tickerTab.css`, `src/components/TickerTabLabel.tsx:12-18`
 
@@ -484,7 +503,11 @@ The `place()` guard at `:266` still protects you *while `orderRef` holds the ord
 
 #### H-11 — Sell-to-open is unreachable in mock mode
 
+> **Remediation:** **Fixed** in `9b9b9c7` (Lane 1.2). Mock rows use `buildOsiSymbol(...)` and `FridayOptionRow.tradable`; `preTradeCheck` gates on `ticket.tradable !== false`.
+
 **Files:** `src/api/fetchFridayOptions.ts:194-197`, `src/components/OpenOptionsSection.tsx:180`, `src/api/preTradeCheck.ts:56`
+
+*Historical description (pre-fix):*
 
 In `IS_MOCK`, `fetchFridayOptions` builds rows with no contracts, so `contractSymbol` becomes the synthetic `MOCK{LEVEL}{strike}`. `OpenOptionsSection` then passes `tradable: !ticket.contractSymbol.startsWith("MOCK")` → `false` → `preTradeCheck` pushes the blocker `"Contract is not tradable"` → `canSubmit` is false and the CONFIRM/SIMULATE button is **permanently disabled**.
 
@@ -593,6 +616,8 @@ A trader reads near-zero conviction in every regime and a flat forecast when the
 
 #### H-17 — The TopBar REFRESH button silently swallows every error
 
+> **Remediation:** **Fixed** in `5ca1bcd` — `onRefresh={() => void refresh()}` so React does not pass a `MouseEvent` as the `background` flag.
+
 **Files:** `src/WheelDashboard.tsx:91`, `src/hooks/useWheelPositions.ts:23-41`, `:71`
 
 `refresh` *is* `fetchPositions`, whose signature is `async (background = false)`. It is passed straight through as `onRefresh={refresh}` and then to `onClick={onRefresh}`, so React invokes it with the synthetic event — **`background` receives a truthy `MouseEvent`**. Every manual refresh therefore runs in background mode, which suppresses both the loading state and the error:
@@ -632,7 +657,11 @@ It arrives transitively through `Microsoft.AspNetCore.OpenApi` and surfaces as `
 
 #### H-19 — Generated API types are stale and the contract rule is being bypassed
 
+> **Remediation:** **Partial** in `5ca1bcd` — `npm run check:api` passes; catalyst DTOs generated and re-exported from `types.ts`. ESLint + CI wiring still open (Lane 1.3 / M-44).
+
 **Files:** `src/api/generated/analysis.ts`, `src/types.ts:97-130`
+
+*Historical description (pre-fix):*
 
 `npm run check:api` **fails**. Regenerating from the committed OpenAPI document produces a 73-insertion / 18-deletion diff. Missing from the committed TypeScript: the `/api/catalysts` path, the `CatalystEventDto` / `TickerCatalystsResult` / `HmmStateSnapshot` schemas, and changes to `StrikeSuggestion`.
 
@@ -735,11 +764,11 @@ Every strike recommendation comes out of untested code. `StatMath` is pure and d
 | M-36 | The `target` watchlist is force-synced on every load, silently deleting user additions and overwriting edited notes. From the operator's view, tickers added yesterday are gone this morning with no message. | `watchlistStore.ts:97-136` |
 | M-37 | No cross-tab sync for the watchlist — last write wins, while `orderBlotter.subscribe` demonstrates the intended pattern. | `watchlistStore.ts` |
 | M-38 | `useWatchlist` clears all quotes and re-fetches everything whenever `entries` changes identity — and `add` triggers two such changes, so adding one ticker blanks all 20 rows. `refreshQuotes` also has no sequencing, and its `finally` clears the loading flag for a *different* in-flight call. | `useWatchlist.ts:61-67` |
-| M-39 | `button { all: unset }` resets `outline-style` to `none` and overrides the UA `:focus-visible` rule with no replacement, so no control in the desk has a visible keyboard focus indicator — including `CONFIRM ORDER` and `CANCEL ORDER`. | `index.css:12` |
+| M-39 | `button { all: unset }` resets `outline-style` to `none`… | `index.css:12` — **fixed `5ca1bcd`** |
 | M-40 | The focus highlight never fades: `onFocusHandled?.()` at t=60 ms flips `focusSection`, changing the dependency and clearing the t=2400 ms timer before it fires. The amber "attention" ring stays for the session. | `OpenOptionsSection.tsx:115-128` |
 | M-41 | `SummaryDashboard` recomputes the ledger and metrics every render, `useOpenBlotterOrders` returns a fresh array on every blotter event, and each card renders an unmemoized recharts `Sparkline`. `withRunningBalances` also silently assumes `activities` is newest-first. | `SummaryDashboard.tsx:80-105` |
 | M-42 | `PriceTrendChart` dereferences `data.find(...)!.date` eighteen lines *before* its own `if (chartData.length === 0) return null`. Empty data or one `NaN` price throws a `TypeError` that unmounts the whole detail page — there is no error boundary anywhere. Latent because `PriceTrendSection` guards upstream. | `PriceTrendChart.tsx:45-49` |
-| M-43 | A tracked, never-type-checked duplicate of the root component: imported by nothing, 1,478 diff lines from the live one, outside `tsconfig.app.json`'s `include: ["src"]` so `tsc -b` never checks it, and carrying shadowing copies of `WheelPhase`, `DataSource`, `OptionLeg`, `PricePoint`. Delete it — the warnings in three docs exist because someone was already caught. | `WheelDashboard.tsx` (root) |
+| M-43 | ~~A tracked, never-type-checked duplicate of the root component…~~ **deleted `5ca1bcd`** | ~~`WheelDashboard.tsx` (root)~~ |
 | M-44 | No linter, formatter, or CI. This is why [H-19](#h-19--generated-api-types-are-stale-and-the-contract-rule-is-being-bypassed) went unnoticed — `check:api` works, it just isn't wired to anything. Add `typescript-eslint` with `react-hooks` (`exhaustive-deps` is directly relevant to [C-2](#c-2--place-aborts-its-own-acceptance-wait-leaving-a-live-unmonitored-order)). | repo root |
 | M-45 | Dev-dependency advisories: 4 total (`postcss` high, `js-yaml` moderate). Production deps are clean, but the PostCSS path-traversal issue touches the build pipeline. | `package.json` |
 | M-46 | 745 kB single bundle, no code splitting. Recharts dominates and is needed only by the chart components. | `vite.config.ts` |
@@ -802,8 +831,8 @@ for(const k of ['VITE_ALPACA_API_KEY_ID','VITE_ALPACA_API_SECRET_KEY'])
 # C-4 — dropped stylesheet (no ticker-tab rules in the output)
 npm run build && cat dist/assets/*.css
 
-# H-19 — stale generated types (exits non-zero)
-npm run check:api
+# H-19 — stale generated types (exits non-zero if regen drifts)
+npm run check:api   # passes as of 5ca1bcd when types match OpenAPI
 
 # H-18 / M-45 — dependency advisories
 cd backend/WheelStrategy.Api && dotnet list package --vulnerable --include-transitive
@@ -854,14 +883,14 @@ These are the parts that should survive any refactor:
 | # | Action | Addresses |
 |---|---|---|
 | 1 | Move Alpaca credentials behind the backend; rotate the Alpaca and Finnhub keys | [C-1](#c-1--alpaca-api-key-and-secret-are-compiled-into-the-shipped-javascript), [H-20](#h-20--unvalidated-inputs-unhandled-exception-types-and-a-logged-api-key-on-the-backend) |
-| 2 | Five small fixes with outsized payoff: `key={symbol}`, move the `@import`, wrap `onRefresh`, add the cache coverage check, add `adjustment=all` | [C-3](#c-3--order-state-leaks-between-ticker-tabs), [C-4](#c-4--tickertabcss-is-dropped-from-the-production-bundle-breaking-every-detail-page-header), [C-5](#c-5--the-bar-cache-never-backfills-analysis-silently-runs-on-truncated-history), [H-2](#h-2--frontend-bar-requests-omit-adjustmentall), [H-17](#h-17--the-topbar-refresh-button-silently-swallows-every-error) |
+| 2 | ~~Five small fixes…~~ Lane 1.1 **done** (`5ca1bcd`); cache coverage + `adjustment=all` still open | [C-3](#c-3) partial, ~~[C-4](#c-4)~~, [C-5](#c-5), [H-2](#h-2), ~~[H-17](#h-17)~~ |
 | 3 | Fix the bar `limit`/pagination and the unguarded snapshot derefs | [H-1](#h-1--the-multi-symbol-bar-limit-is-a-total-not-per-symbol-so-most-symbols-get-nothing), [H-4](#h-4--snapshot-sub-objects-are-dereferenced-without-optional-chaining) |
 | 4 | Stabilize the hook's callback identities and split the effect | [C-2](#c-2--place-aborts-its-own-acceptance-wait-leaving-a-live-unmonitored-order) |
-| 5 | Make mock mode able to place orders, then test the state machine | [H-11](#h-11--sell-to-open-is-unreachable-in-mock-mode), [H-21](#h-21--the-analysis-engine-and-the-order-state-machine-have-no-tests) |
+| 5 | ~~Make mock mode able to place orders~~ **H-11 done** (`9b9b9c7`); add state-machine tests | ~~[H-11](#h-11)~~, [H-21](#h-21--the-analysis-engine-and-the-order-state-machine-have-no-tests) |
 | 6 | The "wrong money on screen" cluster: option legs, errors-as-zeros, `NaN` propagation | [H-3](#h-3--only-one-option-leg-per-underlying-survives), [H-5](#h-5--errors-are-swallowed-into-zeros-and-stale-values), [M-1](#5-medium), [M-26](#5-medium) |
 | 7 | Order-status semantics: `done_for_day`, partial-fill-then-cancel, `reset()` | [H-7](#h-7--done_for_day-is-treated-as-a-fill), [H-9](#h-9--reset-discards-a-live-order-and-re-enables-sell), [H-10](#h-10--a-partially-filled-order-that-is-then-cancelled-is-silently-erased) |
 | 8 | Displayed values: HMM percentages and forecast formula, stale ladder | [H-14](#h-14--the-hmm-forecast-applies-the-terminal-states-mean-to-every-period), [H-15](#h-15--the-hmm-panel-renders-every-probability-100-too-small), [H-16](#h-16--changing-the-expiration-shows-the-previous-expirations-strikes-under-the-new-header) |
 | 9 | Real quotes on close/roll; tick rounding; contract multiplier; OSI padding | [H-8](#h-8--buy-to-close-and-roll-fabricate-a-bidask-defeating-the-fat-finger-guard), [H-12](#h-12--contract-multiplier--size--tradable-are-ignored), [H-13](#h-13--option-limit-prices-are-not-rounded-to-a-valid-tick), [M-11](#5-medium) |
 | 10 | Add a fetch layer with timeouts, dedup, and sequencing; harden `watchlistStore` | [H-6](#h-6--no-request-timeouts-no-in-flight-guard-and-an-n3-fan-out-that-will-trip-alpacas-rate-limit), [M-34](#5-medium)–[M-38](#5-medium) |
-| 11 | Add the xunit project, ESLint, and CI; regenerate the API types | [H-19](#h-19--generated-api-types-are-stale-and-the-contract-rule-is-being-bypassed), [H-21](#h-21--the-analysis-engine-and-the-order-state-machine-have-no-tests), [M-44](#5-medium) |
-| 12 | Pin `Microsoft.OpenApi` and the floating versions; `npm audit fix`; restore focus rings; delete the duplicate root component | [H-18](#h-18--microsoftopenapi-200-carries-a-known-high-severity-advisory), [M-39](#5-medium), [M-43](#5-medium), [M-45](#5-medium) |
+| 11 | Add the xunit project, ESLint, and CI; ~~regenerate the API types~~ partial (`5ca1bcd`) | [H-19](#h-19) partial, [H-21](#h-21--the-analysis-engine-and-the-order-state-machine-have-no-tests), [M-44](#5-medium) |
+| 12 | Pin `Microsoft.OpenApi`…; ~~restore focus rings; delete the duplicate root component~~ partial | [H-18](#h-18), ~~[M-39](#5-medium)~~, ~~[M-43](#5-medium)~~, [M-45](#5-medium) |

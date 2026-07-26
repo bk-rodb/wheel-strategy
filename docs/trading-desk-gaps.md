@@ -50,7 +50,7 @@ flowchart LR
 | Pillar | Today |
 |--------|--------|
 | Market data | Alpaca L1 quotes/bars/option snapshots; backend caches historical bars |
-| OMS | Sell-to-open + buy-to-close; place/cancel/poll; `client_order_id`; mock path |
+| OMS | Sell-to-open + buy-to-close; place/cancel/poll; `client_order_id`; mock path (simulated orders when `IS_MOCK`, including sell-to-open since `9b9b9c7`) |
 | Positions / P&L | Wheel positions + summary metrics (deployed, unrealized, premium, day change) |
 | Risk | Client `preTradeCheck` (collateral, coverage, fat-finger); one live order per underlying |
 | Blotter | localStorage transitions + pending strip on Summary |
