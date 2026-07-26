@@ -50,7 +50,7 @@ place, poll, and cancel simulated sell-to-open orders end to end. **Lane 1.3 lan
 ESLint + `react-hooks`, GitHub CI, xunit scaffold, `.gitattributes`; H-19 complete. Phase 0 (key
 rotation) deferred.
 
-**2026-07-25 (later) — Phase 3 complete** (uncommitted at handoff; commit pending). Lanes 3.1–3.3
+**2026-07-25 (later) — Phase 3 complete** (`8e67f26`). Lanes 3.1–3.3
 landed in one pass: order state machine (C-2, C-3 hook-side, H-9, H-10 hook, M-8/12/19/23), order
 semantics and pricing (H-7, H-12, H-13, M-15, M-16, `fetchContractSnapshot`), and order UI (H-8,
 H-16, H-10 UI, M-14/20/21/22/40). **73** frontend tests; `npm run build`, `npm run lint`, and
@@ -106,9 +106,9 @@ graph LR
 | 2 | 2.3 | Backend statistics | 18 | **1** | 1.3 | **done** `928c673` |
 | 2 | 2.4 | Watchlist store | 7 | 2 | — | **done** `928c673` |
 | 2 | 2.5 | Display and utils | 9 | 2 | — | **done** `928c673` |
-| 3 | 3.1 | Order state machine | 8 | **1** | 1.1, 1.2 | **done** (Phase 3) |
-| 3 | 3.2 | Order semantics and pricing | 12 | **1** | 1.2, 3.1 | **done** (Phase 3; see partials below) |
-| 3 | 3.3 | Order UI | 8 | 2 | 3.2 | **done** (Phase 3) |
+| 3 | 3.1 | Order state machine | 8 | **1** | 1.1, 1.2 | **done** `8e67f26` |
+| 3 | 3.2 | Order semantics and pricing | 12 | **1** | 1.2, 3.1 | **done** `8e67f26` (partials: M-11, M-13, L-11/14/17–19) |
+| 3 | 3.3 | Order UI | 8 | 2 | 3.2 | **done** `8e67f26` |
 | 4 | 4.1 | Backend platform | 8 | 2 (.NET) | 2.2, 2.3 | open |
 | 4 | 4.2 | Tests | 1 | 2 | 1.2, 1.3, 2.x, 3.x | open |
 | 4 | 4.3 | Fetch and transport hardening | 13 | 2 | 2.1 | open |
@@ -425,7 +425,7 @@ fetch, so the header can never advertise 55 DTE above 6-DTE contracts; fix the i
 |---|---|---|
 | 1 | `5ca1bcd`, `9b9b9c7`, `4fba68b` | Quick wins, mock sell-to-open, ESLint/CI/xunit |
 | 2 | `928c673`, `d2ee56d` | Market data, bar cache, stats/nullable DTOs, watchlist, display/utils |
-| 3 | *(this commit)* | Order state machine, semantics/pricing, order UI |
+| 3 | `8e67f26` | Order state machine, semantics/pricing, order UI |
 
 **Verification gate** (run from `C:/repos/wheel-strategy`):
 
