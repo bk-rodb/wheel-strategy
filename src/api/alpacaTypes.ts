@@ -6,6 +6,7 @@ export interface AlpacaAccount {
   last_equity: string;
   cash: string;
   buying_power: string;
+  options_buying_power?: string;
   long_market_value: string;
   short_market_value: string;
   portfolio_value: string;
@@ -113,6 +114,7 @@ export interface AlpacaOrderRequest {
   time_in_force: "day" | "gtc";
   limit_price?: string;
   client_order_id?: string;
+  position_intent?: "buy_to_close" | "sell_to_close" | "buy_to_open" | "sell_to_open";
 }
 
 export type AlpacaOrderStatus =

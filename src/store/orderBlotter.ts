@@ -15,6 +15,7 @@ export type DeskOrderState =
   | "cancel_requested"
   | "cancel_pending"
   | "filled"
+  | "partial_filled"
   | "canceled"
   | "rejected"
   | "error";
@@ -67,8 +68,12 @@ function load(): BlotterStore {
 }
 
 function save(store: BlotterStore) {
-  localStorage.setItem(KEY, JSON.stringify(store));
-  window.dispatchEvent(new Event(BLOT_EVENT));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(store));
+    window.dispatchEvent(new Event(BLOT_EVENT));
+  } catch {
+    // Quota exceeded or private browsing — blotter is advisory only.
+  }
 }
 
 export const orderBlotter = {

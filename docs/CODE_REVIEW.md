@@ -34,22 +34,56 @@ Baseline state at review time (commit `f52f980`):
 
 ### Remediation progress (updates after `f52f980`)
 
-Tracked in [NEXT_STEPS.md](./NEXT_STEPS.md). As of `9b9b9c7`:
+Tracked in [NEXT_STEPS.md](./NEXT_STEPS.md). As of Phase 3 (see commit after this doc update):
 
 | ID | Status | Commit | Notes |
 |---|---|---|---|
-| C-3 | **partial** | `5ca1bcd` | `key` on `TickerDetail` / `WatchlistTickerDetail`; hook-side clear still Lane 3.1 |
+| C-2 | **fixed** | Phase 3 | Client order ID in ref; split resume/trade effects; no abort from effect cleanup |
+| C-3 | **fixed** | `5ca1bcd`, Phase 3 | `key` on detail views + hook clears state on `underlying` change |
 | C-4 | **fixed** | `5ca1bcd` | `@import` moved to top of `index.css`; ticker-tab rules in production CSS |
+| C-5 | **fixed** | `928c673` | Bar cache backfill (Lane 2.2) |
+| H-1 | **fixed** | `928c673` | Per-symbol pagination (Lane 2.1) |
+| H-2 | **fixed** | `928c673` | `adjustment=all` on bar fetch |
+| H-3 | **fixed** | `928c673` | Multi-leg P&L + `optionLegCount` |
+| H-4 | **fixed** | `928c673` | Snapshot optional chaining |
+| H-7 | **fixed** | Phase 3 | `isOrderFilled` uses qty for `done_for_day` |
+| H-8 | **fixed** | Phase 3 | Close/roll use `fetchContractSnapshot` |
+| H-9 | **fixed** | Phase 3 | `reset()` refuses open orders |
+| H-10 | **fixed** | Phase 3 | Partial fill on cancel → `partial_filled` + position refresh |
 | H-11 | **fixed** | `9b9b9c7` | Mock sell-to-open via OSI symbols + `row.tradable` |
+| H-12 | **fixed** | Phase 3 | `multiplier`/`size`/`rootSymbol` on rows; standard contract filter |
+| H-13 | **fixed** | Phase 3 | `roundOptionLimit` tick rounding on submit |
+| H-14 | **fixed** | `928c673` | HMM path accumulation (Lane 2.3) |
+| H-15 | **fixed** | `928c673` | `fmt.pctFromRatio` (Lane 2.5) |
+| H-16 | **fixed** | Phase 3 | Ladder clears while expiration reloads |
 | H-17 | **fixed** | `5ca1bcd` | `onRefresh={() => void refresh()}` |
 | H-19 | **fixed** | `5ca1bcd`, Lane 1.3 | `check:api` in CI; catalyst types from OpenAPI |
+| M-8 | **fixed** | Phase 3 | Skip blotter when `to === from` |
+| M-12 | **fixed** | Phase 3 | `orderBlotter.save()` try/catch |
+| M-14 | **fixed** | Phase 3 | Put % OTM colour |
+| M-15 | **fixed** | Phase 3 | CSP collateral uses `optionsBuyingPower` |
+| M-16 | **fixed** | Phase 3 | Ladder quote refresh + `quotedAt` |
+| M-19 | **fixed** | Phase 3 | No dual pollers during cancel wait |
+| M-20 | **fixed** | Phase 3 | Roll sell leg uses ladder `side` |
+| M-21 | **fixed** | Phase 3 | `position_intent: buy_to_close` |
+| M-22 | **fixed** | Phase 3 | Qty clamp + ack reset |
+| M-23 | **fixed** | Phase 3 | `place()` checks blotter cross-tab |
+| M-39 | **fixed** | `5ca1bcd` | Global `button:focus-visible` rule |
+| M-40 | **fixed** | Phase 3 | Focus highlight fade timer |
+| M-43 | **fixed** | `5ca1bcd` | Root `WheelDashboard.tsx` deleted |
 | M-44 | **fixed** | Lane 1.3 | ESLint + GitHub Actions CI |
 | L-34 | **fixed** | Lane 1.3 | `.gitattributes` (`eol=lf`, generated marker) |
-| M-39 | **fixed** | `5ca1bcd` | Global `button:focus-visible` rule |
-| M-43 | **fixed** | `5ca1bcd` | Root `WheelDashboard.tsx` deleted |
+| M-11 | **open** | — | Close/roll still use padded OSI from `buildOsiSymbol` |
+| M-13 | **open** | — | Snapped strike still shows un-snapped assignment probs |
+| H-21 | **open** | — | No `usePendingOptionOrder` tests yet (Lane 4.2) |
+| C-1 | **open** | — | Keys still in bundle (Phase 5) |
+| H-5 | **partial** | `928c673` | Account fetch half fixed; hook stale indicators in Lane 4.3 |
+| H-6 | **open** | — | Timeouts, rate limits (Lane 4.3) |
+| H-18 | **open** | — | OpenAPI advisory (Lane 4.1) |
+| H-20 | **open** | — | Backend validation/logging (Lane 4.1) |
 
-Current toolchain (post-remediation): `npm run build` passes with no CSS `@import` warning;
-`npm run check:api` passes.
+Current toolchain (post-Phase 3): `npm run build` passes; `npm test` — 73 tests / 16 files;
+`npm run lint` — 0 errors (2 warnings); `npm run check:api` passes; `dotnet test` — 11 tests.
 
 ---
 
@@ -61,7 +95,7 @@ The defects cluster in five places:
 
 1. **Secrets.** The Alpaca key *and secret* are compiled verbatim into the shipped JavaScript, and the Finnhub token is written into request URLs that get logged.
 2. **Market data that is quietly wrong.** A misunderstanding of Alpaca's `limit` semantics means most symbols receive **no bars at all**; bar requests omit `adjustment=all`, so a post-split 52-week range renders ~10× too high; only one option leg per underlying survives, so portfolio P&L is not merely incomplete but incorrect.
-3. **React wiring around the order state machine.** The logic is sound; the wiring undermines it. One dependency-array mistake aborts the first order of every session (**C-2**, open), and a missing `key` prop lets a working order on one ticker be cancelled under another (**C-3** — `key` half fixed in `5ca1bcd`; hook-side clear still open).
+3. **React wiring around the order state machine.** ~~One dependency-array mistake aborts the first order of every session (C-2)~~ **fixed Phase 3**; ~~missing `key` / hook leak (C-3)~~ **fixed**.
 4. **Failures that render as confident numbers.** Errors collapse into `$0.00`, `NaN` becomes `0`, regime probabilities display 100× too small, and a stale mark is dressed up as a live quote.
 5. **Verification.** The statistical engine has no tests, the order state machine has none. ~~Sell-to-open was unreachable in mock mode~~ (**H-11** fixed in `9b9b9c7` — simulated orders work; automated tests still open per **H-21**).
 
@@ -72,12 +106,11 @@ The recurring theme across all five areas is worth stating on its own: **this co
 | ID | Finding | Severity |
 |---|---|---|
 | [C-1](#c-1--alpaca-api-key-and-secret-are-compiled-into-the-shipped-javascript) | Alpaca key **and secret** inlined into the production bundle | **Critical** |
-| [C-2](#c-2--place-aborts-its-own-acceptance-wait-leaving-a-live-unmonitored-order) | `place()` aborts its own acceptance wait, leaving a live unmonitored order | **Critical** |
-| [C-3](#c-3--order-state-leaks-between-ticker-tabs) | Order state leaks between ticker tabs — cancel the wrong symbol's order | **Critical** — *partial (`5ca1bcd`)* |
-| [C-4](#c-4--tickertabcss-is-dropped-from-the-production-bundle-breaking-every-detail-page-header) | `tickerTab.css` dropped from the bundle — every detail header is broken | ~~**Critical**~~ *fixed `5ca1bcd`* |
-| [C-5](#c-5--the-bar-cache-never-backfills-analysis-silently-runs-on-truncated-history) | Bar cache never backfills — analysis silently runs on truncated history | **Critical** |
-| [H-1](#h-1--the-multi-symbol-bar-limit-is-a-total-not-per-symbol-so-most-symbols-get-nothing) | Multi-symbol bar `limit` is a total — most symbols get no bars | **High** |
-| [H-3](#h-3--only-one-option-leg-per-underlying-survives) | Only one option leg per underlying survives — P&L is wrong | **High** |
+| [C-2](#c-2--place-aborts-its-own-acceptance-wait-leaving-a-live-unmonitored-order) | ~~`place()` aborts its own acceptance wait~~ | ~~**Critical**~~ *fixed Phase 3* |
+| [C-3](#c-3--order-state-leaks-between-ticker-tabs) | ~~Order state leaks between ticker tabs~~ | ~~**Critical**~~ *fixed `5ca1bcd` + Phase 3* |
+| [C-5](#c-5--the-bar-cache-never-backfills-analysis-silently-runs-on-truncated-history) | ~~Bar cache never backfills~~ | ~~**Critical**~~ *fixed `928c673`* |
+| [H-1](#h-1--the-multi-symbol-bar-limit-is-a-total-not-per-symbol-so-most-symbols-get-nothing) | ~~Multi-symbol bar `limit` is a total~~ | ~~**High**~~ *fixed `928c673`* |
+| [H-3](#h-3--only-one-option-leg-per-underlying-survives) | ~~Only one option leg per underlying~~ | ~~**High**~~ *fixed `928c673`* |
 | [H-5](#h-5--errors-are-swallowed-into-zeros-and-stale-values) | Errors swallowed into `$0.00` and stale values | **High** |
 
 ---
@@ -129,6 +162,8 @@ Two things currently cap the damage, and neither is a control: the app is served
 Until that lands, treat `dist/` as a secret: never deploy it, never share it.
 
 ### C-2 — `place()` aborts its own acceptance wait, leaving a live unmonitored order
+
+> **Remediation:** **Fixed** Phase 3 — client order ID in ref; resume/trade effects split; effect cleanup no longer aborts place/cancel.
 
 **File:** `src/hooks/usePendingOptionOrder.ts:70-124`, `:243-250`, `:277-282`, `:312`, `:340`
 
@@ -191,7 +226,7 @@ Put the resume logic in an effect keyed only on `[underlying, enabled]`, and let
 
 ### C-3 — Order state leaks between ticker tabs
 
-> **Remediation:** `key={activePosition.id}` / `key={activeWatchlistTicker}` on detail views landed in `5ca1bcd` (Lane 1.1). Hook-side state clear remains Lane 3.1.
+> **Remediation:** **Fixed** — `key={activePosition.id}` / `key={activeWatchlistTicker}` in `5ca1bcd` (Lane 1.1); hook clears state on `underlying` change in Phase 3.
 
 **Files:** `src/WheelDashboard.tsx:137-152`, `src/components/OpenOptionsSection.tsx:97-100`, `src/hooks/usePendingOptionOrder.ts:169-250`
 

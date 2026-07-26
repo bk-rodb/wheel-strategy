@@ -26,14 +26,19 @@ interface UsePendingOptionOrderOptions {
   enabled?: boolean;
 }
 
-function toDeskState(status: string): DeskOrderState {
-  if (status === "filled" || status === "done_for_day") return "filled";
-  if (isOrderCanceled(status)) {
-    return status === "rejected" ? "rejected" : "canceled";
+function orderFilledQty(order: AlpacaOrder): number {
+  return Number(order.filled_qty ?? 0);
+}
+
+function toDeskState(order: AlpacaOrder): DeskOrderState {
+  if (isOrderFilled(order)) return "filled";
+  if (order.status === "done_for_day") return "canceled";
+  if (isOrderCanceled(order.status)) {
+    return order.status === "rejected" ? "rejected" : "canceled";
   }
-  if (status === "pending_cancel") return "cancel_pending";
-  if (status === "pending_new") return "ack_pending";
-  if (isOrderOpen(status)) return "working";
+  if (order.status === "pending_cancel") return "cancel_pending";
+  if (order.status === "pending_new") return "ack_pending";
+  if (isOrderOpen(order.status)) return "working";
   return "working";
 }
 
@@ -47,24 +52,23 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
   const [phase, setPhase] = useState<PendingOrderPhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [clientOrderId, setClientOrderId] = useState<string | null>(null);
+  const [partialFillQty, setPartialFillQty] = useState<number | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  /** Owned by place()/cancel() only — never aborted from effect cleanup. */
+  const flightAbortRef = useRef<AbortController | null>(null);
   /** Synchronous single-flight — blocks double-click before React state settles. */
   const flightRef = useRef(false);
   const orderRef = useRef<AlpacaOrder | null>(null);
   const phaseRef = useRef<PendingOrderPhase>("idle");
+  const clientOrderIdRef = useRef<string | null>(null);
+  const underlyingRef = useRef(underlying.toUpperCase());
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
-  }, []);
-
-  const clearAbort = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
   }, []);
 
   const transition = useCallback(
@@ -78,54 +82,67 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
       } = {},
     ) => {
       const from = phaseRef.current;
+      if (to === from && opts.order === undefined && !opts.clearOrder) return;
+
       const nextOrder = opts.clearOrder ? null : (opts.order !== undefined ? opts.order : orderRef.current);
       const cid =
         opts.clientOrderId ??
         nextOrder?.client_order_id ??
-        clientOrderId ??
+        clientOrderIdRef.current ??
         "unknown";
+
+      if (opts.clientOrderId !== undefined) {
+        clientOrderIdRef.current = opts.clientOrderId;
+        setClientOrderId(opts.clientOrderId);
+      } else if (nextOrder?.client_order_id) {
+        clientOrderIdRef.current = nextOrder.client_order_id;
+        setClientOrderId(nextOrder.client_order_id);
+      } else if (opts.clearOrder) {
+        clientOrderIdRef.current = null;
+        setClientOrderId(null);
+      }
 
       phaseRef.current = to;
       setPhase(to);
       orderRef.current = nextOrder;
       setOrder(nextOrder);
-      if (opts.clientOrderId !== undefined) setClientOrderId(opts.clientOrderId);
-      else if (nextOrder?.client_order_id) setClientOrderId(nextOrder.client_order_id);
 
-      if (to !== "idle" || from !== "idle") {
-        orderBlotter.append({
-          clientOrderId: cid,
-          orderId: nextOrder?.id ?? null,
-          symbol: nextOrder?.symbol ?? "",
-          underlying: underlying.toUpperCase(),
-          fromState: from,
-          toState: to,
-          status: nextOrder?.status ?? null,
-          detail: opts.detail,
-        });
-      }
+      if (to !== from) {
+        if (to !== "idle" || from !== "idle") {
+          orderBlotter.append({
+            clientOrderId: cid,
+            orderId: nextOrder?.id ?? null,
+            symbol: nextOrder?.symbol ?? "",
+            underlying: underlying.toUpperCase(),
+            fromState: from,
+            toState: to,
+            status: nextOrder?.status ?? null,
+            detail: opts.detail,
+          });
+        }
 
-      if (nextOrder) {
-        orderBlotter.upsertOrder({
-          clientOrderId: nextOrder.client_order_id,
-          orderId: nextOrder.id,
-          underlying: underlying.toUpperCase(),
-          symbol: nextOrder.symbol,
-          side: nextOrder.side,
-          qty: nextOrder.qty,
-          limitPrice: nextOrder.limit_price,
-          status: nextOrder.status,
-          deskState: to,
-        });
-        tradeUpdatesStream.track(nextOrder.id, nextOrder.client_order_id);
+        if (nextOrder) {
+          orderBlotter.upsertOrder({
+            clientOrderId: nextOrder.client_order_id,
+            orderId: nextOrder.id,
+            underlying: underlying.toUpperCase(),
+            symbol: nextOrder.symbol,
+            side: nextOrder.side,
+            qty: nextOrder.qty,
+            limitPrice: nextOrder.limit_price,
+            status: nextOrder.status,
+            deskState: to,
+          });
+          tradeUpdatesStream.track(nextOrder.id, nextOrder.client_order_id);
+        }
       }
     },
-    [clientOrderId, underlying],
+    [underlying],
   );
 
   const applyBrokerOrder = useCallback(
     (next: AlpacaOrder) => {
-      const desk = toDeskState(next.status);
+      const desk = toDeskState(next);
       transition(desk, { order: next, detail: `broker status=${next.status}` });
       if (!isOrderOpen(next.status) && next.status !== "pending_new") {
         stopPolling();
@@ -155,7 +172,6 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
         });
       };
 
-      // Always reconcile once (resume / off-hours included).
       void refreshOrder(orderId).catch((e) => {
         setError(e instanceof Error ? e.message : "Order status check failed");
       });
@@ -165,14 +181,35 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
     [refreshOrder, stopPolling],
   );
 
-  // Resume open order from blotter / broker on mount.
+  const clearLocalState = useCallback(() => {
+    stopPolling();
+    orderRef.current = null;
+    phaseRef.current = "idle";
+    clientOrderIdRef.current = null;
+    setOrder(null);
+    setPhase("idle");
+    setClientOrderId(null);
+    setPartialFillQty(null);
+    setError(null);
+  }, [stopPolling]);
+
+  // Resume open order from blotter / broker — keyed only on underlying + enabled.
   useEffect(() => {
     if (!enabled) return;
+
+    const u = underlying.toUpperCase();
+    if (underlyingRef.current !== u) {
+      const prev = orderRef.current;
+      if (prev) tradeUpdatesStream.untrack(prev.id, prev.client_order_id);
+      clearLocalState();
+      underlyingRef.current = u;
+    }
+
     let cancelled = false;
 
     (async () => {
       try {
-        const blotterOpen = orderBlotter.getOpenForUnderlying(underlying);
+        const blotterOpen = orderBlotter.getOpenForUnderlying(u);
         if (blotterOpen?.orderId) {
           try {
             const latest = await getOrder(blotterOpen.orderId);
@@ -182,10 +219,9 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
               startStatusPoll(latest.id);
               return;
             }
-            // Terminal — clear blotter desk state
             orderBlotter.upsertOrder({
               clientOrderId: blotterOpen.clientOrderId,
-              deskState: toDeskState(latest.status),
+              deskState: toDeskState(latest),
               status: latest.status,
             });
           } catch {
@@ -203,7 +239,7 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
           }
         }
 
-        const open = await listOpenOptionOrdersForUnderlying(underlying);
+        const open = await listOpenOptionOrdersForUnderlying(u);
         if (cancelled) return;
         const first = open[0] ?? null;
         if (first) {
@@ -214,6 +250,16 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
         // Non-fatal
       }
     })();
+
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
+  }, [underlying, enabled, applyBrokerOrder, startStatusPoll, stopPolling, clearLocalState]);
+
+  // Trade-updates stream — separate from resume so callback identity changes don't abort place().
+  useEffect(() => {
+    if (!enabled) return;
 
     const unsub = tradeUpdatesStream.subscribe((payload) => {
       const current = orderRef.current;
@@ -235,19 +281,10 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
             : current.limit_price,
       };
       applyBrokerOrder(merged);
-      if (isOrderCanceled(merged.status) && phaseRef.current !== "idle") {
-        // Keep canceled briefly then unlock via reset path in UI
-      }
     });
 
-    return () => {
-      cancelled = true;
-      stopPolling();
-      clearAbort();
-      unsub();
-      flightRef.current = false;
-    };
-  }, [underlying, enabled, applyBrokerOrder, startStatusPoll, stopPolling, clearAbort]);
+    return unsub;
+  }, [underlying, enabled, applyBrokerOrder]);
 
   const locked =
     phase === "submitting" ||
@@ -256,7 +293,8 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
     phase === "working" ||
     phase === "cancel_requested" ||
     phase === "cancel_pending" ||
-    phase === "filled";
+    phase === "filled" ||
+    phase === "partial_filled";
 
   const place = useCallback(
     async (params: Omit<PlaceOptionOrderParams, "clientOrderId"> & { clientOrderId?: string }) => {
@@ -267,21 +305,31 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
         throw new Error("An order is already pending — cancel it before placing another");
       }
 
+      const blotterOpen = orderBlotter.getOpenForUnderlying(underlying);
+      if (blotterOpen) {
+        throw new Error(
+          `An order for ${underlying.toUpperCase()} is already open in another tab — cancel it first`,
+        );
+      }
+
       flightRef.current = true;
-      clearAbort();
+      flightAbortRef.current?.abort();
       const ctrl = new AbortController();
-      abortRef.current = ctrl;
+      flightAbortRef.current = ctrl;
       setError(null);
+      setPartialFillQty(null);
 
       const cid = params.clientOrderId ?? newClientOrderId();
+      clientOrderIdRef.current = cid;
       setClientOrderId(cid);
-      transition("submitting", {
-        clientOrderId: cid,
-        order: null,
-        detail: `place ${params.side ?? "sell"} ${params.contractSymbol} x${params.qty}`,
-      });
 
       try {
+        transition("submitting", {
+          clientOrderId: cid,
+          order: null,
+          detail: `place ${params.side ?? "sell"} ${params.contractSymbol} x${params.qty}`,
+        });
+
         let created: AlpacaOrder;
         try {
           created = await placeOptionOrder({ ...params, clientOrderId: cid });
@@ -320,7 +368,7 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
           setError(`Order ${accepted.status}`);
           return accepted;
         }
-        if (isOrderFilled(accepted.status)) {
+        if (isOrderFilled(accepted)) {
           transition("filled", { order: accepted });
           return accepted;
         }
@@ -341,6 +389,7 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
         if (phaseRef.current !== "error") {
           transition("error", {
             clientOrderId: cid,
+            order: orderRef.current,
             detail: e instanceof Error ? e.message : "Failed to place order",
           });
           setError(e instanceof Error ? e.message : "Failed to place order");
@@ -348,9 +397,10 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
         throw e;
       } finally {
         flightRef.current = false;
+        if (flightAbortRef.current === ctrl) flightAbortRef.current = null;
       }
     },
-    [clearAbort, transition, startStatusPoll],
+    [underlying, transition, startStatusPoll],
   );
 
   const cancel = useCallback(async () => {
@@ -364,16 +414,16 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
     }
 
     flightRef.current = true;
-    clearAbort();
+    flightAbortRef.current?.abort();
     const ctrl = new AbortController();
-    abortRef.current = ctrl;
+    flightAbortRef.current = ctrl;
     setError(null);
+    stopPolling();
     transition("cancel_requested", { order: current, detail: "DELETE requested" });
 
     try {
       await cancelOrder(current.id);
       transition("cancel_pending", { order: { ...current, status: "pending_cancel" } });
-      startStatusPoll(current.id);
 
       const final = await waitForOrderCanceled(current.id, {
         signal: ctrl.signal,
@@ -381,15 +431,22 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
       });
 
       if (isOrderCanceled(final.status)) {
-        stopPolling();
-        transition("canceled", { order: final, detail: "cancel confirmed" });
-        // Unlock after confirmed cancel
+        const filledQty = orderFilledQty(final);
+        if (filledQty > 0) {
+          setPartialFillQty(filledQty);
+          transition("partial_filled", {
+            order: final,
+            detail: `cancel confirmed with ${filledQty} filled`,
+          });
+        } else {
+          transition("canceled", { order: final, detail: "cancel confirmed" });
+        }
         transition("idle", { clearOrder: true, clientOrderId: final.client_order_id });
         tradeUpdatesStream.untrack(final.id, final.client_order_id);
         return final;
       }
 
-      if (isOrderFilled(final.status)) {
+      if (isOrderFilled(final)) {
         transition("filled", {
           order: final,
           detail: "filled before cancel confirmed",
@@ -403,6 +460,7 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
         detail: `cancel not confirmed status=${final.status}`,
       });
       setError(`Cancel not confirmed yet (status=${final.status})`);
+      startStatusPoll(current.id);
       return final;
     } catch (e) {
       if (ctrl.signal.aborted) return null;
@@ -415,29 +473,43 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
       throw e;
     } finally {
       flightRef.current = false;
+      if (flightAbortRef.current === ctrl) flightAbortRef.current = null;
     }
-  }, [clearAbort, transition, startStatusPoll, stopPolling]);
+  }, [transition, startStatusPoll, stopPolling]);
 
   const reset = useCallback(() => {
+    const current = orderRef.current;
+    if (current && (isOrderOpen(current.status) || current.status === "pending_new")) {
+      setError("Cannot dismiss while order is still open — cancel it first");
+      return false;
+    }
+    const blotterOpen = orderBlotter.getOpenForUnderlying(underlying);
+    if (blotterOpen && !current) {
+      setError("Cannot dismiss — an open order exists for this symbol");
+      return false;
+    }
+
     stopPolling();
-    clearAbort();
-    const prev = orderRef.current;
-    if (prev) tradeUpdatesStream.untrack(prev.id, prev.client_order_id);
+    if (current) tradeUpdatesStream.untrack(current.id, current.client_order_id);
     transition("idle", { clearOrder: true, detail: "dismissed" });
     setError(null);
+    setPartialFillQty(null);
     flightRef.current = false;
-  }, [stopPolling, clearAbort, transition]);
+    return true;
+  }, [underlying, stopPolling, transition]);
 
   const canCancel =
     order != null &&
     (isOrderCancelable(order.status) || order.status === "pending_cancel") &&
-    phase !== "filled";
+    phase !== "filled" &&
+    phase !== "partial_filled";
 
   return {
     order,
     phase,
     error,
     clientOrderId,
+    partialFillQty,
     locked,
     canCancel,
     place,

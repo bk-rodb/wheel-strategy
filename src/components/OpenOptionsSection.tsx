@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FridayOptionRow } from "../api/fetchFridayOptions";
+import { fetchContractSnapshot } from "../api/fetchFridayOptions";
 import { buildOsiSymbol } from "../api/optionOrders";
 import { preTradeCheck, type OrderAction } from "../api/preTradeCheck";
 import { IS_MOCK } from "../config";
@@ -45,6 +46,8 @@ type TicketDraft = {
   ask: number | null;
   mid: number | null;
   tradable?: boolean;
+  contractMultiplier?: number;
+  quoteQuotedAt?: string | null;
   level?: FridayOptionRow["level"];
   /** After close fills, open this sell draft (roll). */
   rollAfter?: Omit<TicketDraft, "rollAfter" | "action"> & { action: "sell_to_open" };
@@ -98,6 +101,11 @@ export function OpenOptionsSection({
   useEffect(() => {
     setSelectedExpiration(null);
     setTicket(null);
+    setQty(1);
+    setBusy(false);
+    setFlashMsg(null);
+    setFlashErr(null);
+    setRollPending(null);
   }, [symbol, side]);
 
   const {
@@ -105,6 +113,7 @@ export function OpenOptionsSection({
     phase: orderPhase,
     error: orderHookErr,
     clientOrderId,
+    partialFillQty,
     locked,
     canCancel,
     place,
@@ -115,7 +124,6 @@ export function OpenOptionsSection({
 
   useEffect(() => {
     if (!focusSection) return;
-    // Wait a tick so the ticker tab / section has mounted after navigation.
     const t0 = window.setTimeout(() => {
       sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       setHighlight(true);
@@ -126,11 +134,12 @@ export function OpenOptionsSection({
       window.clearTimeout(t0);
       window.clearTimeout(t1);
     };
-  }, [focusSection, onFocusHandled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onFocusHandled flips focusSection and must not cancel the fade timer
+  }, [focusSection]);
 
-  // After fill, reload positions so the short/long option leg appears as activeOption.
+  // After fill or partial fill on cancel, reload positions.
   useEffect(() => {
-    if (orderPhase !== "filled") return;
+    if (orderPhase !== "filled" && orderPhase !== "partial_filled") return;
     onPositionRefresh?.();
   }, [orderPhase, onPositionRefresh]);
 
@@ -179,6 +188,7 @@ export function OpenOptionsSection({
       shares,
       account,
       tradable: ticket.tradable !== false,
+      contractMultiplier: ticket.contractMultiplier ?? 100,
       catalystEvents,
     });
   }, [ticket, qty, shares, account, catalystEvents]);
@@ -200,11 +210,12 @@ export function OpenOptionsSection({
       ask: row.ask,
       mid: row.mid,
       tradable: row.tradable,
+      contractMultiplier: row.multiplier,
       level: row.level,
     });
   };
 
-  const openCloseTicket = () => {
+  const openCloseTicket = async () => {
     if (!activeOption || locked) return;
     const contractSymbol = buildOsiSymbol(
       symbol,
@@ -212,25 +223,29 @@ export function OpenOptionsSection({
       activeOption.type,
       activeOption.strike,
     );
-    const mid = activeOption.currentOptionPrice;
     setDeskPhase("confirming", `close ${contractSymbol}`);
     setQty(activeOption.contracts);
     setFlashMsg(null);
     setFlashErr(null);
+    const quote = await fetchContractSnapshot(contractSymbol);
+    const limitPrice =
+      quote.mid ?? quote.ask ?? activeOption.currentOptionPrice;
     setTicket({
       action: "buy_to_close",
       optionType: activeOption.type,
       contractSymbol,
       strike: activeOption.strike,
       expiration: activeOption.expiration,
-      limitPrice: mid,
-      bid: mid * 0.95,
-      ask: mid * 1.05,
-      mid,
+      limitPrice,
+      bid: quote.bid,
+      ask: quote.ask,
+      mid: quote.mid,
+      quoteQuotedAt: quote.quotedAt,
+      contractMultiplier: 100,
     });
   };
 
-  const openRollTicket = () => {
+  const openRollTicket = async () => {
     if (!activeOption || locked || !data?.rows.length) return;
     const closeSym = buildOsiSymbol(
       symbol,
@@ -238,27 +253,30 @@ export function OpenOptionsSection({
       activeOption.type,
       activeOption.strike,
     );
-    const mid = activeOption.currentOptionPrice;
-    // Prefer same level type: covered call → call row regular; CSP → put regular
     const openRow =
       data.rows.find((r) => r.level === "regular") ?? data.rows[0];
     setDeskPhase("confirming", `roll close ${closeSym}`);
     setQty(activeOption.contracts);
     setFlashMsg(null);
     setFlashErr(null);
+    const quote = await fetchContractSnapshot(closeSym);
+    const limitPrice =
+      quote.mid ?? quote.ask ?? activeOption.currentOptionPrice;
     setTicket({
       action: "buy_to_close",
       optionType: activeOption.type,
       contractSymbol: closeSym,
       strike: activeOption.strike,
       expiration: activeOption.expiration,
-      limitPrice: mid,
-      bid: mid * 0.95,
-      ask: mid * 1.05,
-      mid,
+      limitPrice,
+      bid: quote.bid,
+      ask: quote.ask,
+      mid: quote.mid,
+      quoteQuotedAt: quote.quotedAt,
+      contractMultiplier: 100,
       rollAfter: {
         action: "sell_to_open",
-        optionType: openRow ? (canCoverCall ? "call" : "put") : activeOption.type,
+        optionType: side,
         contractSymbol: openRow.contractSymbol,
         strike: openRow.strike,
         expiration: data.expiration,
@@ -267,6 +285,7 @@ export function OpenOptionsSection({
         ask: openRow.ask,
         mid: openRow.mid,
         tradable: openRow.tradable,
+        contractMultiplier: openRow.multiplier,
         level: openRow.level,
       },
     });
@@ -289,6 +308,7 @@ export function OpenOptionsSection({
         qty,
         limitPrice: ticket.limitPrice,
         side: ticket.action === "sell_to_open" ? "sell" : "buy",
+        positionIntent: ticket.action === "buy_to_close" ? "buy_to_close" : "sell_to_open",
       });
       if (order) {
         setFlashMsg(
@@ -335,7 +355,14 @@ export function OpenOptionsSection({
           final.status === "expired" ||
           final.status === "rejected")
       ) {
-        setFlashMsg(`ORDER ${final.status.toUpperCase()} — actions unlocked`);
+        const filledQty = Number(final.filled_qty ?? 0);
+        if (filledQty > 0 || partialFillQty) {
+          setFlashMsg(
+            `ORDER CANCELED WITH ${filledQty || partialFillQty} FILLED — refresh positions`,
+          );
+        } else {
+          setFlashMsg(`ORDER ${final.status.toUpperCase()} — actions unlocked`);
+        }
         setTicket(null);
         setRollPending(null);
       } else if (final?.status === "filled") {
@@ -366,6 +393,10 @@ export function OpenOptionsSection({
         return "AWAITING CANCEL CONFIRM…";
       case "filled":
         return "FILLED — no longer cancelable";
+      case "partial_filled":
+        return partialFillQty
+          ? `PARTIAL FILL (${partialFillQty}) — cancel confirmed`
+          : "PARTIAL FILL — cancel confirmed";
       case "canceled":
         return "CANCELED";
       case "rejected":
@@ -469,7 +500,9 @@ export function OpenOptionsSection({
           orderPhase === "error") && (
           <button
             type="button"
-            onClick={reset}
+            onClick={() => {
+              if (reset()) setFlashErr(null);
+            }}
             style={{
               cursor: "pointer",
               background: "transparent",
@@ -560,7 +593,7 @@ export function OpenOptionsSection({
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button
               type="button"
-              onClick={openCloseTicket}
+              onClick={() => void openCloseTicket()}
               style={actionBtn("#60a5fa")}
             >
               CLOSE
@@ -569,9 +602,8 @@ export function OpenOptionsSection({
               type="button"
               disabled={!rollEnabled}
               onClick={() => {
-                // Ensure Friday data loaded for roll target
                 if (!data) void refresh();
-                openRollTicket();
+                void openRollTicket();
               }}
               title={
                 rollEnabled
@@ -762,7 +794,7 @@ export function OpenOptionsSection({
           {data.rows.map((row) => {
             const isWorkingRow =
               pendingOrder != null && pendingOrder.symbol === row.contractSymbol;
-            const sellDisabled = locked || !!ticket;
+            const sellDisabled = locked || !!ticket || loading;
             const selected = ticket?.level === row.level && ticket.action === "sell_to_open";
 
             return (
@@ -777,7 +809,14 @@ export function OpenOptionsSection({
                   <span
                     style={{
                       textAlign: "right",
-                      color: row.pctFromSpot >= 0 ? "#34d399" : "#f87171",
+                      color:
+                        side === "put"
+                          ? row.pctFromSpot <= 0
+                            ? "#34d399"
+                            : "#f87171"
+                          : row.pctFromSpot >= 0
+                            ? "#34d399"
+                            : "#f87171",
                     }}
                   >
                     {(row.pctFromSpot * 100).toFixed(1)}%

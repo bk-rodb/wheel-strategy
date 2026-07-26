@@ -26,6 +26,7 @@ export async function fetchAlpacaAccount(broker: BrokerType): Promise<AccountInf
     lastEquity,
     cash: parseFloat(raw.cash),
     buyingPower: parseFloat(raw.buying_power),
+    optionsBuyingPower: parseFloat(raw.options_buying_power ?? raw.buying_power),
     longMarketValue: parseFloat(raw.long_market_value),
     dayPnL,
     dayPnLPct: lastEquity > 0 ? (dayPnL / lastEquity) * 100 : 0,

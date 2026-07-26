@@ -8,6 +8,8 @@ export interface PlaceOptionOrderParams {
   /** Limit price; omit for market. */
   limitPrice?: number;
   side?: "buy" | "sell";
+  /** Alpaca position intent for option closes. */
+  positionIntent?: "buy_to_close" | "sell_to_close" | "buy_to_open" | "sell_to_open";
   /** Caller-supplied idempotency key; generated if omitted. */
   clientOrderId?: string;
 }
@@ -57,13 +59,35 @@ export function isOrderAccepted(status: AlpacaOrderStatus): boolean {
 }
 
 /** Fully done — no further cancel. Partial fills stay cancelable. */
-export function isOrderFilled(status: AlpacaOrderStatus): boolean {
-  return status === "filled" || status === "done_for_day";
+export function isOrderFilled(
+  order: Pick<AlpacaOrder, "status" | "filled_qty" | "qty">,
+): boolean;
+export function isOrderFilled(status: AlpacaOrderStatus): boolean;
+export function isOrderFilled(
+  orderOrStatus: Pick<AlpacaOrder, "status" | "filled_qty" | "qty"> | AlpacaOrderStatus,
+): boolean {
+  if (typeof orderOrStatus === "string") {
+    return orderOrStatus === "filled";
+  }
+  const o = orderOrStatus;
+  if (o.status === "filled") return true;
+  if (o.status === "done_for_day") {
+    return Number(o.filled_qty ?? 0) >= Number(o.qty);
+  }
+  return false;
+}
+
+/** Unfilled end-of-day — unlocks the underlying without treating as a fill. */
+export function isOrderDoneUnfilled(
+  order: Pick<AlpacaOrder, "status" | "filled_qty">,
+): boolean {
+  return order.status === "done_for_day" && Number(order.filled_qty ?? 0) === 0;
 }
 
 /** Cancel allowed until the order is fully filled (or already pending_cancel / terminal). */
 export function isOrderCancelable(status: AlpacaOrderStatus): boolean {
-  if (isOrderFilled(status) || isOrderCanceled(status)) return false;
+  if (status === "filled" || isOrderCanceled(status)) return false;
+  if (status === "done_for_day") return false;
   if (status === "pending_cancel") return false;
   return isOrderOpen(status) || status === "pending_new";
 }
@@ -73,6 +97,24 @@ export function newClientOrderId(): string {
     return crypto.randomUUID();
   }
   return `wheel-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Round to a valid option tick ($0.01 below $3, $0.05 at or above), away from own side. */
+export function roundOptionLimit(price: number, side: "buy" | "sell"): number {
+  if (price < 3) {
+    const cents = price * 100;
+    const roundedCents =
+      side === "sell" ? Math.ceil(cents - 1e-9) : Math.floor(cents + 1e-9);
+    return Math.max(1, roundedCents) / 100;
+  }
+  const nickels = price / 0.05;
+  const roundedNickels =
+    side === "sell" ? Math.ceil(nickels - 1e-9) : Math.floor(nickels + 1e-9);
+  return Math.round(Math.max(0.05, roundedNickels * 0.05) * 100) / 100;
+}
+
+export function formatOptionLimitPrice(price: number, side: "buy" | "sell" = "sell"): string {
+  return roundOptionLimit(price, side).toFixed(2);
 }
 
 // ─── Mock store (session) so place → poll → cancel works without Alpaca ───
@@ -153,8 +195,11 @@ export async function placeOptionOrder(params: PlaceOptionOrderParams): Promise<
     time_in_force: "day",
     client_order_id: clientOrderId,
   };
+  if (params.positionIntent) {
+    body.position_intent = params.positionIntent;
+  }
   if (params.limitPrice != null) {
-    body.limit_price = params.limitPrice.toFixed(2);
+    body.limit_price = formatOptionLimitPrice(params.limitPrice, side);
   }
 
   return trading.post<AlpacaOrder>("/v2/orders", body);
@@ -233,10 +278,11 @@ export async function waitForOrderAcceptance(
   const timeoutMs = opts.timeoutMs ?? 30_000;
   const start = Date.now();
 
-  while (Date.now() - start < timeoutMs) {
+    while (Date.now() - start < timeoutMs) {
     if (opts.signal?.aborted) throw new Error("Acceptance check aborted");
     const order = await getOrder(orderId);
-    if (isOrderAccepted(order.status) || isOrderCanceled(order.status)) return order;
+    if (isOrderAccepted(order.status) || isOrderCanceled(order.status) || isOrderDoneUnfilled(order))
+      return order;
     await sleep(intervalMs, opts.signal);
   }
 
@@ -257,7 +303,8 @@ export async function waitForOrderCanceled(
   while (Date.now() - start < timeoutMs) {
     if (opts.signal?.aborted) throw new Error("Cancel wait aborted");
     const order = await getOrder(orderId);
-    if (isOrderCanceled(order.status) || isOrderFilled(order.status)) return order;
+    if (isOrderCanceled(order.status) || isOrderFilled(order) || isOrderDoneUnfilled(order))
+      return order;
     await sleep(intervalMs, opts.signal);
   }
 

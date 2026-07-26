@@ -32,7 +32,8 @@ engineering fundamentals are strong (strict TypeScript, correct Black-Scholes, g
 order idempotency), but defects cluster in five places: secrets in the bundle, market
 data that is quietly wrong, React wiring around the order state machine, failures that
 render as confident numbers, and the absence of a safe environment to test execution in.
-**Remediation now leads this roadmap; features resume after Phase 3.**
+**Phases 1–3 remediation complete** (except Phase 0 key rotation); **Phase 4–5 and the feature
+roadmap are next** — see [Agent handoff](#agent-handoff--where-to-pick-up).
 
 **2026-07-25 (later) — Phase 2 complete** (`928c673`, lanes 2.1–2.5). Market data pagination and
 adjusted bars (H-1, H-2), multi-leg P&L (H-3), snapshot optional chaining (H-4), bar-cache
@@ -47,7 +48,14 @@ M-39, M-43, and regenerated API types (partial [H-19](./CODE_REVIEW.md#h-19--gen
 Lane 1.2 fixed [H-11](./CODE_REVIEW.md#h-11--sell-to-open-is-unreachable-in-mock-mode) — mock mode can
 place, poll, and cancel simulated sell-to-open orders end to end. **Lane 1.3 landed** (`4fba68b`) —
 ESLint + `react-hooks`, GitHub CI, xunit scaffold, `.gitattributes`; H-19 complete. Phase 0 (key
-rotation) deferred; Phase 2 and Phase 3.1 are unblocked.
+rotation) deferred.
+
+**2026-07-25 (later) — Phase 3 complete** (uncommitted at handoff; commit pending). Lanes 3.1–3.3
+landed in one pass: order state machine (C-2, C-3 hook-side, H-9, H-10 hook, M-8/12/19/23), order
+semantics and pricing (H-7, H-12, H-13, M-15, M-16, `fetchContractSnapshot`), and order UI (H-8,
+H-16, H-10 UI, M-14/20/21/22/40). **73** frontend tests; `npm run build`, `npm run lint`, and
+`dotnet test` (11) pass. **Remediation now leads with Phase 0 (manual) and Phase 4–5**; feature
+roadmap is unblocked.
 
 ---
 
@@ -98,9 +106,9 @@ graph LR
 | 2 | 2.3 | Backend statistics | 18 | **1** | 1.3 | **done** `928c673` |
 | 2 | 2.4 | Watchlist store | 7 | 2 | — | **done** `928c673` |
 | 2 | 2.5 | Display and utils | 9 | 2 | — | **done** `928c673` |
-| 3 | 3.1 | Order state machine | 8 | **1** | 1.1, 1.2 | open |
-| 3 | 3.2 | Order semantics and pricing | 12 | **1** | 1.2, 3.1 | open |
-| 3 | 3.3 | Order UI | 8 | 2 | 3.2 | open |
+| 3 | 3.1 | Order state machine | 8 | **1** | 1.1, 1.2 | **done** (Phase 3) |
+| 3 | 3.2 | Order semantics and pricing | 12 | **1** | 1.2, 3.1 | **done** (Phase 3; see partials below) |
+| 3 | 3.3 | Order UI | 8 | 2 | 3.2 | **done** (Phase 3) |
 | 4 | 4.1 | Backend platform | 8 | 2 (.NET) | 2.2, 2.3 | open |
 | 4 | 4.2 | Tests | 1 | 2 | 1.2, 1.3, 2.x, 3.x | open |
 | 4 | 4.3 | Fetch and transport hardening | 13 | 2 | 2.1 | open |
@@ -400,6 +408,56 @@ fetch, so the header can never advertise 55 DTE above 6-DTE contracts; fix the i
 `openRow`; send `position_intent` on `buy_to_close`; clamp quantity to `maxQty` and reset
 `acked` when it changes; and let the focus highlight actually expire.
 
+> **Status: done (Phase 3).** Lane 3.1–3.3 landed together. Lane 3.2 left three low-severity
+> items open: M-11 (compact OSI on close/roll), M-13 (recompute probs after strike snap), and
+> L-11/L-14/L-17/L-18/L-19 (pagination caps, listener leak, liquidity guards). Safe to fold
+> into Phase 4.2 or a follow-up 3.2.1 lane.
+
+---
+
+## Agent handoff — where to pick up
+
+**Phases 0–3 are complete except Phase 0 (manual key rotation) and the Lane 3.2 partials above.**
+
+### Done (do not re-do)
+
+| Phase | Commit(s) | Scope |
+|---|---|---|
+| 1 | `5ca1bcd`, `9b9b9c7`, `4fba68b` | Quick wins, mock sell-to-open, ESLint/CI/xunit |
+| 2 | `928c673`, `d2ee56d` | Market data, bar cache, stats/nullable DTOs, watchlist, display/utils |
+| 3 | *(this commit)* | Order state machine, semantics/pricing, order UI |
+
+**Verification gate** (run from `C:/repos/wheel-strategy`):
+
+```bash
+npm run build && npm test && npm run lint && npm run check:api
+dotnet test backend/WheelStrategy.Api.Tests/WheelStrategy.Api.Tests.csproj
+```
+
+### Next work (priority order)
+
+1. **Phase 0 (human)** — Rotate Alpaca + Finnhub keys; treat any existing `dist/` as compromised.
+   No code change; blocks nothing technically but should happen before deploy or live keys.
+
+2. **Phase 4 (four concurrent lanes)** — Platform hardening and tests. Start anywhere unblocked:
+   - **4.1** Backend platform (H-18, H-20, L-33 migrations) — needs 2.2, 2.3 ✓
+   - **4.2** Tests — **`usePendingOptionOrder` still has no dedicated test file** (H-21); highest
+     value now that mock mode and Phase 3 fixes are in place
+   - **4.3** Fetch/transport (H-6, H-5 hook half, timeouts, stale indicators)
+   - **4.4** Perf/a11y (M-41, M-42, bundle split)
+
+3. **Phase 5 (exclusive)** — Credential proxy (C-1). Nothing else in flight; collides with 4.1 and 4.3.
+
+4. **Lane 3.2 partials** (optional, low urgency) — M-11, M-13, L-11, L-14, L-17–L-19.
+
+5. **Feature roadmap** — Unblocked after Phase 3. See [Feature roadmap](#feature-roadmap) below;
+   daily-granularity toggle and distribution viz are good first picks.
+
+### Hot files (still avoid co-editing across lanes)
+
+`alpacaClient.ts`, `Program.cs`, `usePendingOptionOrder.ts`, `OpenOptionsSection.tsx`,
+`fetchWheelPositions.ts`, `formatters.ts`.
+
 ---
 
 ## Phase 4 — platform, hardening, tests (4 lanes, concurrent)
@@ -592,8 +650,8 @@ Criticals and a High for near-zero cost and is always worth launching first.
 
 # Feature roadmap
 
-Resume after Phase 3. Items are roughly ordered by value-to-effort; prerequisites from the
-remediation plan are called out where they exist.
+Phases 1–3 remediation is complete (except Phase 0 key rotation and Lane 3.2 partials). Items
+are roughly ordered by value-to-effort; prerequisites from Phases 4–5 are called out where they exist.
 
 ## Near-term (high value, low effort)
 
@@ -610,18 +668,16 @@ remediation plan are called out where they exist.
 - **Persist DTE / lookback / granularity preferences** so the panel remembers settings per
   session. **Prerequisite: Lane 2.4** — reuse the hardened store rather than adding another
   unguarded `localStorage` writer.
-- ~~**Tighten strike rounding to real option grids.**~~ **Done, with two caveats.**
-  `fetchFridayOptions` snaps each suggested strike to the nearest listed Alpaca contract.
-  But M-13 shows the snapped row still copies the *un-snapped* assignment probabilities and
-  premium, and H-13 shows the limit price is not rounded to a valid tick. Both are in
-  Lane 3.2.
+- ~~**Tighten strike rounding to real option grids.**~~ **Done (Phase 3).**
+  `fetchFridayOptions` snaps strikes, rounds limits to valid ticks (H-13), and filters non-standard
+  contracts (H-12). **Caveat:** M-13 — assignment probabilities still come from the *un-snapped*
+  suggestion; recompute or warn when snap distance is large.
 
 ## Medium-term (deeper analysis)
 
-- ~~**Live option-chain integration.**~~ **Done for the sell-to-open ladder, with a caveat.**
-  That path prices from real `/v1beta1/options/snapshots` quotes. But H-8 shows close and
-  roll still fabricate a bid/ask around a stale position mark, which disables the
-  fat-finger guard entirely — Lane 3.3.
+- ~~**Live option-chain integration.**~~ **Done for sell-to-open, close, and roll (Phase 3).**
+  Ladder and close/roll tickets use `/v1beta1/options/snapshots` via `fetchFridayOptions` and
+  `fetchContractSnapshot`. Ladder quotes refresh every 60s (M-16).
   *Still open:* surface the true **delta**, so "regular ≈ 0.30 delta" uses the option's own
   delta rather than the model's assignment probability.
 - **Implied vs realized volatility.** Show option-implied vol alongside the realized vol the

@@ -7,6 +7,7 @@ export const MOCK_ACCOUNT: AccountInfo = {
   lastEquity: 154495,
   cash: 22700,
   buyingPower: 45400,
+  optionsBuyingPower: 22700,
   longMarketValue: 137285,
   dayPnL: 5490,
   dayPnLPct: 3.55,

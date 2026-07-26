@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { OrderAction, PreTradeResult } from "../api/preTradeCheck";
 import { fmt } from "../utils/formatters";
 
@@ -41,6 +41,10 @@ export function OrderTicket({
   const actionLabel = action === "sell_to_open" ? "SELL TO OPEN" : "BUY TO CLOSE";
   const cashLabel = check.estCashFlow >= 0 ? "EST. CREDIT" : "EST. DEBIT";
   const canSubmit = check.ok && acked && !busy;
+
+  useEffect(() => {
+    setAcked(false);
+  }, [qty, limitPrice, contractSymbol]);
 
   return (
     <div
@@ -88,7 +92,11 @@ export function OrderTicket({
             max={maxQty}
             value={qty}
             disabled={busy}
-            onChange={(e) => onQtyChange(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            onChange={(e) =>
+              onQtyChange(
+                Math.min(maxQty, Math.max(1, parseInt(e.target.value, 10) || 1)),
+              )
+            }
             style={{
               width: 56,
               background: "#08081a",

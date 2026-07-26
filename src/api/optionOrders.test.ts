@@ -19,6 +19,7 @@ import {
   parseOsiSymbol,
   placeOptionOrder,
   reconcileSubmission,
+  roundOptionLimit,
 } from "./optionOrders";
 
 describe("optionOrders status helpers", () => {
@@ -43,6 +44,16 @@ describe("optionOrders status helpers", () => {
     expect(isOrderCanceled("rejected")).toBe(true);
     expect(isOrderCanceled("pending_cancel")).toBe(false);
     expect(isOrderOpen("pending_cancel")).toBe(true);
+  });
+
+  it("treats unfilled done_for_day as not filled", () => {
+    expect(isOrderFilled({ status: "done_for_day", filled_qty: "0", qty: "1" })).toBe(
+      false,
+    );
+    expect(isOrderFilled({ status: "done_for_day", filled_qty: "1", qty: "1" })).toBe(
+      true,
+    );
+    expect(isOrderCancelable("done_for_day")).toBe(false);
   });
 
   it("parses underlying from OSI symbols", () => {
@@ -78,6 +89,15 @@ describe("optionOrders status helpers", () => {
       type: "call",
       strike: 150,
     });
+  });
+});
+
+describe("roundOptionLimit", () => {
+  it("uses penny ticks below $3 and nickel ticks at or above", () => {
+    expect(roundOptionLimit(2.47, "sell")).toBe(2.47);
+    expect(roundOptionLimit(2.471, "sell")).toBe(2.48);
+    expect(roundOptionLimit(3.12, "sell")).toBe(3.15);
+    expect(roundOptionLimit(3.12, "buy")).toBe(3.1);
   });
 });
 

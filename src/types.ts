@@ -18,6 +18,8 @@ export interface AccountInfo {
   lastEquity: number;
   cash: number;
   buyingPower: number;
+  /** Options-specific buying power for CSP collateral (falls back to buyingPower). */
+  optionsBuyingPower: number;
   longMarketValue: number;
   dayPnL: number;
   dayPnLPct: number;

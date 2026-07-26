@@ -9,6 +9,7 @@ const account: AccountInfo = {
   lastEquity: 100_000,
   cash: 50_000,
   buyingPower: 80_000,
+  optionsBuyingPower: 50_000,
   longMarketValue: 0,
   dayPnL: 0,
   dayPnLPct: 0,
@@ -30,7 +31,7 @@ describe("preTradeCheck", () => {
       ask: 0.12,
       mid: 0.11,
       shares: 0,
-      account: { ...account, buyingPower: 1_000 },
+      account: { ...account, optionsBuyingPower: 1_000, buyingPower: 80_000 },
     });
     expect(r.ok).toBe(false);
     expect(r.blockers.some((b) => b.includes("collateral"))).toBe(true);

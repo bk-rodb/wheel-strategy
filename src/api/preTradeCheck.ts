@@ -21,6 +21,8 @@ export interface PreTradeInput {
   account: AccountInfo | null;
   /** Contract known tradable; default true when unknown. */
   tradable?: boolean;
+  /** Shares per contract deliverable (default 100). */
+  contractMultiplier?: number;
   /** Upcoming earnings / ex-div events for catalyst warnings. */
   catalystEvents?: CatalystEvent[];
 }
@@ -47,6 +49,7 @@ export function preTradeCheck(input: PreTradeInput): PreTradeResult {
   const warnings: string[] = [];
   const qty = Math.max(0, Math.floor(input.qty));
   const limit = input.limitPrice;
+  const mult = input.contractMultiplier ?? 100;
   const mid = input.mid ?? (input.bid != null && input.ask != null
     ? (input.bid + input.ask) / 2
     : null);
@@ -65,29 +68,29 @@ export function preTradeCheck(input: PreTradeInput): PreTradeResult {
   }
 
   const px = limit ?? mid ?? 0;
-  const estCashFlow = px * qty * 100 * (input.action === "sell_to_open" ? 1 : -1);
+  const estCashFlow = px * qty * mult * (input.action === "sell_to_open" ? 1 : -1);
 
   let collateralRequired = 0;
   let sharesLocked = 0;
 
   if (input.action === "sell_to_open") {
     if (input.optionType === "call") {
-      const maxContracts = Math.floor(input.shares / 100);
-      sharesLocked = qty * 100;
+      const maxContracts = Math.floor(input.shares / mult);
+      sharesLocked = qty * mult;
       if (maxContracts < 1) {
-        blockers.push("Need at least 100 shares to sell a covered call");
+        blockers.push(`Need at least ${mult} shares to sell a covered call`);
       } else if (qty > maxContracts) {
         blockers.push(`Qty ${qty} exceeds covered capacity (${maxContracts} contracts from ${input.shares} shares)`);
       }
     } else {
       // Cash-secured put
-      collateralRequired = Math.max(0, input.strike * 100 * qty - Math.max(0, estCashFlow));
-      const bp = input.account?.buyingPower ?? null;
+      collateralRequired = Math.max(0, input.strike * mult * qty - Math.max(0, estCashFlow));
+      const bp = input.account?.optionsBuyingPower ?? input.account?.buyingPower ?? null;
       if (bp == null) {
-        warnings.push("Buying power unknown — cannot verify CSP collateral");
+        warnings.push("Options buying power unknown — cannot verify CSP collateral");
       } else if (collateralRequired > bp) {
         blockers.push(
-          `CSP collateral ~$${collateralRequired.toFixed(0)} exceeds buying power $${bp.toFixed(0)}`,
+          `CSP collateral ~$${collateralRequired.toFixed(0)} exceeds options buying power $${bp.toFixed(0)}`,
         );
       }
     }
