@@ -72,6 +72,7 @@ Stops Vite (`:5173`), the analysis API (`:5099`), and `npm run preview` (`:4173`
 npm run build          # type-check + production build
 npm run preview        # serve dist/ (default http://localhost:4173)
 npm test               # vitest run
+npm run lint           # ESLint
 npm run test:watch
 
 cd backend/WheelStrategy.Api && dotnet build

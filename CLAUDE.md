@@ -18,6 +18,7 @@ npm test           # vitest run
 npm run test:watch
 npm run gen:api    # Regenerate src/api/generated/analysis.ts from the backend OpenAPI doc
 npm run check:api  # Regenerate + fail if the committed generated types/openapi are stale
+npm run lint       # ESLint (typescript-eslint + react-hooks); warnings tolerated until Phase 4
 
 # Backend analysis API (backend/WheelStrategy.Api)
 dotnet run         # Serves http://localhost:5099 (launchSettings sets Development env)

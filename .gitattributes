@@ -1,0 +1,6 @@
+* text=auto eol=lf
+
+*.{ts,tsx,js,mjs,cjs,json,css,md,cs,csproj,sln,yml,yaml} text eol=lf
+
+# OpenAPI-generated — avoid noisy CRLF churn on Windows
+src/api/generated/analysis.ts linguist-generated=true

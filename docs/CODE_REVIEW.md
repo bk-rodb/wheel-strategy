@@ -29,8 +29,8 @@ Baseline state at review time (commit `f52f980`):
 | `npm run check:api` | **Fails** — generated types are stale ([H-19](#h-19--generated-api-types-are-stale-and-the-contract-rule-is-being-bypassed)) |
 | `npm audit` | 4 advisories (1 moderate, 3 high) — dev-only |
 | `dotnet list package --vulnerable` | 1 high-severity advisory ([H-18](#h-18--microsoftopenapi-200-carries-a-known-high-severity-advisory)) |
-| Linter | **None configured** — no ESLint, Prettier, or Biome |
-| CI | **None** — no `.github/workflows` |
+| Linter | **ESLint** — `npm run lint` (Lane 1.3); warnings tolerated, `exhaustive-deps` enabled |
+| CI | **GitHub Actions** — `.github/workflows/ci.yml` (Lane 1.3) |
 
 ### Remediation progress (updates after `f52f980`)
 
@@ -42,7 +42,9 @@ Tracked in [NEXT_STEPS.md](./NEXT_STEPS.md). As of `9b9b9c7`:
 | C-4 | **fixed** | `5ca1bcd` | `@import` moved to top of `index.css`; ticker-tab rules in production CSS |
 | H-11 | **fixed** | `9b9b9c7` | Mock sell-to-open via OSI symbols + `row.tradable` |
 | H-17 | **fixed** | `5ca1bcd` | `onRefresh={() => void refresh()}` |
-| H-19 | **partial** | `5ca1bcd` | `check:api` passes; catalyst types from OpenAPI; CI/ESLint still open (Lane 1.3) |
+| H-19 | **fixed** | `5ca1bcd`, Lane 1.3 | `check:api` in CI; catalyst types from OpenAPI |
+| M-44 | **fixed** | Lane 1.3 | ESLint + GitHub Actions CI |
+| L-34 | **fixed** | Lane 1.3 | `.gitattributes` (`eol=lf`, generated marker) |
 | M-39 | **fixed** | `5ca1bcd` | Global `button:focus-visible` rule |
 | M-43 | **fixed** | `5ca1bcd` | Root `WheelDashboard.tsx` deleted |
 
@@ -657,7 +659,7 @@ It arrives transitively through `Microsoft.AspNetCore.OpenApi` and surfaces as `
 
 #### H-19 — Generated API types are stale and the contract rule is being bypassed
 
-> **Remediation:** **Partial** in `5ca1bcd` — `npm run check:api` passes; catalyst DTOs generated and re-exported from `types.ts`. ESLint + CI wiring still open (Lane 1.3 / M-44).
+> **Remediation:** **Fixed** — types in `5ca1bcd`; CI gates `check:api` in Lane 1.3.
 
 **Files:** `src/api/generated/analysis.ts`, `src/types.ts:97-130`
 
@@ -769,7 +771,7 @@ Every strike recommendation comes out of untested code. `StatMath` is pure and d
 | M-41 | `SummaryDashboard` recomputes the ledger and metrics every render, `useOpenBlotterOrders` returns a fresh array on every blotter event, and each card renders an unmemoized recharts `Sparkline`. `withRunningBalances` also silently assumes `activities` is newest-first. | `SummaryDashboard.tsx:80-105` |
 | M-42 | `PriceTrendChart` dereferences `data.find(...)!.date` eighteen lines *before* its own `if (chartData.length === 0) return null`. Empty data or one `NaN` price throws a `TypeError` that unmounts the whole detail page — there is no error boundary anywhere. Latent because `PriceTrendSection` guards upstream. | `PriceTrendChart.tsx:45-49` |
 | M-43 | ~~A tracked, never-type-checked duplicate of the root component…~~ **deleted `5ca1bcd`** | ~~`WheelDashboard.tsx` (root)~~ |
-| M-44 | No linter, formatter, or CI. This is why [H-19](#h-19--generated-api-types-are-stale-and-the-contract-rule-is-being-bypassed) went unnoticed — `check:api` works, it just isn't wired to anything. Add `typescript-eslint` with `react-hooks` (`exhaustive-deps` is directly relevant to [C-2](#c-2--place-aborts-its-own-acceptance-wait-leaving-a-live-unmonitored-order)). | repo root |
+| M-44 | No linter… | repo root — **fixed Lane 1.3** |
 | M-45 | Dev-dependency advisories: 4 total (`postcss` high, `js-yaml` moderate). Production deps are clean, but the PostCSS path-traversal issue touches the build pipeline. | `package.json` |
 | M-46 | 745 kB single bundle, no code splitting. Recharts dominates and is needed only by the chart components. | `vite.config.ts` |
 
@@ -812,7 +814,7 @@ Every strike recommendation comes out of untested code. `StatMath` is pure and d
 | L-31 | The HMM ribbon and heat map encode regime purely as red/grey/green, revealed only on mouse hover — unusable for colourblind, touch, and keyboard users. The rest of the app's colour coding is fine (phases carry text labels, P&L has a leading `-`, DTE shows the count). | `HmmTrendChart.tsx:74-97` |
 | L-32 | `AllowedHosts: "*"`; `/openapi/v1.json` mapped in all environments; no `UseHttpsRedirection`. CORS itself is correctly restrictive. | `appsettings.json:11`, `Program.cs:70` |
 | L-33 | `EnsureCreated()` instead of migrations — intentional and documented; it does create the unique index. Future schema changes need a manual drop. `HasPrecision(18,4)` is a no-op on SQLite. | `Program.cs:62-66` |
-| L-34 | No `.gitattributes`; git reports `LF will be replaced by CRLF` on generated files. | repo root |
+| L-34 | No `.gitattributes`… | repo root — **fixed Lane 1.3** |
 | L-35 | Duplicated `setSuggestions([])` — harmless, suggests a bad merge. | `WatchlistPanel.tsx:46-50` |
 
 ---
