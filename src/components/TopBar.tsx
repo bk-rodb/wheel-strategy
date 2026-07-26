@@ -63,6 +63,8 @@ export function TopBar({ broker, onBrokerChange, lastRefresh, loading, isMock, o
           {lastRefresh.toLocaleTimeString()}
         </span>
         <button
+          type="button"
+          aria-label="Refresh positions"
           onClick={onRefresh}
           disabled={loading}
           style={{

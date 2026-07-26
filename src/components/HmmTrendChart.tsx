@@ -10,6 +10,12 @@ const STATE_COLORS = {
 
 const STATE_KEYS = ["bear", "neutral", "bull"] as const;
 const STATE_LABELS = ["BEAR", "NEUT", "BULL"] as const;
+/** Single-letter glyphs so the regime ribbon is not colour-only (L-31). */
+const STATE_GLYPH: Record<(typeof STATE_KEYS)[number], string> = {
+  bear: "B",
+  neutral: "N",
+  bull: "U",
+};
 
 function hexAlpha(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -70,28 +76,71 @@ export function HmmTrendChart({ data }: { data: HmmTrendResult }) {
         )}
       </div>
 
-      {/* Dominant-regime ribbon */}
-      <div style={{ display: "flex", gap: 1, height: 18, marginBottom: 10, borderRadius: 3, overflow: "hidden" }}>
+      {/* Dominant-regime ribbon — colour + letter glyph + keyboard focus */}
+      <div
+        role="listbox"
+        aria-label="Dominant regime history"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            setHoverIdx((i) => Math.max(0, (i ?? history.length - 1) - 1));
+          } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            setHoverIdx((i) => Math.min(history.length - 1, (i ?? history.length - 1) + 1));
+          } else if (e.key === "Home") {
+            e.preventDefault();
+            setHoverIdx(0);
+          } else if (e.key === "End") {
+            e.preventDefault();
+            setHoverIdx(history.length - 1);
+          }
+        }}
+        style={{
+          display: "flex",
+          gap: 1,
+          height: 18,
+          marginBottom: 10,
+          borderRadius: 3,
+          overflow: "hidden",
+          outline: "none",
+        }}
+      >
         {history.map((snap, i) => {
+          const key = snap.dominantState as (typeof STATE_KEYS)[number];
           const color = regimeColor(snap.dominantState);
           const confidence = maxProb(snap.stateProbs);
           const active = hoverIdx === null || hoverIdx === i;
+          const glyph = STATE_GLYPH[key] ?? "?";
           return (
             <div
               key={snap.date}
+              role="option"
+              aria-selected={hoverIdx === i}
               title={`${snap.date} · ${snap.dominantState}`}
               onMouseEnter={() => setHoverIdx(i)}
               onMouseLeave={() => setHoverIdx(null)}
               style={{
                 flex: 1,
+                minWidth: 0,
                 background: color,
                 opacity: active ? 0.35 + confidence * 0.65 : 0.18,
                 outline: hoverIdx === i ? `1px solid ${color}` : "none",
                 outlineOffset: -1,
                 transition: "opacity 0.1s",
                 cursor: "crosshair",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 8,
+                fontFamily: "monospace",
+                fontWeight: 800,
+                color: "#0a0a14",
+                letterSpacing: 0,
               }}
-            />
+            >
+              {history.length <= 40 ? glyph : ""}
+            </div>
           );
         })}
       </div>

@@ -76,15 +76,16 @@ Tracked in [NEXT_STEPS.md](./NEXT_STEPS.md). As of Phase 3 (see commit after thi
 | L-34 | **fixed** | Lane 1.3 | `.gitattributes` (`eol=lf`, generated marker) |
 | M-11 | **open** | — | Close/roll still use padded OSI from `buildOsiSymbol` |
 | M-13 | **open** | — | Snapped strike still shows un-snapped assignment probs |
-| H-21 | **open** | — | No `usePendingOptionOrder` tests yet (Lane 4.2) |
-| C-1 | **open** | — | Keys still in bundle (Phase 5) |
-| H-5 | **partial** | `928c673` | Account fetch half fixed; hook stale indicators in Lane 4.3 |
-| H-6 | **open** | — | Timeouts, rate limits (Lane 4.3) |
-| H-18 | **open** | — | OpenAPI advisory (Lane 4.1) |
-| H-20 | **open** | — | Backend validation/logging (Lane 4.1) |
+| H-21 | **fixed** | Lane 4.2 | Order-machine, Friday options, ticket/section tests |
+| C-1 | **fixed** | Phase 5 | Proxy; **key rotation (Phase 0) still owed** |
+| H-5 | **fixed** | `928c673` + Lane 4.3 | Nullable account zeros + hook stale banners |
+| H-6 | **fixed** | Lane 4.3 | Timeouts, Retry-After, sequencing, asset-name cache |
+| H-18 | **fixed** | Lane 4.1 | `Microsoft.OpenApi` 2.7.5; package versions pinned |
+| H-20 | **fixed** | Lane 4.1 | Query clamps, ProblemDetails, Finnhub header, logging, timeouts |
 
-Current toolchain (post-Phase 3): `npm run build` passes; `npm test` — 73 tests / 16 files;
-`npm run lint` — 0 errors (2 warnings); `npm run check:api` passes; `dotnet test` — 11 tests.
+Current toolchain (post-Phase 4): `npm run build` passes (recharts split); `npm test` — 88
+tests / 22 files; `npm run lint` — 0 errors (2 warnings); `dotnet test` — 86 tests;
+`dotnet list package --vulnerable` clean.
 
 ---
 
@@ -112,7 +113,7 @@ The recurring theme across all five areas is worth stating on its own: **this co
 | [C-5](#c-5--the-bar-cache-never-backfills-analysis-silently-runs-on-truncated-history) | ~~Bar cache never backfills~~ | ~~**Critical**~~ *fixed `928c673`* |
 | [H-1](#h-1--the-multi-symbol-bar-limit-is-a-total-not-per-symbol-so-most-symbols-get-nothing) | ~~Multi-symbol bar `limit` is a total~~ | ~~**High**~~ *fixed `928c673`* |
 | [H-3](#h-3--only-one-option-leg-per-underlying-survives) | ~~Only one option leg per underlying~~ | ~~**High**~~ *fixed `928c673`* |
-| [H-5](#h-5--errors-are-swallowed-into-zeros-and-stale-values) | Errors swallowed into `$0.00` and stale values | **High** |
+| [H-5](#h-5--errors-are-swallowed-into-zeros-and-stale-values) | ~~Errors swallowed into `$0.00` and stale values~~ | ~~**High**~~ *fixed Phase 2 + Lane 4.3* |
 
 ---
 
@@ -692,6 +693,9 @@ TypeScript cannot catch it: `(background?: boolean) => Promise<void>` is assigna
 
 #### H-18 — `Microsoft.OpenApi` 2.0.0 carries a known high-severity advisory
 
+> **Remediation:** **Fixed** Lane 4.1 — explicit `Microsoft.OpenApi` 2.7.5; floating
+> `10.*` / `9.*` package versions replaced with pins. `dotnet list package --vulnerable` is clean.
+
 **File:** `backend/WheelStrategy.Api/WheelStrategy.Api.csproj`
 
 ```
@@ -721,6 +725,11 @@ Worth noting the analysis types get this exactly right: `types.ts:53-63` narrows
 **Fix.** Run `npm run gen:api`, commit it, delete the hand-written duplicates, and wire `check:api` into CI so the guard that already exists actually gates something.
 
 #### H-20 — Unvalidated inputs, unhandled exception types, and a logged API key on the backend
+
+> **Remediation:** **Fixed** Lane 4.1 — `AnalysisQuery` validates/clamps inputs;
+> `AddProblemDetails` + `UseExceptionHandler`; timeouts on typed clients; Finnhub token on
+> `X-Finnhub-Token`; `ILogger` on services/endpoints; HttpClient log level Warning.
+> **Finnhub key rotation (Phase 0) still owed** if the old token was logged.
 
 **Files:** `Endpoints/*.cs`, `Program.cs`, `Services/CatalystsService.cs:80-82`
 

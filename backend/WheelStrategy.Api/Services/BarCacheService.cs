@@ -17,7 +17,10 @@ public interface IBarCacheService
         string symbol, BarTimeframe timeframe, DateOnly start, bool forceRefresh, CancellationToken ct = default);
 }
 
-public class BarCacheService(WheelStrategyDbContext db, AlpacaMarketDataClient alpaca) : IBarCacheService
+public class BarCacheService(
+    WheelStrategyDbContext db,
+    AlpacaMarketDataClient alpaca,
+    ILogger<BarCacheService> log) : IBarCacheService
 {
     private const string Adjustment = "all";
 
@@ -75,6 +78,11 @@ public class BarCacheService(WheelStrategyDbContext db, AlpacaMarketDataClient a
             : coversStart && existing.Count > 0
                 ? existing[^1].BarStart
                 : start;
+
+        if (forceRefresh)
+            log.LogInformation("Force-refreshing bar cache for {Symbol} {Timeframe} from {Start}", symbol, timeframe, start);
+        else if (!coversStart)
+            log.LogInformation("Backfilling bar cache for {Symbol} {Timeframe} from {Start}", symbol, timeframe, start);
 
         var fetched = await alpaca.GetBarsAsync(symbol, timeframe, fetchFrom, ct);
 

@@ -5,7 +5,7 @@ import { fetchWheelAnalysis } from "../api/fetchWheelAnalysis";
 export function useVolatilityMetrics(symbol: string) {
   const [realizedVol, setRealizedVol] = useState<number | null>(null);
   const [impliedVol, setImpliedVol] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
@@ -33,7 +33,7 @@ export function useVolatilityMetrics(symbol: string) {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    load(ctrl.signal);
+    void load(ctrl.signal);
     return () => ctrl.abort();
   }, [load]);
 

@@ -19,6 +19,8 @@ interface TabBarProps {
 export function TabBar({ tabs, activeTab, positions, onSelect, onClose }: TabBarProps) {
   return (
     <div
+      role="tablist"
+      aria-label="Desk views"
       style={{
         borderBottom: "1px solid #12122a",
         padding: "0 24px",
@@ -33,60 +35,73 @@ export function TabBar({ tabs, activeTab, positions, onSelect, onClose }: TabBar
         const pos = positions.find((p) => p.id === tab.id);
         const phase = pos ? PHASE_CONFIG[pos.phase] : null;
         return (
-          <button
+          <div
             key={tab.id}
-            onClick={() => onSelect(tab.id)}
-            className={`ticker-tab-bar__tab${isActive ? " ticker-tab-bar__tab--active" : ""}`}
-            style={{
-              padding: "10px 18px",
-              fontSize: 11,
-              fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              color: isActive ? (phase ? phase.color : "#34d399") : "#3a3a5a",
-              borderBottom: isActive
-                ? `2px solid ${phase ? phase.color : "#34d399"}`
-                : "2px solid transparent",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              transition: "color 0.15s",
-            }}
+            style={{ display: "flex", alignItems: "stretch", flexShrink: 0 }}
           >
-            {tab.label}
-            {pos?.activeOption && (
-              <span
-                style={{
-                  marginLeft: 6,
-                  fontSize: 9,
-                  color: dayChange(pos) >= 0 ? "#34d399" : "#f87171",
-                  fontWeight: 400,
-                }}
-              >
-                {fmt.pct(dayChangePct(pos))}
-              </span>
-            )}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              id={`tab-${tab.id}`}
+              onClick={() => onSelect(tab.id)}
+              className={`ticker-tab-bar__tab${isActive ? " ticker-tab-bar__tab--active" : ""}`}
+              style={{
+                padding: "10px 18px",
+                fontSize: 11,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                color: isActive ? (phase ? phase.color : "#34d399") : "#3a3a5a",
+                borderBottom: isActive
+                  ? `2px solid ${phase ? phase.color : "#34d399"}`
+                  : "2px solid transparent",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "color 0.15s",
+              }}
+            >
+              {tab.label}
+              {pos?.activeOption && (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    fontSize: 9,
+                    color: dayChange(pos) >= 0 ? "#34d399" : "#f87171",
+                    fontWeight: 400,
+                  }}
+                >
+                  {fmt.pct(dayChangePct(pos))}
+                </span>
+              )}
+            </button>
             {tab.closeable && onClose && (
-              <span
-                role="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose(tab.id);
-                }}
-                title="Close tab"
+              <button
+                type="button"
+                aria-label={`Close ${tab.label} tab`}
+                title={`Close ${tab.label}`}
+                onClick={() => onClose(tab.id)}
                 style={{
-                  marginLeft: 8,
+                  padding: "10px 8px 10px 0",
                   fontSize: 10,
                   color: "#3a3a5a",
                   cursor: "pointer",
+                  borderBottom: isActive
+                    ? `2px solid ${phase ? phase.color : "#34d399"}`
+                    : "2px solid transparent",
                   transition: "color 0.15s",
                 }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#ef4444")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#3a3a5a")}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "#ef4444";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "#3a3a5a";
+                }}
               >
                 ✕
-              </span>
+              </button>
             )}
-          </button>
+          </div>
         );
       })}
     </div>

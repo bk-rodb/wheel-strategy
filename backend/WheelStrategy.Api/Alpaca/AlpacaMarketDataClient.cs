@@ -10,9 +10,18 @@ namespace WheelStrategy.Api.Alpaca;
 /// frontend's hand-rolled client (src/api/alpacaClient.ts), including the
 /// deliberate omission of a Content-Type header on GETs.
 /// </summary>
-public class AlpacaMarketDataClient(HttpClient http, IOptions<AlpacaOptions> options)
+public class AlpacaMarketDataClient(
+    HttpClient http,
+    IOptions<AlpacaOptions> options,
+    ILogger<AlpacaMarketDataClient> log)
 {
     private readonly AlpacaOptions _opts = options.Value;
+
+    /// <summary>Cap pagination so a stuck next_page_token cannot spin forever (L-11).</summary>
+    internal const int MaxBarPages = 20;
+
+    /// <summary>Truncate upstream error bodies before echoing into problem details (M-33).</summary>
+    internal const int MaxErrorBodyChars = 256;
 
     private static string TimeframeParam(BarTimeframe tf) => tf switch
     {
@@ -30,9 +39,18 @@ public class AlpacaMarketDataClient(HttpClient http, IOptions<AlpacaOptions> opt
     {
         var bars = new List<AlpacaBarDto>();
         string? pageToken = null;
+        var pages = 0;
 
         do
         {
+            if (++pages > MaxBarPages)
+            {
+                log.LogWarning(
+                    "Alpaca bars pagination capped at {MaxPages} pages for {Symbol}",
+                    MaxBarPages, symbol);
+                break;
+            }
+
             var url = $"{_opts.DataBaseUrl}/v2/stocks/bars"
                 + $"?symbols={Uri.EscapeDataString(symbol)}"
                 + $"&timeframe={TimeframeParam(timeframe)}"
@@ -51,8 +69,9 @@ public class AlpacaMarketDataClient(HttpClient http, IOptions<AlpacaOptions> opt
             using var res = await http.SendAsync(req, ct);
             if (!res.IsSuccessStatusCode)
             {
-                var body = await res.Content.ReadAsStringAsync(ct);
-                throw new HttpRequestException($"Alpaca bars {symbol} → {(int)res.StatusCode}: {body}");
+                var body = await ReadErrorBodyAsync(res, ct);
+                throw new HttpRequestException(
+                    $"Alpaca bars {symbol} → {(int)res.StatusCode}: {body}");
             }
 
             var payload = await res.Content.ReadFromJsonAsync<AlpacaBarsResponseDto>(ct);
@@ -79,7 +98,13 @@ public class AlpacaMarketDataClient(HttpClient http, IOptions<AlpacaOptions> opt
         req.Headers.Add("APCA-API-SECRET-KEY", _opts.ApiSecretKey);
 
         using var res = await http.SendAsync(req, ct);
-        if (!res.IsSuccessStatusCode) return null;
+        if (!res.IsSuccessStatusCode)
+        {
+            log.LogWarning(
+                "Alpaca snapshot {Symbol} → {Status}",
+                symbol, (int)res.StatusCode);
+            return null;
+        }
 
         var payload = await res.Content.ReadFromJsonAsync<Dictionary<string, AlpacaSnapshotDto>>(ct);
         if (payload is null || !payload.TryGetValue(symbol, out var snap) || snap is null) return null;
@@ -87,5 +112,19 @@ public class AlpacaMarketDataClient(HttpClient http, IOptions<AlpacaOptions> opt
         if (snap.LatestTrade is { Price: > 0 } t) return (t.Price, t.Timestamp);
         if (snap.DailyBar is { Close: > 0 } d) return (d.Close, d.Timestamp);
         return null;
+    }
+
+    private static async Task<string> ReadErrorBodyAsync(HttpResponseMessage res, CancellationToken ct)
+    {
+        var raw = await res.Content.ReadAsStringAsync(ct);
+        if (string.IsNullOrEmpty(raw))
+            return res.ReasonPhrase ?? "empty body";
+
+        var trimmed = raw.Length <= MaxErrorBodyChars
+            ? raw
+            : raw[..MaxErrorBodyChars] + "…";
+
+        // Avoid echoing credential-shaped fragments if Alpaca ever includes them.
+        return trimmed.Replace('\n', ' ').Replace('\r', ' ');
     }
 }

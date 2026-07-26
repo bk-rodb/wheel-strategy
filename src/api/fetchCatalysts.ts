@@ -1,8 +1,17 @@
 import { API_BASE, IS_MOCK } from "../config";
 import { mockCatalystEvents } from "../data/mockCatalysts";
+import { DEFAULT_TIMEOUT_MS } from "./alpacaClient";
+import { inflightDeduped } from "./inflightCache";
 import type { TickerCatalystsResult } from "../types";
 
-export async function fetchCatalysts(
+function requestSignal(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
+  if (!signal) return timeout;
+  if (typeof AbortSignal.any === "function") return AbortSignal.any([signal, timeout]);
+  return signal;
+}
+
+async function fetchCatalystsOnce(
   symbol: string,
   signal?: AbortSignal,
 ): Promise<TickerCatalystsResult> {
@@ -10,14 +19,14 @@ export async function fetchCatalysts(
 
   if (IS_MOCK) {
     await new Promise((r) => setTimeout(r, 250));
-    if (signal?.aborted) return { symbol: sym, events: [] };
-    return { symbol: sym, events: mockCatalystEvents(sym) };
+    if (signal?.aborted) return { symbol: sym, events: [], warnings: [] };
+    return { symbol: sym, events: mockCatalystEvents(sym), warnings: [] };
   }
 
   const url = new URL(`${API_BASE}/api/catalysts`);
   url.searchParams.set("symbol", sym);
 
-  const res = await fetch(url.toString(), { signal });
+  const res = await fetch(url.toString(), { signal: requestSignal(signal) });
   if (!res.ok) {
     let detail = `${res.status}`;
     try {
@@ -28,5 +37,18 @@ export async function fetchCatalysts(
     }
     throw new Error(`Catalysts API → ${detail}`);
   }
-  return res.json() as Promise<TickerCatalystsResult>;
+  const raw = (await res.json()) as TickerCatalystsResult;
+  return {
+    symbol: raw.symbol ?? sym,
+    events: Array.isArray(raw.events) ? raw.events : [],
+    warnings: Array.isArray(raw.warnings) ? raw.warnings : [],
+  };
+}
+
+export async function fetchCatalysts(
+  symbol: string,
+  signal?: AbortSignal,
+): Promise<TickerCatalystsResult> {
+  const sym = symbol.toUpperCase();
+  return inflightDeduped(`catalysts|${sym}`, () => fetchCatalystsOnce(sym, signal));
 }

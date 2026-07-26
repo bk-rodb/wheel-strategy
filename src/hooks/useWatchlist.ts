@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   watchlistStore,
   type Watchlist,
@@ -25,6 +25,9 @@ export function useWatchlist() {
   const [entries, setEntries] = useState<WatchlistEntry[]>(() => watchlistStore.getAll());
   const [quotes, setQuotes] = useState<Record<string, WatchlistQuote>>({});
   const [loadingSymbols, setLoadingSymbols] = useState<Set<string>>(new Set());
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [staleSince, setStaleSince] = useState<Date | null>(null);
+  const seqRef = useRef(0);
 
   const syncFromStore = useCallback(() => {
     setWatchlists(watchlistStore.getWatchlists());
@@ -34,6 +37,7 @@ export function useWatchlist() {
 
   const refreshQuotes = useCallback(async (symbols: string[]) => {
     if (symbols.length === 0) return;
+    const seq = ++seqRef.current;
     setLoadingSymbols(new Set(symbols));
     try {
       const data = IS_MOCK
@@ -50,20 +54,35 @@ export function useWatchlist() {
             ]),
           )
         : await fetchStockQuotes(symbols);
+      if (seq !== seqRef.current) return;
       setQuotes((prev) => ({ ...prev, ...data }));
-    } catch {
-      // quotes are best-effort
+      setLastError(null);
+      setStaleSince(null);
+    } catch (e) {
+      if (seq !== seqRef.current) return;
+      setLastError(e instanceof Error ? e.message : "Failed to load quotes");
+      setStaleSince((prev) => prev ?? new Date());
     } finally {
-      setLoadingSymbols(new Set());
+      if (seq === seqRef.current) setLoadingSymbols(new Set());
     }
   }, []);
 
   useEffect(() => {
     const symbols = entries.map((e) => e.symbol);
-    setQuotes({});
-    refreshQuotes(symbols);
-    const interval = setInterval(() => refreshQuotes(symbols), 5 * 60_000);
-    return () => clearInterval(interval);
+    // Keep last-good quotes for symbols that remain; drop removed ones.
+    setQuotes((prev) => {
+      const next: Record<string, WatchlistQuote> = {};
+      for (const s of symbols) {
+        if (prev[s]) next[s] = prev[s];
+      }
+      return next;
+    });
+    void refreshQuotes(symbols);
+    const interval = setInterval(() => void refreshQuotes(symbols), 5 * 60_000);
+    return () => {
+      clearInterval(interval);
+      seqRef.current += 1;
+    };
   }, [entries, refreshQuotes]);
 
   const items: WatchlistItem[] = entries.map((e) => ({
@@ -112,5 +131,7 @@ export function useWatchlist() {
     selectWatchlist,
     createWatchlist,
     isNameTaken,
+    lastError,
+    staleSince,
   };
 }

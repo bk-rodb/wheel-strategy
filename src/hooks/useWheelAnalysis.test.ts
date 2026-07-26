@@ -60,7 +60,7 @@ describe("useWheelAnalysis", () => {
     await waitFor(() => expect(fetchWheelAnalysis).toHaveBeenCalledTimes(1));
     expect(fetchWheelAnalysis).toHaveBeenLastCalledWith(
       expect.objectContaining({ granularity: "daily", refresh: true }),
-      undefined,
+      expect.any(AbortSignal),
     );
   });
 

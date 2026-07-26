@@ -13,6 +13,7 @@ const DATA_URL = `${API_BASE}/api/alpaca/data`;
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 400;
+export const DEFAULT_TIMEOUT_MS = 15_000;
 
 export class AlpacaHttpError extends Error {
   readonly status: number;
@@ -27,6 +28,11 @@ export class AlpacaHttpError extends Error {
     this.body = body;
   }
 }
+
+export type AlpacaRequestOpts = {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+};
 
 const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
 
@@ -43,6 +49,38 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Parse Retry-After as seconds or HTTP-date; null if missing/invalid. */
+export function parseRetryAfterMs(header: string | null): number | null {
+  if (!header) return null;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(60_000, seconds * 1000);
+  }
+  const when = Date.parse(header);
+  if (!Number.isNaN(when)) {
+    return Math.min(60_000, Math.max(0, when - Date.now()));
+  }
+  return null;
+}
+
+function requestSignal(opts?: AlpacaRequestOpts): AbortSignal {
+  const timeoutMs = opts?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeout = AbortSignal.timeout(timeoutMs);
+  if (!opts?.signal) return timeout;
+  if (typeof AbortSignal.any === "function") {
+    return AbortSignal.any([opts.signal, timeout]);
+  }
+  return opts.signal;
+}
+
+async function drainBody(res: Response): Promise<void> {
+  try {
+    if (res.body) await res.body.cancel();
+  } catch {
+    // already consumed / locked
+  }
+}
+
 async function withRetry(
   exec: () => Promise<Response>,
   /** Only GET/DELETE are auto-retried; POST never is. */
@@ -54,19 +92,27 @@ async function withRetry(
     lastRes = await exec();
     if (lastRes.ok || lastRes.status === 204 || lastRes.status === 404) return lastRes;
     if (!allowRetry || !isRetryable(lastRes.status) || i === attempts - 1) return lastRes;
-    await sleep(backoffMs(i));
+    const retryAfter = parseRetryAfterMs(lastRes.headers.get("Retry-After"));
+    await drainBody(lastRes);
+    await sleep(retryAfter ?? backoffMs(i));
   }
   return lastRes!;
 }
 
-async function get<T>(baseUrl: string, path: string, params?: Record<string, string>): Promise<T> {
+async function get<T>(
+  baseUrl: string,
+  path: string,
+  params?: Record<string, string>,
+  opts?: AlpacaRequestOpts,
+): Promise<T> {
   const url = new URL(`${baseUrl}${path}`);
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   }
+  const signal = requestSignal(opts);
   // No Content-Type on a GET: there is no body, and adding one would provoke a
   // CORS preflight for nothing.
-  const res = await withRetry(() => fetch(url.toString()), true);
+  const res = await withRetry(() => fetch(url.toString(), { signal }), true);
   if (!res.ok) {
     const text = await res.text();
     throw new AlpacaHttpError(path, res.status, text);
@@ -74,14 +120,21 @@ async function get<T>(baseUrl: string, path: string, params?: Record<string, str
   return res.json() as Promise<T>;
 }
 
-async function post<T>(baseUrl: string, path: string, body: unknown): Promise<T> {
+async function post<T>(
+  baseUrl: string,
+  path: string,
+  body: unknown,
+  opts?: AlpacaRequestOpts,
+): Promise<T> {
   // NEVER auto-retry POST — callers use client_order_id + reconcile instead.
+  const signal = requestSignal(opts);
   const res = await withRetry(
     () =>
       fetch(`${baseUrl}${path}`, {
         method: "POST",
         headers: JSON_HEADERS,
         body: JSON.stringify(body),
+        signal,
       }),
     false,
   );
@@ -92,10 +145,10 @@ async function post<T>(baseUrl: string, path: string, body: unknown): Promise<T>
   return res.json() as Promise<T>;
 }
 
-async function del(baseUrl: string, path: string): Promise<void> {
+async function del(baseUrl: string, path: string, opts?: AlpacaRequestOpts): Promise<void> {
+  const signal = requestSignal(opts);
   const res = await withRetry(
-    () =>
-      fetch(`${baseUrl}${path}`, { method: "DELETE" }),
+    () => fetch(`${baseUrl}${path}`, { method: "DELETE", signal }),
     true,
   );
   // 204 = cancel accepted; 404 already gone — treat as success for UI unlock path.
@@ -106,13 +159,14 @@ async function del(baseUrl: string, path: string): Promise<void> {
 }
 
 export const trading = {
-  get: <T>(path: string, params?: Record<string, string>) =>
-    get<T>(TRADING_URL, path, params),
-  post: <T>(path: string, body: unknown) => post<T>(TRADING_URL, path, body),
-  delete: (path: string) => del(TRADING_URL, path),
+  get: <T>(path: string, params?: Record<string, string>, opts?: AlpacaRequestOpts) =>
+    get<T>(TRADING_URL, path, params, opts),
+  post: <T>(path: string, body: unknown, opts?: AlpacaRequestOpts) =>
+    post<T>(TRADING_URL, path, body, opts),
+  delete: (path: string, opts?: AlpacaRequestOpts) => del(TRADING_URL, path, opts),
 };
 
 export const marketData = {
-  get: <T>(path: string, params?: Record<string, string>) =>
-    get<T>(DATA_URL, path, params),
+  get: <T>(path: string, params?: Record<string, string>, opts?: AlpacaRequestOpts) =>
+    get<T>(DATA_URL, path, params, opts),
 };

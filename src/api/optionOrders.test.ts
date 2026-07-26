@@ -8,6 +8,8 @@ vi.mock("../config", () => ({
 import {
   __mockOrders,
   buildOsiSymbol,
+  cancelOrder,
+  getOrder,
   getOrderByClientId,
   isOrderAccepted,
   isOrderCancelable,
@@ -20,6 +22,8 @@ import {
   placeOptionOrder,
   reconcileSubmission,
   roundOptionLimit,
+  waitForOrderAcceptance,
+  waitForOrderCanceled,
 } from "./optionOrders";
 
 describe("optionOrders status helpers", () => {
@@ -140,5 +144,28 @@ describe("optionOrders idempotency (mock)", () => {
     expect(found).not.toBeNull();
     expect(found!.id).toBe(created.id);
     expect(await getOrderByClientId("missing-id")).toBeNull();
+  });
+
+  it("waitForOrderAcceptance advances pending_new to accepted", async () => {
+    const created = await placeOptionOrder({
+      contractSymbol: "AAPL  260731P00150000",
+      qty: 1,
+      limitPrice: 1.0,
+    });
+    expect(created.status).toBe("pending_new");
+    const accepted = await waitForOrderAcceptance(created.id, { timeoutMs: 5_000 });
+    expect(accepted.status).toBe("accepted");
+  });
+
+  it("cancelOrder + waitForOrderCanceled reaches canceled", async () => {
+    const created = await placeOptionOrder({
+      contractSymbol: "AAPL  260731P00150000",
+      qty: 1,
+      limitPrice: 1.0,
+    });
+    await getOrder(created.id); // pending_new → accepted
+    await cancelOrder(created.id);
+    const final = await waitForOrderCanceled(created.id, { timeoutMs: 5_000 });
+    expect(final.status).toBe("canceled");
   });
 });

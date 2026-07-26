@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { AccountInfo, WheelPosition } from "../types";
 import type { BalanceActivity } from "../api/fetchAccountActivities";
 import { sumOptionPremiumCollected } from "../api/fetchAccountActivities";
@@ -78,31 +79,43 @@ export function SummaryDashboard({
   onSelectPendingOrder,
 }: SummaryDashboardProps) {
   const pendingOrders = useOpenBlotterOrders();
-  const totals = computeMetrics(positions, account, activities);
-  const ledger = account
-    ? withRunningBalances(activities, account.equity)
-    : withRunningBalances(activities, 0);
-
-  const expiringSoon = positions
-    .filter((p) => p.activeOption && dte(p.activeOption.expiration) <= 14)
-    .sort((a, b) => dte(a.activeOption!.expiration) - dte(b.activeOption!.expiration));
-
-  const metrics = [
-    { label: "Cash Deployed", value: fmt.currency(totals.cashDeployed), accent: false },
-    {
-      label: "Unrealized P&L",
-      value: fmt.currency(totals.unrealizedPnL),
-      accent: totals.unrealizedPnL >= 0,
-      color: totals.unrealizedPnL >= 0 ? "#34d399" : "#f87171",
-    },
-    { label: "Premium Collected", value: fmt.currency(totals.premiumCollected), accent: true },
-    {
-      label: "Day Change",
-      value: fmt.currency(totals.dayChange),
-      accent: totals.dayChange >= 0,
-      color: totals.dayChange >= 0 ? "#34d399" : "#f87171",
-    },
-  ];
+  const totals = useMemo(
+    () => computeMetrics(positions, account, activities),
+    [positions, account, activities],
+  );
+  const ledger = useMemo(
+    () =>
+      account
+        ? withRunningBalances(activities, account.equity)
+        : withRunningBalances(activities, 0),
+    [account, activities],
+  );
+  const expiringSoon = useMemo(
+    () =>
+      positions
+        .filter((p) => p.activeOption && dte(p.activeOption.expiration) <= 14)
+        .sort((a, b) => dte(a.activeOption!.expiration) - dte(b.activeOption!.expiration)),
+    [positions],
+  );
+  const metrics = useMemo(
+    () => [
+      { label: "Cash Deployed", value: fmt.currency(totals.cashDeployed), accent: false },
+      {
+        label: "Unrealized P&L",
+        value: fmt.currency(totals.unrealizedPnL),
+        accent: totals.unrealizedPnL >= 0,
+        color: totals.unrealizedPnL >= 0 ? "#34d399" : "#f87171",
+      },
+      { label: "Premium Collected", value: fmt.currency(totals.premiumCollected), accent: true },
+      {
+        label: "Day Change",
+        value: fmt.currency(totals.dayChange),
+        accent: totals.dayChange >= 0,
+        color: totals.dayChange >= 0 ? "#34d399" : "#f87171",
+      },
+    ],
+    [totals],
+  );
 
   const goPending = (o: BlotterOrder) => {
     const u = o.underlying.toUpperCase();

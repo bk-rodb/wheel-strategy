@@ -1,8 +1,10 @@
 import { fetchWheelAnalysis } from "./fetchWheelAnalysis";
 import { mockWheelAnalysis } from "../test/mockWheelAnalysis";
+import { __clearInflightCache } from "./inflightCache";
 
 describe("fetchWheelAnalysis", () => {
   beforeEach(() => {
+    __clearInflightCache();
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -14,6 +16,7 @@ describe("fetchWheelAnalysis", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    __clearInflightCache();
   });
 
   it("includes granularity=daily in the query string when requested", async () => {
@@ -37,11 +40,14 @@ describe("fetchWheelAnalysis", () => {
     expect(String(url)).not.toContain("granularity=");
   });
 
-  it("passes abort signal to fetch", async () => {
+  it("passes an abort signal to fetch (merged with timeout)", async () => {
     const ctrl = new AbortController();
     await fetchWheelAnalysis({ symbol: "NVDA", granularity: "daily" }, ctrl.signal);
 
-    expect(fetch).toHaveBeenCalledWith(expect.any(String), { signal: ctrl.signal });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it("throws with API detail on non-OK response", async () => {
@@ -51,8 +57,8 @@ describe("fetchWheelAnalysis", () => {
       json: () => Promise.resolve({ detail: "Upstream failed" }),
     } as Response);
 
-    await expect(fetchWheelAnalysis({ symbol: "NVDA", granularity: "daily" })).rejects.toThrow(
-      "Analysis API → Upstream failed",
-    );
+    await expect(
+      fetchWheelAnalysis({ symbol: "NVDA", granularity: "daily", refresh: true }),
+    ).rejects.toThrow("Analysis API → Upstream failed");
   });
 });

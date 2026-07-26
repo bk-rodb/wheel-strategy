@@ -23,7 +23,8 @@ public interface IWheelAnalysisService
 public class WheelAnalysisService(
     IBarCacheService bars,
     AlpacaMarketDataClient alpaca,
-    IOptions<AnalysisOptions> analysisOptions) : IWheelAnalysisService
+    IOptions<AnalysisOptions> analysisOptions,
+    ILogger<WheelAnalysisService> log) : IWheelAnalysisService
 {
     private readonly AnalysisOptions _opts = analysisOptions.Value;
 
@@ -31,6 +32,9 @@ public class WheelAnalysisService(
     {
         var symbol = req.Symbol.ToUpperInvariant();
         var warnings = new List<string>();
+        log.LogDebug(
+            "Wheel analysis {Symbol} lookback={Lookback} dte={Dte} granularity={Granularity}",
+            symbol, req.LookbackDays, req.Dte, req.Granularity);
 
         var weekly = true;
         if (req.Granularity.Equals("daily", StringComparison.OrdinalIgnoreCase))

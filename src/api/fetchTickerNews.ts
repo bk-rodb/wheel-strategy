@@ -38,11 +38,15 @@ export async function fetchTickerNews(
     return mockTickerNews(sym).filter((n) => withinLastWeek(n.publishedAt));
   }
 
-  const res = await marketData.get<AlpacaNewsResponse>("/v1beta1/news", {
-    symbols: sym,
-    limit: String(limit),
-    sort: "desc",
-  });
+  const res = await marketData.get<AlpacaNewsResponse>(
+    "/v1beta1/news",
+    {
+      symbols: sym,
+      limit: String(limit),
+      sort: "desc",
+    },
+    { signal },
+  );
 
   return (res.news ?? [])
     .map((n) => ({

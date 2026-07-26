@@ -30,13 +30,17 @@ export async function fetchAtmImpliedVol(
 
   let contracts: AlpacaOptionContract[] = [];
   try {
-    const res = await trading.get<AlpacaOptionContractsResponse>("/v2/options/contracts", {
-      underlying_symbols: sym,
-      expiration_date: expiration,
-      type: "put",
-      status: "active",
-      limit: "100",
-    });
+    const res = await trading.get<AlpacaOptionContractsResponse>(
+      "/v2/options/contracts",
+      {
+        underlying_symbols: sym,
+        expiration_date: expiration,
+        type: "put",
+        status: "active",
+        limit: "100",
+      },
+      { signal },
+    );
     contracts = res.option_contracts ?? [];
   } catch {
     return null;
@@ -58,6 +62,7 @@ export async function fetchAtmImpliedVol(
     const snapRes = await marketData.get<AlpacaOptionSnapshotsResponse>(
       "/v1beta1/options/snapshots",
       { symbols: best.symbol },
+      { signal },
     );
     const iv = snapRes.snapshots?.[best.symbol]?.impliedVolatility;
     return iv != null && iv > 0 ? iv : null;

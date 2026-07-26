@@ -17,7 +17,8 @@ public interface IHmmTrendService
 public class HmmTrendService(
     IBarCacheService bars,
     AlpacaMarketDataClient alpaca,
-    IOptions<AnalysisOptions> analysisOptions) : IHmmTrendService
+    IOptions<AnalysisOptions> analysisOptions,
+    ILogger<HmmTrendService> log) : IHmmTrendService
 {
     private static readonly int[] ForecastHorizons = [5, 10, 20, 35];
     private readonly AnalysisOptions _opts = analysisOptions.Value;
@@ -26,6 +27,9 @@ public class HmmTrendService(
     {
         var symbol = req.Symbol.ToUpperInvariant();
         var warnings = new List<string>();
+        log.LogDebug(
+            "HMM analysis {Symbol} lookback={Lookback} granularity={Granularity}",
+            symbol, req.LookbackDays, req.Granularity);
         var weekly = !req.Granularity.Equals("daily", StringComparison.OrdinalIgnoreCase);
         var timeframe = weekly ? BarTimeframe.Week : BarTimeframe.Day;
         var periodsPerYear = weekly ? 52.0 : 252.0;

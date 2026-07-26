@@ -22,6 +22,8 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
     selectWatchlist,
     createWatchlist,
     isNameTaken,
+    lastError,
+    staleSince,
   } = useWatchlist();
 
   const [query, setQuery] = useState("");
@@ -539,6 +541,21 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
           </div>
         )}
       </div>
+
+      {staleSince && (
+        <div
+          style={{
+            padding: "8px 14px",
+            fontSize: 9,
+            fontFamily: "monospace",
+            color: "#f59e0b",
+            background: "#1a1408",
+            borderBottom: "1px solid #4a3810",
+          }}
+        >
+          Quotes stale{lastError ? ` — ${lastError}` : ""} · since {staleSince.toLocaleTimeString()}
+        </div>
+      )}
 
       {/* Watchlist items */}
       <div style={{ flex: 1, overflowY: "auto" }}>

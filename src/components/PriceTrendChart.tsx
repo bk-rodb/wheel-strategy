@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import type { PricePoint } from "../types";
 import { fmt } from "../utils/formatters";
+import { ChartErrorBoundary } from "./ChartErrorBoundary";
 
 interface PriceTrendChartProps {
   data: PricePoint[];
@@ -29,24 +30,30 @@ function toPct(price: number, startPrice: number): number {
   return ((price - startPrice) / startPrice) * 100;
 }
 
-export function PriceTrendChart({ data, costBasis, strike }: PriceTrendChartProps) {
+function PriceTrendChartInner({ data, costBasis, strike }: PriceTrendChartProps) {
   const startPrice = data[0]?.price ?? 0;
 
   const chartData = useMemo<ChartPoint[]>(
     () =>
-      data.map((d) => ({
-        date: d.date,
-        price: d.price,
-        pctFromStart: toPct(d.price, startPrice),
-      })),
+      data
+        .filter((d) => Number.isFinite(d.price))
+        .map((d) => ({
+          date: d.date,
+          price: d.price,
+          pctFromStart: toPct(d.price, startPrice),
+        })),
     [data, startPrice],
   );
 
-  const periodHigh = Math.max(...data.map((d) => d.price));
-  const periodLow = Math.min(...data.map((d) => d.price));
-  const lastPrice = data[data.length - 1]?.price ?? startPrice;
-  const highDate = data.find((d) => d.price === periodHigh)!.date;
-  const lowDate = data.find((d) => d.price === periodLow)!.date;
+  if (chartData.length === 0 || !Number.isFinite(startPrice) || startPrice <= 0) {
+    return null;
+  }
+
+  const periodHigh = Math.max(...chartData.map((d) => d.price));
+  const periodLow = Math.min(...chartData.map((d) => d.price));
+  const lastPrice = chartData[chartData.length - 1]?.price ?? startPrice;
+  const highDate = chartData.find((d) => d.price === periodHigh)?.date ?? chartData[0].date;
+  const lowDate = chartData.find((d) => d.price === periodLow)?.date ?? chartData[0].date;
   const netPct = toPct(lastPrice, startPrice);
   const isUp = netPct >= 0;
 
@@ -63,8 +70,6 @@ export function PriceTrendChart({ data, costBasis, strike }: PriceTrendChartProp
 
   const trendColor = isUp ? "#34d399" : "#f87171";
   const gradientId = isUp ? "price-up-fill" : "price-down-fill";
-
-  if (chartData.length === 0) return null;
 
   return (
     <div>
@@ -235,5 +240,13 @@ export function PriceTrendChart({ data, costBasis, strike }: PriceTrendChartProp
         </ComposedChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+export function PriceTrendChart(props: PriceTrendChartProps) {
+  return (
+    <ChartErrorBoundary fallbackLabel="PRICE CHART UNAVAILABLE">
+      <PriceTrendChartInner {...props} />
+    </ChartErrorBoundary>
   );
 }

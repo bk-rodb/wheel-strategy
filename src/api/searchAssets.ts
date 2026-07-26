@@ -59,15 +59,21 @@ export async function fetchAsset(symbol: string): Promise<AssetResult | null> {
   }
 }
 
+/** Company names rarely change — cache for the session to cut per-refresh fan-out (H-6). */
+const assetNameCache = new Map<string, string>();
+
 export async function fetchAssetNames(symbols: string[]): Promise<Record<string, string>> {
   const unique = [...new Set(symbols.map((s) => s.toUpperCase()))];
-  const entries = await Promise.all(
-    unique.map(async (sym) => {
-      const asset = await fetchAsset(sym);
-      return [sym, asset?.name ?? sym] as const;
-    }),
-  );
-  return Object.fromEntries(entries);
+  const missing = unique.filter((s) => !assetNameCache.has(s));
+  if (missing.length > 0) {
+    await Promise.all(
+      missing.map(async (sym) => {
+        const asset = await fetchAsset(sym);
+        assetNameCache.set(sym, asset?.name ?? sym);
+      }),
+    );
+  }
+  return Object.fromEntries(unique.map((s) => [s, assetNameCache.get(s) ?? s]));
 }
 
 export async function searchAssets(query: string): Promise<AssetResult[]> {

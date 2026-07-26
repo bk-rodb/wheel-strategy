@@ -6,8 +6,9 @@ import type { CatalystEvent, NewsItem } from "../types";
 export function useTickerCatalysts(symbol: string) {
   const [events, setEvents] = useState<CatalystEvent[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -20,6 +21,7 @@ export function useTickerCatalysts(symbol: string) {
         ]);
         if (signal?.aborted) return;
         setEvents(catalysts.events);
+        setWarnings(catalysts.warnings ?? []);
         setNews(headlines);
       } catch (e) {
         if (!signal?.aborted) {
@@ -34,9 +36,9 @@ export function useTickerCatalysts(symbol: string) {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    load(ctrl.signal);
+    void load(ctrl.signal);
     return () => ctrl.abort();
   }, [load]);
 
-  return { events, news, loading, error };
+  return { events, news, loading, error, warnings };
 }

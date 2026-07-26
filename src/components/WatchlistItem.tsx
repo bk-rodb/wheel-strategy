@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import type { WatchlistItem as WatchlistItemData } from "../hooks/useWatchlist";
 import { fmt } from "../utils/formatters";
 
@@ -17,10 +18,21 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
   const chgColor = !q ? "#3a3a5a" : flat ? "#8a8aa8" : up ? "#34d399" : "#f87171";
   const arrow = flat ? "▶" : up ? "▲" : "▼";
 
+  const onRowKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onOpen(item.symbol);
+    }
+  };
+
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => onOpen(item.symbol)}
+      onKeyDown={onRowKeyDown}
       title={`Open ${item.symbol}`}
+      aria-label={`Open ${item.symbol}`}
       style={{
         padding: "10px 14px",
         borderBottom: "1px solid #0e0e20",
@@ -31,7 +43,6 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
       onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#0d0d1e")}
       onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
     >
-      {/* Row 1: symbol + closing price */}
       <div
         style={{
           display: "flex",
@@ -63,7 +74,6 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
         </span>
       </div>
 
-      {/* Row 2: arrow + change + change % (daily session move) */}
       {q && (
         <div
           style={{
@@ -94,13 +104,14 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
         </div>
       )}
 
-      {/* Remove */}
       <button
+        type="button"
+        aria-label={`Remove ${item.symbol} from watchlist`}
         onClick={(e) => {
           e.stopPropagation();
           onRemove(item.symbol);
         }}
-        title="Remove"
+        title={`Remove ${item.symbol}`}
         style={{
           cursor: "pointer",
           fontSize: 9,

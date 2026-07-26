@@ -140,6 +140,8 @@ so.
 | CORS error from the backend | Frontend origin not allowed | Default is `http://localhost:5173`; update `Cors:AllowedOrigins` if needed |
 | `dotnet run` fails | .NET 10 SDK missing | Install .NET 10 SDK |
 | Build fails: file locked by `WheelStrategy.Api` | The API is still running | Stop it before `dotnet build` |
+| Startup recreates `wheel.db` / bar cache empty | Pre-migration `EnsureCreated` DB has no `__EFMigrationsHistory` | Expected once — the disposable bar cache is wiped and rebuilt from EF migrations |
+| Analysis `400` validation problem on `symbol` | Symbol failed the ticker pattern | Use a normal equity root (`AAPL`, `BRK.B`); max 10 chars |
 
 Alpaca's market-data API rejects a `Content-Type` header on GET requests. The backend clients omit it on purpose to avoid CORS preflight failures.
 

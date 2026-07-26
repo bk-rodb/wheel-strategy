@@ -32,8 +32,8 @@ engineering fundamentals are strong (strict TypeScript, correct Black-Scholes, g
 order idempotency), but defects cluster in five places: secrets in the bundle, market
 data that is quietly wrong, React wiring around the order state machine, failures that
 render as confident numbers, and the absence of a safe environment to test execution in.
-**Phases 1–3 remediation complete** (except Phase 0 key rotation); **Phase 4–5 and the feature
-roadmap are next** — see [Agent handoff](#agent-handoff--where-to-pick-up).
+**Phases 1–5 remediation complete** (except Phase 0 key rotation and Lane 3.2 partials);
+**feature roadmap is unblocked** — see [Agent handoff](#agent-handoff--where-to-pick-up).
 
 **2026-07-25 (later) — Phase 2 complete** (`928c673`, lanes 2.1–2.5). Market data pagination and
 adjusted bars (H-1, H-2), multi-leg P&L (H-3), snapshot optional chaining (H-4), bar-cache
@@ -121,10 +121,10 @@ graph LR
 | 3 | 3.1 | Order state machine | 8 | **1** | 1.1, 1.2 | **done** `8e67f26` |
 | 3 | 3.2 | Order semantics and pricing | 12 | **1** | 1.2, 3.1 | **done** `8e67f26` (partials: M-11, M-13, L-11/14/17–19) |
 | 3 | 3.3 | Order UI | 8 | 2 | 3.2 | **done** `8e67f26` |
-| 4 | 4.1 | Backend platform | 8 | 2 (.NET) | 2.2, 2.3 | open |
-| 4 | 4.2 | Tests | 1 | 2 | 1.2, 1.3, 2.x, 3.x | open |
-| 4 | 4.3 | Fetch and transport hardening | 13 | 2 | 2.1 | open |
-| 4 | 4.4 | Perf and accessibility | 5 | 3 | 1.1 | open |
+| 4 | 4.1 | Backend platform | 8 | 2 (.NET) | 2.2, 2.3 | **done** |
+| 4 | 4.2 | Tests | 1 | 2 | 1.2, 1.3, 2.x, 3.x | **done** |
+| 4 | 4.3 | Fetch and transport hardening | 13 | 2 | 2.1 | **done** |
+| 4 | 4.4 | Perf and accessibility | 5 | 3 | 1.1 | **done** |
 | 5 | 5.1 | Credential proxy | 1 | **1** | everything | **done** (C-1 retired) |
 
 Peak useful concurrency is **5 agents** (Phase 2). Tier refers to the
@@ -429,8 +429,8 @@ fetch, so the header can never advertise 55 DTE above 6-DTE contracts; fix the i
 
 ## Agent handoff — where to pick up
 
-**Phases 1–3 and Phase 5 are complete. Only Phase 0 (manual key rotation), Phase 4, and the
-Lane 3.2 partials remain.** All five Criticals are now retired.
+**Phases 1–5 are complete in code. Only Phase 0 (manual key rotation) and the Lane 3.2
+partials remain.** All five Criticals are retired.
 
 ### Done (do not re-do)
 
@@ -439,7 +439,9 @@ Lane 3.2 partials remain.** All five Criticals are now retired.
 | 1 | `5ca1bcd`, `9b9b9c7`, `4fba68b` | Quick wins, mock sell-to-open, ESLint/CI/xunit |
 | 2 | `928c673`, `d2ee56d` | Market data, bar cache, stats/nullable DTOs, watchlist, display/utils |
 | 3 | `8e67f26` | Order state machine, semantics/pricing, order UI |
-| 5 | (this change) | Alpaca credential proxy — C-1 retired; browser holds no keys |
+| 4.1 | (Lane 4.1) | Backend platform — H-18/H-20/M-33/L-11–13/L-32/L-33 |
+| 4.2–4.4 | (this change) | Tests, fetch/transport, perf/a11y — Phase 4 complete |
+| 5 | (proxy change) | Alpaca credential proxy — C-1 retired; browser holds no keys |
 
 **Verification gate** (run from `C:/repos/wheel-strategy`):
 
@@ -456,17 +458,10 @@ dotnet test backend/WheelStrategy.Api.Tests/WheelStrategy.Api.Tests.csproj
    (briefly, uncommitted) in a git-tracked `.env.example`. Rotate, then
    `dotnet user-secrets set` the new values. Treat any existing `dist/` as compromised.
 
-2. **Phase 4 (four concurrent lanes)** — Platform hardening and tests. Start anywhere unblocked:
-   - **4.1** Backend platform (H-18, H-20, L-33 migrations) — needs 2.2, 2.3 ✓. Note it now
-     shares `Program.cs` with the landed proxy; the proxy's own timeout is already set.
-   - **4.2** Tests — **`usePendingOptionOrder` still has no dedicated test file** (H-21); highest
-     value now that mock mode and Phase 3 fixes are in place
-   - **4.3** Fetch/transport (H-6, H-5 hook half, timeouts, stale indicators). `alpacaClient.ts`
-     is now a proxy client — add `AbortSignal.timeout` and `Retry-After` handling there; the
-     proxy already forwards `Retry-After` and exposes it via CORS.
-   - **4.4** Perf/a11y (M-41, M-42, bundle split)
+2. ~~**Phase 4**~~ **done** — 4.1–4.4 landed (88 frontend tests; recharts code-split;
+   timeouts/`Retry-After`/stale banners; order-machine + UI tests).
 
-3. **Lane 3.2 partials** (optional, low urgency) — M-11, M-13, L-11, L-14, L-17–L-19.
+3. **Lane 3.2 partials** (optional, low urgency) — M-11, M-13, L-11 (frontend), L-14, L-17–L-19.
 
 4. **SSE relay for `trade_updates`** (new, optional) — restores push-latency order updates
    without a browser credential. `src/api/tradeUpdatesStream.ts` keeps its surface
@@ -485,85 +480,49 @@ dotnet test backend/WheelStrategy.Api.Tests/WheelStrategy.Api.Tests.csproj
 
 ## Phase 4 — platform, hardening, tests (4 lanes, concurrent)
 
-### Lane 4.1 — backend platform
+### Lane 4.1 — backend platform — **done**
 
-- **Findings:** [H-18](./CODE_REVIEW.md#h-18--microsoftopenapi-200-carries-a-known-high-severity-advisory),
-  [H-20](./CODE_REVIEW.md#h-20--unvalidated-inputs-unhandled-exception-types-and-a-logged-api-key-on-the-backend),
-  M-33, L-11 (backend half), L-12, L-13, L-32, L-33
+- **Findings:** [H-18](./CODE_REVIEW.md#h-18--microsoftopenapi-200-carries-a-known-high-severity-advisory) ✓,
+  [H-20](./CODE_REVIEW.md#h-20--unvalidated-inputs-unhandled-exception-types-and-a-logged-api-key-on-the-backend) ✓,
+  M-33 ✓, L-11 (backend half) ✓, L-12 ✓, L-13 ✓, L-32 ✓, L-33 ✓
 - **Owns:** `WheelStrategy.Api.csproj`, `Program.cs`, `Endpoints/*.cs`,
   `Services/CatalystsService.cs`, `Alpaca/AlpacaMarketDataClient.cs`, `appsettings*.json`
 - **Blocked by:** 2.2, 2.3 — H-20 injects `ILogger` into those same services
 - **Model:** Tier 2, .NET-strong
 
-Clamp `lookbackDays` and `dte` and validate `symbol` at the endpoints (today
-`?lookbackDays=2000000000` returns a 500 with a stack trace, and `lookbackDays=100000` is an
-unauthenticated cost attack on a metered third-party API). Add `AddProblemDetails()` and
-`UseExceptionHandler()`, catch `TaskCanceledException` and `JsonException` alongside
-`HttpRequestException`, set explicit `HttpClient` timeouts, and cap the pagination loops.
-Move the Finnhub token from the URL into the `X-Finnhub-Token` header and set
-`"System.Net.Http.HttpClient": "Warning"`. Inject `ILogger` — no service or endpoint
-currently has one. Pin `Microsoft.OpenApi` to a patched version and replace the floating
-`10.*` / `9.*` versions, following the comment pattern already used for
-`SQLitePCLRaw.bundle_e_sqlite3`. Convert `EnsureCreated()` to migrations (L-33) while you
-are in `Program.cs`.
+> **Status: done.** Packages pinned (`Microsoft.OpenApi` 2.7.5, AspNetCore OpenApi /
+> EF Core exact versions; `dotnet list package --vulnerable` clean). Query validation in
+> `AnalysisQuery` clamps lookback/dte and rejects bad symbols. `AddProblemDetails` +
+> `UseExceptionHandler` + endpoint catches for timeout/JSON/DbUpdate. Finnhub auth via
+> `X-Finnhub-Token` (never in URI); HttpClient timeouts; bar pagination capped at 20 pages;
+> upstream error bodies truncated. Macro calendar extended through 2027; catalysts DTO
+> carries `warnings`. `AllowedHosts` restricted; OpenAPI mapped only in Development;
+> HTTPS launch profile added. `EnsureCreated` → EF `Migrate` (`Data/Migrations/InitialCreate`);
+> EnsureCreated-era `wheel.db` is wiped once (disposable bar cache). 86 backend tests.
 
-### Lane 4.2 — tests
+### Lane 4.2 — tests — **done**
 
-- **Findings:** [H-21](./CODE_REVIEW.md#h-21--the-analysis-engine-and-the-order-state-machine-have-no-tests)
-- **Owns:** new test files only — no production file
-- **Blocked by:** 1.2 (order tests need mock mode), 1.3 (test project), and any lane whose
-  behavior it locks in
-- **Model:** Tier 2
+- **Findings:** [H-21](./CODE_REVIEW.md#h-21--the-analysis-engine-and-the-order-state-machine-have-no-tests) ✓
+- **Status:** `usePendingOptionOrder`, `fetchFridayOptions`, `tradeUpdatesStream`,
+  `OrderTicket`, `OpenOptionsSection` tests added; `optionOrders` cancel/acceptance coverage
+  extended. Backend StatMath/GaussianHmm goldens already present from Phase 2. **88**
+  frontend tests / 22 files.
 
-All new files, so it never conflicts — but it must follow the lanes it verifies. Target the
-four untested areas where a bug costs money: `usePendingOptionOrder` (454 lines, zero
-tests), `fetchFridayOptions`, `optionOrders`, `tradeUpdatesStream`, plus component tests for
-`OpenOptionsSection` and `OrderTicket` with `@testing-library/react`, already a dependency.
-On the backend, golden-value tests for `StatMath` (Black-Scholes has published reference
-values) and `GaussianHmm`. C-2, C-3, H-7, H-14 and H-16 are all straightforwardly testable
-and any one of these tests would have caught them.
+### Lane 4.3 — fetch and transport hardening — **done**
 
-### Lane 4.3 — fetch and transport hardening
+- **Findings:** H-6 ✓, H-5 (hook half) ✓, M-4 ✓, M-5 ✓, M-6 ✓, M-9 ✓, M-38 ✓,
+  L-15/L-16 superseded (inert stream), L-23 ✓, L-24 ✓, L-25 already fixed, L-29 ✓
+- **Status:** `AbortSignal.timeout(15s)` + `Retry-After` + body drain on
+  `alpacaClient`; signal plumb-through; asset-name cache; inflight dedupe for analysis /
+  catalysts; seq guards + `staleSince`/`lastError` banners; watchlist no longer blanks on
+  add; account hooks drop stale broker responses.
 
-- **Findings:** [H-6](./CODE_REVIEW.md#h-6--no-request-timeouts-no-in-flight-guard-and-an-n3-fan-out-that-will-trip-alpacas-rate-limit),
-  [H-5](./CODE_REVIEW.md#h-5--errors-are-swallowed-into-zeros-and-stale-values) (hook half),
-  M-4, M-5, M-6, M-9, M-38, L-15, L-16, L-23, L-24, L-25, L-29
-- **Owns:** [src/api/alpacaClient.ts](../src/api/alpacaClient.ts),
-  [src/api/tradeUpdatesStream.ts](../src/api/tradeUpdatesStream.ts),
-  [src/api/searchAssets.ts](../src/api/searchAssets.ts),
-  [src/api/fetchTickerNews.ts](../src/api/fetchTickerNews.ts),
-  `src/hooks/useWheelPositions.ts`, `useWatchlist.ts`, `useAccountDetails.ts`,
-  `useAccountActivities.ts`, `useWheelAnalysis.ts`, `useHmmTrend.ts`,
-  `useVolatilityMetrics.ts`, `useTickerCatalysts.ts`
-- **Blocked by:** 2.1 — H-5's other half lives in `useWheelPositions.ts` and `useWatchlist.ts`
-- **Model:** Tier 2
+### Lane 4.4 — perf and accessibility — **done**
 
-Add `signal: AbortSignal.timeout(15_000)` to every request (there is currently no timeout
-anywhere, so a hung connection leaves `loading` true forever), honour `Retry-After` in
-`withRetry`, add sequence refs so a slow earlier response cannot overwrite a newer one, and
-memoize `fetchAssetNames` — company names never change yet are re-fetched every cycle, and
-the current fan-out reaches roughly 156 requests/minute against Alpaca's 200/min budget.
-Dedupe the 3-4x duplicate fetches per ticker tab. Expose `staleSince` / `lastError` and
-render a visible degraded-data indicator: in a trading UI, "I don't know" must not look like
-`$0.00`.
-
-### Lane 4.4 — perf and accessibility
-
-- **Findings:** M-41, M-42, M-46, L-30, L-31
-- **Owns:** [src/components/SummaryDashboard.tsx](../src/components/SummaryDashboard.tsx),
-  [src/components/PriceTrendChart.tsx](../src/components/PriceTrendChart.tsx),
-  [src/components/TabBar.tsx](../src/components/TabBar.tsx),
-  [src/components/WatchlistItem.tsx](../src/components/WatchlistItem.tsx),
-  [vite.config.ts](../vite.config.ts)
-- **Blocked by:** 1.1 (M-39's focus-ring work lands there first)
-- **Model:** Tier 3
-
-Memoize the `SummaryDashboard` ledger and the recharts sparklines; move
-`PriceTrendChart`'s `data.find(...)!.date` below its own empty-data guard and add an error
-boundary so one `NaN` cannot unmount the detail page; split the 745 kB bundle so recharts
-loads only with the charts. Give the `TabBar` close control real button semantics, make
-watchlist rows keyboard-reachable, name the icon-only controls, and add a non-colour
-encoding to the HMM regime ribbon.
+- **Findings:** M-41 ✓, M-42 ✓, M-46 ✓, L-30 ✓, L-31 ✓
+- **Status:** SummaryDashboard memoization; memo Sparkline; PriceTrendChart empty-guard +
+  `ChartErrorBoundary`; Vite `manualChunks` for recharts (~328 kB main / ~428 kB charts);
+  TabBar/WatchlistItem keyboard + labels; HMM ribbon letter glyphs + arrow-key focus.
 
 ---
 
@@ -697,7 +656,7 @@ Criticals and a High for near-zero cost and is always worth launching first.
 
 # Feature roadmap
 
-Phases 1–3 remediation is complete (except Phase 0 key rotation and Lane 3.2 partials). Items
+Phases 1–5 remediation is complete (except Phase 0 key rotation and Lane 3.2 partials). Items
 are roughly ordered by value-to-effort; prerequisites from Phases 4–5 are called out where they exist.
 
 ## Near-term (high value, low effort)

@@ -13,7 +13,8 @@ import { WatchlistPanel } from "./components/WatchlistPanel";
 
 export default function WheelDashboard() {
   const [broker, setBroker] = useState<BrokerType>("alpaca-paper");
-  const { positions, loading, error, lastRefresh, refresh, isMock } = useWheelPositions();
+  const { positions, loading, error, lastError, staleSince, lastRefresh, refresh, isMock } =
+    useWheelPositions();
   const { account, loading: accountLoading } = useAccountDetails(broker);
   const { activities, loading: activitiesLoading } = useAccountActivities(broker);
   const [activeTab, setActiveTab] = useState<string>("__summary__");
@@ -117,6 +118,24 @@ export default function WheelDashboard() {
                 }}
               >
                 ✗ {error}
+              </div>
+            )}
+            {!error && staleSince && (
+              <div
+                style={{
+                  background: "#1a1408",
+                  border: "1px solid #4a3810",
+                  borderRadius: 6,
+                  padding: 12,
+                  marginBottom: 16,
+                  fontSize: 12,
+                  color: "#f59e0b",
+                  fontFamily: "monospace",
+                }}
+              >
+                ⚠ Showing last-known positions
+                {lastError ? ` — ${lastError}` : ""}
+                {" · "}stale since {staleSince.toLocaleTimeString()}
               </div>
             )}
 
