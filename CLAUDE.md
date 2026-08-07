@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **First-time setup:** [docs/PRE_LAUNCH.md](docs/PRE_LAUNCH.md) — requirements, `npm install`, `.env`, backend user-secrets
 - **Run the app:** [docs/LAUNCH.md](docs/LAUNCH.md) — `npm run dev` + `dotnet run`
+- **Weekly paper bot:** [docs/BOT.md](docs/BOT.md) — headless NVDA sell-to-open under `bot/`
 
 ## Commands
 
@@ -23,6 +24,11 @@ npm run lint       # ESLint (typescript-eslint + react-hooks); warnings tolerate
 # Backend analysis API (backend/WheelStrategy.Api)
 dotnet run         # Serves http://localhost:5099 (launchSettings sets Development env)
 dotnet build       # Compile only
+
+# Weekly NVDA bot (bot/ — requires API; see docs/BOT.md)
+npm run bot        # Long-running worker (npm --prefix bot start)
+npm run bot:once   # One-shot Mon/Tue entry (else exits)
+npm run bot:test   # Calendar window unit tests
 ```
 
 ## Mission
@@ -43,6 +49,10 @@ A React + TypeScript SPA (Vite) — the **Wheel Strategy trading desk**: it trac
 - **[src/data/mockPositions.ts](src/data/mockPositions.ts)** — mock `WheelPosition[]`. **[src/utils/formatters.ts](src/utils/formatters.ts)** — `fmt` currency/compact/percent helpers.
 - **The browser holds no credentials.** All Alpaca traffic — prices, positions, **option chains and orders** — goes through the backend proxy via [src/api/alpacaClient.ts](src/api/alpacaClient.ts); analysis goes through [src/api/fetchWheelAnalysis.ts](src/api/fetchWheelAnalysis.ts). Both target `API_BASE`, from `VITE_API_BASE_URL` (default `http://localhost:5099`). See **Alpaca credential proxy** below.
 - **`alpacaClient` exposes two clients:** `trading` (base `${API_BASE}/api/alpaca/trading` — accounts, positions, **option contracts, orders**) and `marketData` (base `${API_BASE}/api/alpaca/data` — quotes, bars, **option snapshots**). Paths are unchanged Alpaca paths (`/v2/positions`, `/v1beta1/options/snapshots`), so the proxy is transparent to callers. `trading.post` sends `Content-Type: application/json`; GETs omit it (no body).
+
+### Weekly bot (`bot/`)
+
+Headless TypeScript worker that reuses the same analysis + Alpaca proxy HTTP surface as the desk: Mon/Tue entry for this Friday’s expiry, NVDA only, mid-tier (`regular`) sell-to-open, paper by default with `BOT_DRY_RUN=true`. No Alpaca keys in the bot process. See **[docs/BOT.md](docs/BOT.md)**.
 
 ### Order execution layer
 

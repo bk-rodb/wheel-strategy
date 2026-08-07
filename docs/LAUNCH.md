@@ -66,6 +66,20 @@ Stops Vite (`:5173`), the analysis API (`:5099`), and `npm run preview` (`:4173`
 
 ---
 
+## Weekly NVDA bot (optional)
+
+Paper sell-to-open worker (NVDA, mid-tier strike). Requires the analysis API above with paper keys. Full docs: [BOT.md](./BOT.md).
+
+```bash
+cd bot && cp .env.example .env && npm install
+npm start              # long-running (or: npm run once)
+# from repo root: npm run bot / npm run bot:once
+```
+
+Leave `BOT_DRY_RUN=true` until a dry-run ticket looks correct.
+
+---
+
 ## Other commands
 
 ```bash
@@ -74,6 +88,9 @@ npm run preview        # serve dist/ (default http://localhost:4173)
 npm test               # vitest run
 npm run lint           # ESLint
 npm run test:watch
+npm run bot            # weekly NVDA bot worker (see BOT.md)
+npm run bot:once
+npm run bot:test
 
 cd backend/WheelStrategy.Api && dotnet build
 ```

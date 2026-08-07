@@ -11,7 +11,10 @@
     "test:watch": "vitest",
     "gen:api": "openapi-typescript ./backend/WheelStrategy.Api/WheelStrategy.Api.json -o ./src/api/generated/analysis.ts",
     "check:api": "npm run gen:api && git diff --exit-code src/api/generated backend/WheelStrategy.Api/WheelStrategy.Api.json",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "bot": "npm --prefix bot start",
+    "bot:once": "npm --prefix bot run once",
+    "bot:test": "npm --prefix bot test"
   },
   "dependencies": {
     "react": "^19.1.0",

@@ -2,12 +2,13 @@
 
 One-time setup before running the app locally. When this is done, use [LAUNCH.md](./LAUNCH.md) for day-to-day run commands.
 
-The app has two parts:
+The app has three parts:
 
 | Component | Stack | Default URL | Purpose |
 |-----------|-------|-------------|---------|
 | **Frontend** | React + Vite | http://localhost:5173 | Dashboard UI — holds no credentials |
 | **Backend API** | .NET 10 (`WheelStrategy.Api`) | http://localhost:5099 | Strike suggestions, bar cache, **and the Alpaca proxy** |
+| **Weekly bot** (optional) | Node / TypeScript (`bot/`) | talks to `:5099` | Headless NVDA paper sell-to-open — see [BOT.md](./BOT.md) |
 
 **All Alpaca credentials live on the backend.** Vite inlines every `VITE_`-prefixed
 variable into the production bundle as a literal string, so the browser is given no key
@@ -153,4 +154,4 @@ Alpaca's market-data API rejects a `Content-Type` header on GET requests. The ba
 - **Browser → Backend:** everything. Alpaca via the proxy (`src/api/alpacaClient.ts` → `/api/alpaca/...`), strike suggestions via `src/api/fetchWheelAnalysis.ts`. The browser holds no credentials.
 - **Backend → Alpaca:** proxied prices/positions/orders, plus historical bars cached in SQLite (`HistoricalBar`)
 
-See [CLAUDE.md](../CLAUDE.md) for deeper architecture notes and [NEXT_STEPS.md](./NEXT_STEPS.md) for planned features.
+See [CLAUDE.md](../CLAUDE.md) for deeper architecture notes, [BOT.md](./BOT.md) for the weekly paper bot, and [NEXT_STEPS.md](./NEXT_STEPS.md) for planned features.
