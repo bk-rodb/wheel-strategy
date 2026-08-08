@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using WheelStrategy.Api.Alpaca;
 using WheelStrategy.Api.Options;
+using WheelStrategy.Api.Orders;
 
 namespace WheelStrategy.Api.Endpoints;
 
@@ -18,10 +19,14 @@ namespace WheelStrategy.Api.Endpoints;
 /// Requests are allowlisted by <see cref="AlpacaProxyPolicy"/> and order bodies
 /// are validated against <see cref="AlpacaProxyOptions"/> — this endpoint holds
 /// order-entry credentials, so it must not be a general-purpose forwarder.
+///
+/// Order mutations also update the durable <see cref="IOrderJournalService"/>.
 /// </summary>
 public static class AlpacaProxyEndpoints
 {
     public const string HttpClientName = "alpaca-proxy";
+
+    public const string OrderSourceHeader = "X-Wheel-Order-Source";
 
     private const string TradingPrefix = "/api/alpaca/trading/";
     private const string DataPrefix = "/api/alpaca/data/";
@@ -57,6 +62,7 @@ public static class AlpacaProxyEndpoints
         var proxy = ctx.RequestServices.GetRequiredService<IOptions<AlpacaProxyOptions>>().Value;
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(AlpacaProxyEndpoints));
+        var journal = ctx.RequestServices.GetRequiredService<IOrderJournalService>();
 
         var method = ctx.Request.Method;
         var ct = ctx.RequestAborted;
@@ -72,8 +78,6 @@ public static class AlpacaProxyEndpoints
 
         if (!alpaca.HasCredentials)
         {
-            // Surface this rather than degrade to empty data — a trading UI must not
-            // render "no positions" when the truth is "not configured".
             return Results.Problem(
                 title: "Alpaca credentials not configured",
                 detail: "Set Alpaca:ApiKeyId and Alpaca:ApiSecretKey via user-secrets "
@@ -82,16 +86,17 @@ public static class AlpacaProxyEndpoints
         }
 
         var isOrderMutation = AlpacaProxyPolicy.IsOrderMutation(upstream, method, path);
-        if (isOrderMutation && !proxy.AllowOrderPlacement)
-        {
-            return Results.Problem(
-                title: "Order entry disabled",
-                detail: "AlpacaProxy:AllowOrderPlacement is false on the backend.",
-                statusCode: StatusCodes.Status403Forbidden);
-        }
+        var isPlace = isOrderMutation
+            && string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase);
+        var isCancel = isOrderMutation
+            && string.Equals(method, "DELETE", StringComparison.OrdinalIgnoreCase);
 
         string? bodyJson = null;
-        if (string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase))
+        PlaceIntent? placeIntent = null;
+
+        if (string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase)
+            && upstream == AlpacaProxyPolicy.Upstream.Trading
+            && path == "v2/orders")
         {
             var (ok, raw, error) = await ReadBodyAsync(ctx.Request, ct);
             if (!ok)
@@ -118,9 +123,13 @@ public static class AlpacaProxyEndpoints
             using (doc)
             {
                 var validationError = AlpacaProxyPolicy.ValidateOrderRequest(doc.RootElement, proxy);
+                placeIntent = TryParsePlaceIntent(doc.RootElement, ResolveSource(ctx));
+
                 if (validationError is not null)
                 {
                     logger.LogWarning("Alpaca proxy rejected an order body: {Reason}", validationError);
+                    if (placeIntent is not null)
+                        await journal.MarkRejectedLocalAsync(placeIntent, validationError, ct);
                     return Results.Problem(
                         title: "Order rejected by proxy policy",
                         detail: validationError,
@@ -129,17 +138,55 @@ public static class AlpacaProxyEndpoints
             }
 
             bodyJson = raw;
+
+            if (!proxy.AllowOrderPlacement)
+            {
+                if (placeIntent is not null)
+                {
+                    await journal.MarkBlockedAsync(
+                        placeIntent, "AlpacaProxy:AllowOrderPlacement is false on the backend.", ct);
+                }
+                return Results.Problem(
+                    title: "Order entry disabled",
+                    detail: "AlpacaProxy:AllowOrderPlacement is false on the backend.",
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            var (began, conflict, beginError) = await journal.TryBeginPlaceAsync(placeIntent!, ct);
+            if (!began)
+            {
+                return Results.Problem(
+                    title: "Order already open for underlying",
+                    detail: beginError ?? "Conflicting open intent.",
+                    statusCode: StatusCodes.Status409Conflict,
+                    extensions: conflict is null
+                        ? null
+                        : new Dictionary<string, object?>
+                        {
+                            ["clientOrderId"] = conflict.ClientOrderId,
+                            ["alpacaOrderId"] = conflict.AlpacaOrderId,
+                            ["deskState"] = conflict.DeskState,
+                        });
+            }
+        }
+        else if (isOrderMutation && !proxy.AllowOrderPlacement)
+        {
+            return Results.Problem(
+                title: "Order entry disabled",
+                detail: "AlpacaProxy:AllowOrderPlacement is false on the backend.",
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        if (isCancel && path.StartsWith("v2/orders/", StringComparison.Ordinal))
+        {
+            var orderId = path["v2/orders/".Length..];
+            await journal.MarkCancelRequestedAsync(orderId, ct);
         }
 
         var baseUrl = upstream == AlpacaProxyPolicy.Upstream.Trading
             ? alpaca.TradingBaseUrl
             : alpaca.DataBaseUrl;
 
-        // `path` is the routing-decoded path, and the allowlist has already limited it
-        // to [A-Za-z0-9_.:/-] — every character legal unencoded in a URL path. So it is
-        // forwarded as-is: re-encoding would turn Alpaca's literal ':' in
-        // /v2/orders:by_client_order_id/{id} into %3A. The query string is passed
-        // through still-encoded, exactly as the browser sent it.
         var query = ctx.Request.QueryString.Value ?? string.Empty;
         var targetUrl = $"{baseUrl.TrimEnd('/')}/{path}{query}";
 
@@ -165,11 +212,53 @@ public static class AlpacaProxyEndpoints
 
             if (isOrderMutation)
             {
-                // Order mutations are the audit trail worth keeping; the body is not
-                // logged because it identifies positions, and never the credentials.
                 logger.LogInformation(
                     "Alpaca proxy {Method} {Path} → {Status}",
                     method, path, (int)upstreamResponse.StatusCode);
+            }
+
+            if (isPlace && placeIntent is not null && upstreamResponse.IsSuccessStatusCode && payload.Length > 0)
+            {
+                try
+                {
+                    using var orderDoc = JsonDocument.Parse(payload);
+                    await journal.ApplyBrokerOrderJsonAsync(
+                        placeIntent.ClientOrderId, orderDoc.RootElement, ct: ct);
+                }
+                catch (JsonException ex)
+                {
+                    logger.LogWarning(ex, "Could not parse place response for journal");
+                }
+            }
+
+            if (isCancel && upstreamResponse.IsSuccessStatusCode)
+            {
+                var orderId = path["v2/orders/".Length..];
+                await journal.MarkCancelPendingAsync(orderId, ct);
+            }
+
+            // Sync journal when the desk polls a single order.
+            if (upstream == AlpacaProxyPolicy.Upstream.Trading
+                && string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase)
+                && path.StartsWith("v2/orders/", StringComparison.Ordinal)
+                && !path.Contains(":by_client_order_id", StringComparison.Ordinal)
+                && upstreamResponse.IsSuccessStatusCode
+                && payload.Length > 0)
+            {
+                try
+                {
+                    using var orderDoc = JsonDocument.Parse(payload);
+                    if (orderDoc.RootElement.TryGetProperty("client_order_id", out var cidEl)
+                        && cidEl.ValueKind == JsonValueKind.String
+                        && cidEl.GetString() is { Length: > 0 } cid)
+                    {
+                        await journal.ApplyBrokerOrderJsonAsync(cid, orderDoc.RootElement, ct: ct);
+                    }
+                }
+                catch (JsonException)
+                {
+                    // advisory only
+                }
             }
 
             ctx.Response.StatusCode = (int)upstreamResponse.StatusCode;
@@ -185,12 +274,17 @@ public static class AlpacaProxyEndpoints
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // Caller navigated away or aborted; nothing to report.
             return Results.Empty;
         }
         catch (OperationCanceledException)
         {
             logger.LogWarning("Alpaca proxy timed out on {Method} {Path}", method, path);
+            if (isPlace && placeIntent is not null)
+            {
+                var recovered = await TryRecoverPlaceAsync(
+                    journal, http, alpaca, placeIntent, logger, ct);
+                if (recovered is not null) return recovered;
+            }
             return Results.Problem(
                 title: "Upstream Alpaca request timed out",
                 detail: $"No response within {proxy.TimeoutSeconds}s.",
@@ -199,11 +293,102 @@ public static class AlpacaProxyEndpoints
         catch (HttpRequestException ex)
         {
             logger.LogWarning(ex, "Alpaca proxy transport failure on {Method} {Path}", method, path);
+            if (isPlace && placeIntent is not null)
+            {
+                var recovered = await TryRecoverPlaceAsync(
+                    journal, http, alpaca, placeIntent, logger, ct);
+                if (recovered is not null) return recovered;
+            }
             return Results.Problem(
                 title: "Upstream Alpaca request failed",
                 detail: ex.Message,
                 statusCode: StatusCodes.Status502BadGateway);
         }
+    }
+
+    /// <summary>
+    /// After a lost POST response, look up by client_order_id. If the order landed,
+    /// return it as 200 so the desk never double-places.
+    /// </summary>
+    private static async Task<IResult?> TryRecoverPlaceAsync(
+        IOrderJournalService journal,
+        HttpClient http,
+        AlpacaOptions alpaca,
+        PlaceIntent intent,
+        ILogger logger,
+        CancellationToken ct)
+    {
+        await journal.MarkOrphanCheckAsync(intent.ClientOrderId, "POST transport failure — reconciling", ct);
+
+        var url =
+            $"{alpaca.TradingBaseUrl.TrimEnd('/')}/v2/orders:by_client_order_id/{Uri.EscapeDataString(intent.ClientOrderId)}";
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.Add("APCA-API-KEY-ID", alpaca.ApiKeyId);
+        req.Headers.Add("APCA-API-SECRET-KEY", alpaca.ApiSecretKey);
+
+        try
+        {
+            using var res = await http.SendAsync(req, ct);
+            var bytes = await res.Content.ReadAsByteArrayAsync(ct);
+            if (res.IsSuccessStatusCode && bytes.Length > 0)
+            {
+                using var doc = JsonDocument.Parse(bytes);
+                await journal.ApplyBrokerOrderJsonAsync(intent.ClientOrderId, doc.RootElement, ct: ct);
+                logger.LogInformation(
+                    "Recovered place via client_order_id {ClientOrderId}", intent.ClientOrderId);
+                return Results.Bytes(bytes, "application/json");
+            }
+
+            await journal.MarkSubmitFailedAsync(
+                intent.ClientOrderId,
+                $"POST failed and reconcile found no order (status={(int)res.StatusCode})",
+                ct);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException)
+        {
+            logger.LogWarning(ex, "Orphan reconcile failed for {ClientOrderId}", intent.ClientOrderId);
+            await journal.MarkSubmitFailedAsync(
+                intent.ClientOrderId, $"POST failed; reconcile error: {ex.Message}", ct);
+        }
+
+        return null;
+    }
+
+    private static string ResolveSource(HttpContext ctx)
+    {
+        if (ctx.Request.Headers.TryGetValue(OrderSourceHeader, out var values))
+        {
+            var v = values.FirstOrDefault();
+            if (string.Equals(v, "bot", StringComparison.OrdinalIgnoreCase)) return "bot";
+        }
+        return "desk";
+    }
+
+    private static PlaceIntent? TryParsePlaceIntent(JsonElement body, string source)
+    {
+        if (!body.TryGetProperty("client_order_id", out var cidEl)
+            || cidEl.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(cidEl.GetString()))
+            return null;
+        if (!body.TryGetProperty("symbol", out var symEl)
+            || symEl.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(symEl.GetString()))
+            return null;
+
+        var qty = body.TryGetProperty("qty", out var qtyEl)
+            ? qtyEl.ValueKind == JsonValueKind.String ? qtyEl.GetString() ?? "0" : qtyEl.ToString()
+            : "0";
+        var side = body.TryGetProperty("side", out var sideEl) && sideEl.ValueKind == JsonValueKind.String
+            ? sideEl.GetString() ?? "sell"
+            : "sell";
+        string? limit = null;
+        if (body.TryGetProperty("limit_price", out var lp)
+            && lp.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined))
+        {
+            limit = lp.ValueKind == JsonValueKind.String ? lp.GetString() : lp.ToString();
+        }
+
+        return new PlaceIntent(cidEl.GetString()!, symEl.GetString()!, side, qty, limit, source);
     }
 
     private static async Task<(bool ok, string body, string? error)> ReadBodyAsync(

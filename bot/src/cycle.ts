@@ -9,6 +9,7 @@ import {
   pollUntilDone,
   isOrderFilled,
 } from "./orders.js";
+import { listOpenJournalForUnderlying } from "./orderJournal.js";
 import { getAccount, getEquityShares, sideAndQty } from "./positions.js";
 import { preTradeCheck } from "./preTrade.js";
 import {
@@ -66,6 +67,26 @@ export async function runSellToOpenCycle(opts: {
     appendRun(record);
     console.log(`[cycle] ${record.reason}`);
     return { record };
+  }
+
+  try {
+    const journalOpen = await listOpenJournalForUnderlying(symbol, opts.signal);
+    if (journalOpen.length > 0) {
+      const j = journalOpen[0]!;
+      const record: RunRecord = {
+        ...base,
+        side: "?",
+        qty: 0,
+        status: "skipped",
+        reason: `Open journal intent for ${symbol}: client_order_id=${j.clientOrderId} deskState=${j.deskState}`,
+        orderId: j.alpacaOrderId ?? undefined,
+      };
+      appendRun(record);
+      console.log(`[cycle] ${record.reason}`);
+      return { record };
+    }
+  } catch (e) {
+    console.warn(`[cycle] Journal check failed (continuing with Alpaca open-order gate):`, e);
   }
 
   const shares = await getEquityShares(symbol, opts.signal);

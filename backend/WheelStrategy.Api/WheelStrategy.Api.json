@@ -253,6 +253,120 @@
           }
         }
       }
+    },
+    "/api/orders/journal": {
+      "get": {
+        "tags": [
+          "Orders"
+        ],
+        "operationId": "ListOrderJournal",
+        "parameters": [
+          {
+            "name": "underlying",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "openOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderJournalListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/journal/{clientOrderId}/reconcile": {
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "operationId": "ReconcileOrderJournal",
+        "parameters": [
+          {
+            "name": "clientOrderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderJournalDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -580,6 +694,105 @@
           }
         }
       },
+      "OrderJournalDto": {
+        "required": [
+          "clientOrderId",
+          "alpacaOrderId",
+          "underlying",
+          "symbol",
+          "side",
+          "qty",
+          "filledQty",
+          "limitPrice",
+          "deskState",
+          "brokerStatus",
+          "source",
+          "lastError",
+          "createdAt",
+          "updatedAt",
+          "terminalAt"
+        ],
+        "type": "object",
+        "properties": {
+          "clientOrderId": {
+            "type": "string"
+          },
+          "alpacaOrderId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "underlying": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string"
+          },
+          "qty": {
+            "type": "string"
+          },
+          "filledQty": {
+            "type": "string"
+          },
+          "limitPrice": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "deskState": {
+            "type": "string"
+          },
+          "brokerStatus": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "lastError": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "terminalAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "OrderJournalListResponse": {
+        "required": [
+          "entries"
+        ],
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderJournalDto"
+            }
+          }
+        }
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -833,6 +1046,9 @@
   "tags": [
     {
       "name": "WheelStrategy.Api"
+    },
+    {
+      "name": "Orders"
     }
   ]
 }

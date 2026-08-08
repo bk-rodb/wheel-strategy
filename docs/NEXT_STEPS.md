@@ -466,6 +466,8 @@ dotnet test backend/WheelStrategy.Api.Tests/WheelStrategy.Api.Tests.csproj
 4. **SSE relay for `trade_updates`** (new, optional) — restores push-latency order updates
    without a browser credential. `src/api/tradeUpdatesStream.ts` keeps its surface
    specifically so this is one implementation swap. Polling at 5s covers correctness today.
+   Durable place/cancel intent now lives in the SQLite order journal ([E-003](./work/E-003%20-%20Harden%20Order%20Flow.md) /
+   [ADR-001](./adr/ADR-001%20-%20Order%20journal%20durable%20intent.md)); SSE remains latency-only.
 
 5. **Feature roadmap** — Unblocked. See [Feature roadmap](#feature-roadmap) below;
    daily-granularity toggle and distribution viz are good first picks.

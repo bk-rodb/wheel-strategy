@@ -49,10 +49,11 @@ async function request<T>(
     signal?: AbortSignal;
     /** When true, empty/204 responses return null. */
     allowEmpty?: boolean;
+    headers?: Record<string, string>;
   },
 ): Promise<T> {
   const url = `${config.apiBase}${path}${qs(opts?.params)}`;
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...(opts?.headers ?? {}) };
   if (opts?.body !== undefined) headers["Content-Type"] = "application/json";
 
   const res = await fetch(url, {
@@ -92,12 +93,17 @@ export const trading = {
     return request<T>("GET", `/api/alpaca/trading${path}`, { params, signal });
   },
   post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
-    return request<T>("POST", `/api/alpaca/trading${path}`, { body, signal });
+    return request<T>("POST", `/api/alpaca/trading${path}`, {
+      body,
+      signal,
+      headers: { "X-Wheel-Order-Source": "bot" },
+    });
   },
   delete(path: string, signal?: AbortSignal): Promise<void> {
     return request<void>("DELETE", `/api/alpaca/trading${path}`, {
       signal,
       allowEmpty: true,
+      headers: { "X-Wheel-Order-Source": "bot" },
     });
   },
 };

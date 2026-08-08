@@ -14,10 +14,12 @@ import {
   waitForOrderCanceled,
   type PlaceOptionOrderParams,
 } from "../api/optionOrders";
+import { fetchOrderJournal, reconcileOrderJournal } from "../api/fetchOrderJournal";
 import { tradeUpdatesStream } from "../api/tradeUpdatesStream";
 import type { AlpacaOrder } from "../api/alpacaTypes";
 import { orderBlotter, type DeskOrderState } from "../store/orderBlotter";
 import { isMarketOpen, ORDER_STATUS_POLL_MS } from "../utils/marketHours";
+import { IS_MOCK } from "../config";
 
 export type PendingOrderPhase = DeskOrderState;
 
@@ -32,7 +34,9 @@ function orderFilledQty(order: AlpacaOrder): number {
 
 function toDeskState(order: AlpacaOrder): DeskOrderState {
   if (isOrderFilled(order)) return "filled";
-  if (order.status === "done_for_day") return "canceled";
+  if (order.status === "done_for_day") {
+    return orderFilledQty(order) > 0 ? "partial_filled" : "canceled";
+  }
   if (isOrderCanceled(order.status)) {
     return order.status === "rejected" ? "rejected" : "canceled";
   }
@@ -45,7 +49,8 @@ function toDeskState(order: AlpacaOrder): DeskOrderState {
 /**
  * Formal desk order state machine: place → ack → working → cancel confirm.
  * Single-flight lock prevents double-submit. Blotter persists transitions.
- * Trade-updates stream applies status immediately; polling is the fallback.
+ * Server journal is durable resume SoT; trade-updates stream applies status
+ * immediately when available; polling is the fallback.
  */
 export function usePendingOptionOrder({ underlying, enabled = true }: UsePendingOptionOrderOptions) {
   const [order, setOrder] = useState<AlpacaOrder | null>(null);
@@ -53,6 +58,7 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
   const [error, setError] = useState<string | null>(null);
   const [clientOrderId, setClientOrderId] = useState<string | null>(null);
   const [partialFillQty, setPartialFillQty] = useState<number | null>(null);
+  const [multiOpenCount, setMultiOpenCount] = useState(0);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   /** Owned by place()/cancel() only — never aborted from effect cleanup. */
@@ -166,7 +172,11 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
       stopPolling();
 
       const tick = () => {
-        if (!isMarketOpen()) return;
+        // Off-hours: still poll ~every 30s for day-TIF / cancel confirms.
+        if (!isMarketOpen()) {
+          const bucket = Math.floor(Date.now() / ORDER_STATUS_POLL_MS);
+          if (bucket % 6 !== 0) return;
+        }
         void refreshOrder(orderId).catch((e) => {
           setError(e instanceof Error ? e.message : "Order status check failed");
         });
@@ -190,10 +200,11 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
     setPhase("idle");
     setClientOrderId(null);
     setPartialFillQty(null);
+    setMultiOpenCount(0);
     setError(null);
   }, [stopPolling]);
 
-  // Resume open order from blotter / broker — keyed only on underlying + enabled.
+  // Resume open order: journal → blotter → broker open list.
   useEffect(() => {
     if (!enabled) return;
 
@@ -209,6 +220,74 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
 
     (async () => {
       try {
+        if (!IS_MOCK) {
+          try {
+            const journalOpen = await fetchOrderJournal({ underlying: u, openOnly: true, limit: 5 });
+            if (cancelled) return;
+            const primary = journalOpen[0] ?? null;
+            if (primary) {
+              orderBlotter.upsertOrder({
+                clientOrderId: primary.clientOrderId,
+                orderId: primary.alpacaOrderId,
+                underlying: primary.underlying,
+                symbol: primary.symbol,
+                side: primary.side,
+                qty: primary.qty,
+                limitPrice: primary.limitPrice,
+                status: primary.brokerStatus,
+                deskState: (primary.deskState as DeskOrderState) || "working",
+              });
+
+              if (primary.alpacaOrderId) {
+                try {
+                  const latest = await getOrder(primary.alpacaOrderId);
+                  if (cancelled) return;
+                  if (isOrderOpen(latest.status) || latest.status === "pending_new") {
+                    applyBrokerOrder(latest);
+                    startStatusPoll(latest.id);
+                    return;
+                  }
+                } catch {
+                  // fall through to reconcile
+                }
+              }
+
+              if (primary.clientOrderId) {
+                try {
+                  const recon = await reconcileOrderJournal(primary.clientOrderId);
+                  if (cancelled) return;
+                  if (recon.alpacaOrderId) {
+                    const latest = await getOrder(recon.alpacaOrderId);
+                    if (cancelled) return;
+                    if (isOrderOpen(latest.status) || latest.status === "pending_new") {
+                      applyBrokerOrder(latest);
+                      startStatusPoll(latest.id);
+                      return;
+                    }
+                  }
+                  if (
+                    recon.deskState === "submitting" ||
+                    recon.deskState === "orphan_check" ||
+                    recon.deskState === "ack_pending"
+                  ) {
+                    transition(recon.deskState as DeskOrderState, {
+                      clientOrderId: recon.clientOrderId,
+                      order: null,
+                      detail: recon.lastError ?? "journal resume — awaiting broker id",
+                    });
+                    setError(recon.lastError ?? "Unacked order — reconciling with broker");
+                    return;
+                  }
+                } catch {
+                  // fall through
+                }
+              }
+            }
+          } catch {
+            // Journal unavailable — blotter / broker list still apply.
+          }
+        }
+
         const blotterOpen = orderBlotter.getOpenForUnderlying(u);
         if (blotterOpen?.orderId) {
           try {
@@ -237,10 +316,21 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
             startStatusPoll(found.id);
             return;
           }
+          orderBlotter.upsertOrder({
+            clientOrderId: blotterOpen.clientOrderId,
+            deskState: "error",
+            status: null,
+          });
         }
 
         const open = await listOpenOptionOrdersForUnderlying(u);
         if (cancelled) return;
+        setMultiOpenCount(open.length);
+        if (open.length > 1) {
+          setError(
+            `${open.length} open option orders for ${u} — cancel extras before placing another`,
+          );
+        }
         const first = open[0] ?? null;
         if (first) {
           applyBrokerOrder(first);
@@ -255,7 +345,25 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
       cancelled = true;
       stopPolling();
     };
-  }, [underlying, enabled, applyBrokerOrder, startStatusPoll, stopPolling, clearLocalState]);
+  }, [underlying, enabled, applyBrokerOrder, startStatusPoll, stopPolling, clearLocalState, transition]);
+
+  // Refresh on tab focus (covers throttled background timers).
+  useEffect(() => {
+    if (!enabled) return;
+    const onVis = () => {
+      const current = orderRef.current;
+      if (!current) return;
+      if (document.visibilityState !== "visible") return;
+      if (!isOrderOpen(current.status) && current.status !== "pending_new") return;
+      void refreshOrder(current.id).catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+    };
+  }, [enabled, refreshOrder]);
 
   // Trade-updates stream — separate from resume so callback identity changes don't abort place().
   useEffect(() => {
@@ -294,7 +402,8 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
     phase === "cancel_requested" ||
     phase === "cancel_pending" ||
     phase === "filled" ||
-    phase === "partial_filled";
+    phase === "partial_filled" ||
+    multiOpenCount > 1;
 
   const place = useCallback(
     async (params: Omit<PlaceOptionOrderParams, "clientOrderId"> & { clientOrderId?: string }) => {
@@ -304,12 +413,33 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
       if (orderRef.current && isOrderOpen(orderRef.current.status)) {
         throw new Error("An order is already pending — cancel it before placing another");
       }
+      if (multiOpenCount > 1) {
+        throw new Error("Multiple open orders for this symbol — resolve before placing");
+      }
 
       const blotterOpen = orderBlotter.getOpenForUnderlying(underlying);
       if (blotterOpen) {
         throw new Error(
           `An order for ${underlying.toUpperCase()} is already open in another tab — cancel it first`,
         );
+      }
+
+      if (!IS_MOCK) {
+        try {
+          const journalOpen = await fetchOrderJournal({
+            underlying: underlying.toUpperCase(),
+            openOnly: true,
+            limit: 1,
+          });
+          if (journalOpen.length > 0) {
+            throw new Error(
+              `An order for ${underlying.toUpperCase()} is already open in the journal — cancel it first`,
+            );
+          }
+        } catch (e) {
+          if (e instanceof Error && e.message.includes("already open")) throw e;
+          // Journal down — continue; proxy still enforces lock when live.
+        }
       }
 
       flightRef.current = true;
@@ -342,6 +472,13 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
           if (orphan) {
             created = orphan;
           } else {
+            if (!IS_MOCK) {
+              try {
+                await reconcileOrderJournal(cid);
+              } catch {
+                // advisory
+              }
+            }
             transition("error", {
               clientOrderId: cid,
               detail: postErr instanceof Error ? postErr.message : "Submit failed — no order landed",
@@ -372,7 +509,16 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
           transition("filled", { order: accepted });
           return accepted;
         }
-        if (!isOrderOpen(accepted.status) && accepted.status !== "pending_new") {
+        if (accepted.status === "pending_new") {
+          transition("ack_pending", {
+            order: accepted,
+            detail: "still pending_new after acceptance wait — keep monitoring",
+          });
+          setError("Unacked — reconciling with venue");
+          startStatusPoll(accepted.id);
+          return accepted;
+        }
+        if (!isOrderOpen(accepted.status)) {
           transition("error", {
             order: accepted,
             detail: `not accepted status=${accepted.status}`,
@@ -400,7 +546,7 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
         if (flightAbortRef.current === ctrl) flightAbortRef.current = null;
       }
     },
-    [underlying, transition, startStatusPoll],
+    [underlying, transition, startStatusPoll, multiOpenCount],
   );
 
   const cancel = useCallback(async () => {
@@ -510,6 +656,7 @@ export function usePendingOptionOrder({ underlying, enabled = true }: UsePending
     error,
     clientOrderId,
     partialFillQty,
+    multiOpenCount,
     locked,
     canCancel,
     place,

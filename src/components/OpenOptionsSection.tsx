@@ -114,6 +114,7 @@ export function OpenOptionsSection({
     error: orderHookErr,
     clientOrderId,
     partialFillQty,
+    multiOpenCount,
     locked,
     canCancel,
     place,
@@ -382,7 +383,7 @@ export function OpenOptionsSection({
       case "orphan_check":
         return "RECONCILING SUBMISSION…";
       case "ack_pending":
-        return "AWAITING VENUE ACCEPTANCE…";
+        return "AWAITING VENUE ACCEPTANCE (UNACKED)…";
       case "working":
         return pendingOrder
           ? `WORKING · ${pendingOrder.status.toUpperCase()} (cancelable until filled)`
@@ -415,8 +416,27 @@ export function OpenOptionsSection({
         ? Math.max(1, Math.floor(shares / 100))
         : 20;
 
+  const multiOpenBanner =
+    multiOpenCount > 1 ? (
+      <div
+        style={{
+          background: "#1a0c0c",
+          border: "1px solid #f8717150",
+          borderRadius: 4,
+          padding: "10px 12px",
+          marginBottom: 10,
+          fontSize: 11,
+          fontFamily: "monospace",
+          color: "#f87171",
+        }}
+      >
+        {multiOpenCount} OPEN OPTION ORDERS for {symbol.toUpperCase()} — cancel extras before
+        placing. SELL locked.
+      </div>
+    ) : null;
+
   const workingBanner =
-    locked && pendingOrder ? (
+    locked && (pendingOrder || orderPhase === "orphan_check" || orderPhase === "ack_pending" || orderPhase === "submitting") ? (
       <div
         style={{
           background: "#0c0c1c",
@@ -439,22 +459,24 @@ export function OpenOptionsSection({
               letterSpacing: "0.08em",
             }}
           >
-            WORKING ORDER · OTHER ACTIONS LOCKED
+            {pendingOrder ? "WORKING ORDER · OTHER ACTIONS LOCKED" : "ORDER IN FLIGHT · ACTIONS LOCKED"}
           </div>
-          <div
-            style={{
-              fontSize: 11,
-              fontFamily: "monospace",
-              color: "#e8e8f8",
-              marginTop: 4,
-            }}
-          >
-            {pendingOrder.side.toUpperCase()} {pendingOrder.qty}× {pendingOrder.symbol}
-            {pendingOrder.limit_price ? ` @ $${pendingOrder.limit_price}` : " MKT"}
-          </div>
+          {pendingOrder ? (
+            <div
+              style={{
+                fontSize: 11,
+                fontFamily: "monospace",
+                color: "#e8e8f8",
+                marginTop: 4,
+              }}
+            >
+              {pendingOrder.side.toUpperCase()} {pendingOrder.qty}× {pendingOrder.symbol}
+              {pendingOrder.limit_price ? ` @ $${pendingOrder.limit_price}` : " MKT"}
+            </div>
+          ) : null}
           <div style={{ fontSize: 10, fontFamily: "monospace", color: accent, marginTop: 2 }}>
             {statusLabel}
-            {pendingOrder.filled_qty && pendingOrder.filled_qty !== "0" && (
+            {pendingOrder?.filled_qty && pendingOrder.filled_qty !== "0" && (
               <span style={{ color: "#8a8aa8" }}>
                 {" "}
                 · filled {pendingOrder.filled_qty}/{pendingOrder.qty}
@@ -462,11 +484,11 @@ export function OpenOptionsSection({
             )}
           </div>
           <div style={{ fontSize: 8, fontFamily: "monospace", color: "#3a3a5a", marginTop: 2 }}>
-            id {pendingOrder.id.slice(0, 8)}…
+            {pendingOrder ? `id ${pendingOrder.id.slice(0, 8)}…` : "awaiting broker id"}
             {clientOrderId ? ` · client ${clientOrderId.slice(0, 8)}…` : ""}
           </div>
         </div>
-        {canCancel && orderPhase !== "filled" && (
+        {canCancel && orderPhase !== "filled" && pendingOrder && (
           <button
             type="button"
             disabled={
@@ -496,6 +518,7 @@ export function OpenOptionsSection({
           </button>
         )}
         {(orderPhase === "filled" ||
+          orderPhase === "partial_filled" ||
           orderPhase === "rejected" ||
           orderPhase === "error") && (
           <button
@@ -553,6 +576,7 @@ export function OpenOptionsSection({
       <div ref={sectionRef} id={`open-options-${symbol}`} style={sectionStyle}>
         <div style={cardLabelStyle}>OPEN OPTIONS</div>
         <OptionCard opt={activeOption} phase={phase} />
+        {multiOpenBanner}
         {workingBanner}
         {flash}
         {ticket && (
@@ -681,6 +705,7 @@ export function OpenOptionsSection({
         </div>
       )}
 
+      {multiOpenBanner}
       {workingBanner}
       {flash}
 

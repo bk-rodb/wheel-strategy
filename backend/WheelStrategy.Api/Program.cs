@@ -6,6 +6,7 @@ using WheelStrategy.Api.Alpaca;
 using WheelStrategy.Api.Data;
 using WheelStrategy.Api.Endpoints;
 using WheelStrategy.Api.Options;
+using WheelStrategy.Api.Orders;
 using WheelStrategy.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +32,7 @@ builder.Services.AddHttpClient<AlpacaMarketDataClient>((_, http) =>
 builder.Services.AddScoped<IBarCacheService, BarCacheService>();
 builder.Services.AddScoped<IWheelAnalysisService, WheelAnalysisService>();
 builder.Services.AddScoped<IHmmTrendService, HmmTrendService>();
+builder.Services.AddScoped<IOrderJournalService, OrderJournalService>();
 
 // Finnhub: token on X-Finnhub-Token so IHttpClientFactory never logs it in the URI (H-20).
 builder.Services.AddHttpClient<ICatalystsService, CatalystsService>((sp, http) =>
@@ -137,6 +139,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapWheelAnalysisEndpoints();
 app.MapHmmTrendEndpoints();
 app.MapCatalystsEndpoints();
+app.MapOrderJournalEndpoints();
 app.MapAlpacaProxyEndpoints();
 
 app.Run();

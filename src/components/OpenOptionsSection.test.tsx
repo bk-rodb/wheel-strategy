@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OpenOptionsSection } from "./OpenOptionsSection";
 import { useFridayOptionSuggestions } from "../hooks/useFridayOptionSuggestions";
 import { usePendingOptionOrder } from "../hooks/usePendingOptionOrder";
@@ -61,6 +61,7 @@ describe("OpenOptionsSection", () => {
       error: null,
       clientOrderId: null,
       partialFillQty: null,
+      multiOpenCount: 0,
       locked: false,
       canCancel: false,
       place: vi.fn(),
