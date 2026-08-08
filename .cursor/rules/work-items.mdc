@@ -1,0 +1,28 @@
+---
+description: Create and update docs/work items for features, enhancements, and bugs
+alwaysApply: true
+---
+
+# Work-item documentation
+
+When planning or shipping a **feature**, **enhancement**, or **bug fix**, maintain a file under `docs/work/`.
+
+## When to create
+
+- At the start of non-trivial work (more than a one-line fix), create `{TYPE}-{NNN} - {Title}.md` from `docs/work/_TEMPLATE.md`.
+- Types: `F` feature, `E` enhancement, `B` bug. Numbers are per-prefix; pick the next free ID from `docs/work/README.md`.
+- Capture the user prompt, requirements, acceptance criteria, and out of scope **before** (or as) you implement.
+- Add a row to the Index in `docs/work/README.md`.
+
+## When to update
+
+- Mid-flight if ACs or scope change.
+- On completion: status `done`, summary, commit hash(es), key files, verification commands, follow-ups; update the Index.
+
+## Do not
+
+- Hand-edit generated API types to “document” contract changes — change C# DTOs, rebuild, `npm run gen:api`.
+- Dump every file touch into the work item; keep **why** and acceptance evidence.
+- Put durable architecture choices only in chat — prefer a short note in the work item or `docs/adr/` when the decision is non-obvious.
+
+See `docs/work/README.md` for naming, lifecycle, and related KB series.
