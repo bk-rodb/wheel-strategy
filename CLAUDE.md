@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run the app:** [docs/LAUNCH.md](docs/LAUNCH.md) — `npm run dev` + `dotnet run`
 - **Weekly paper bot:** [docs/BOT.md](docs/BOT.md) — headless NVDA sell-to-open under `bot/`
 - **Work items (F/E/B):** [docs/work/README.md](docs/work/README.md) — plan → AC → completion + commit hash for each change
+- **Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md) — features, enhancements, risk/fixes backlog
 
 ## Commands
 

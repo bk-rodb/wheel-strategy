@@ -1,5 +1,7 @@
 # Wheel Desk — Remediation Plan & Roadmap
 
+> **Forward-looking backlog has moved to [ROADMAP.md](./ROADMAP.md).** This file is retained as the historical remediation record (Phases 0--5) and the original feature roadmap notes they were derived from.
+
 Setup and run: [PRE_LAUNCH.md](./PRE_LAUNCH.md) · [LAUNCH.md](./LAUNCH.md)
 
 Evidence base for every finding ID below: [CODE_REVIEW.md](./CODE_REVIEW.md)
