@@ -58,6 +58,8 @@ Agents and humans: create the work file **when the work is planned**, not as an 
 | ID | Title | Status | Opened | Closed | Commits |
 |----|-------|--------|--------|--------|---------|
 | [E-001](./E-001%20-%20Update%20strike%20decision%20engine.md) | Update strike decision engine | done | 2026-08-08 | 2026-08-08 | `0adfe86` |
+| [E-002](./E-002%20-%20Multi-Source%20Decision%20Engine.md) | Multi-Source Decision Engine | planned | 2026-08-08 | — | — |
+| [E-003](./E-003%20-%20Harden%20Order%20Flow.md) | Harden Order Flow | done | 2026-08-08 | 2026-08-08 | — |
 
 ---
 
