@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **First-time setup:** [docs/PRE_LAUNCH.md](docs/PRE_LAUNCH.md) — requirements, `npm install`, `.env`, backend user-secrets
 - **Run the app:** [docs/LAUNCH.md](docs/LAUNCH.md) — `npm run dev` + `dotnet run`
 - **Weekly paper bot:** [docs/BOT.md](docs/BOT.md) — headless NVDA sell-to-open under `bot/`
+- **Work items (F/E/B):** [docs/work/README.md](docs/work/README.md) — plan → AC → completion + commit hash for each change
 
 ## Commands
 

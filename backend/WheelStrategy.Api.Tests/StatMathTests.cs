@@ -73,4 +73,46 @@ public class StatMathTests
         // Sample std dev with n-1 divisor: sqrt(32/7) ≈ 2.138
         Assert.InRange(StatMath.StdDev(xs), 2.12, 2.16);
     }
+
+    [Fact]
+    public void PutDelta_atm_is_negative()
+    {
+        var delta = StatMath.PutDelta(S, K, T, R, Sigma);
+        Assert.InRange(delta, -0.45, -0.30);
+    }
+
+    [Fact]
+    public void CallDelta_atm_is_positive()
+    {
+        var delta = StatMath.CallDelta(S, K, T, R, Sigma);
+        Assert.InRange(delta, 0.55, 0.70);
+    }
+
+    [Fact]
+    public void StrikeForPutAbsDelta_targets_30_delta()
+    {
+        const double t = 35.0 / 365.0;
+        var k = StatMath.StrikeForPutAbsDelta(S, 0.30, t, R, Sigma);
+        var delta = StatMath.PutDelta(S, k, t, R, Sigma);
+        Assert.InRange(Math.Abs(delta), 0.28, 0.32);
+    }
+
+    [Fact]
+    public void StrikeForCallDelta_targets_30_delta()
+    {
+        var k = StatMath.StrikeForCallDelta(S, 0.30, T, R, Sigma);
+        var delta = StatMath.CallDelta(S, k, T, R, Sigma);
+        Assert.InRange(delta, 0.29, 0.31);
+        Assert.True(k > S);
+    }
+
+    [Fact]
+    public void Atr_computes_wilder_smoothed_value()
+    {
+        var highs = new[] { 12.0, 13.0, 14.0, 13.5, 14.5, 15.0, 14.0, 15.5 };
+        var lows = new[] { 10.0, 11.0, 12.0, 11.5, 12.5, 13.0, 12.0, 13.5 };
+        var closes = new[] { 11.0, 12.0, 13.0, 12.5, 13.5, 14.0, 13.0, 14.5 };
+        var atr = StatMath.Atr(highs, lows, closes, 3);
+        Assert.True(atr > 0 && atr < 5);
+    }
 }

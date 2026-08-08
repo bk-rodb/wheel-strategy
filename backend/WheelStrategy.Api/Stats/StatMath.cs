@@ -113,4 +113,96 @@ public static class StatMath
         if (double.IsNaN(bs.D1)) return double.NaN;
         return k * Math.Exp(-r * t) * NormCdf(-bs.D2) - s * NormCdf(-bs.D1);
     }
+
+    /// <summary>Put delta (long): N(d1) − 1, negative for OTM puts.</summary>
+    public static double PutDelta(double s, double k, double t, double r, double sigma)
+    {
+        var bs = Bs(s, k, t, r, sigma);
+        return double.IsNaN(bs.D1) ? double.NaN : NormCdf(bs.D1) - 1.0;
+    }
+
+    /// <summary>Call delta (long): N(d1).</summary>
+    public static double CallDelta(double s, double k, double t, double r, double sigma)
+    {
+        var bs = Bs(s, k, t, r, sigma);
+        return double.IsNaN(bs.D1) ? double.NaN : NormCdf(bs.D1);
+    }
+
+    /// <summary>
+    /// Strike for a short put with |delta| ≈ <paramref name="targetAbsDelta"/>.
+    /// Binary search on K below spot.
+    /// </summary>
+    public static double StrikeForPutAbsDelta(double s, double targetAbsDelta, double t, double r, double sigma)
+    {
+        if (s <= 0 || t <= 0 || sigma <= 0) return double.NaN;
+        targetAbsDelta = Math.Clamp(targetAbsDelta, 0.01, 0.99);
+        var lo = s * 0.5;
+        var hi = s * 0.999;
+        for (var i = 0; i < 64; i++)
+        {
+            var mid = (lo + hi) / 2.0;
+            var delta = PutDelta(s, mid, t, r, sigma);
+            if (double.IsNaN(delta)) return double.NaN;
+            // OTM puts (K < S): |delta| rises as K approaches spot from below.
+            if (Math.Abs(delta) > targetAbsDelta) hi = mid;
+            else lo = mid;
+        }
+        return (lo + hi) / 2.0;
+    }
+
+    /// <summary>
+    /// Strike for a short call with delta ≈ <paramref name="targetDelta"/>.
+    /// Binary search on K above spot.
+    /// </summary>
+    public static double StrikeForCallDelta(double s, double targetDelta, double t, double r, double sigma)
+    {
+        if (s <= 0 || t <= 0 || sigma <= 0) return double.NaN;
+        targetDelta = Math.Clamp(targetDelta, 0.01, 0.99);
+        var lo = s * 1.001;
+        var hi = s * 1.5;
+        for (var i = 0; i < 64; i++)
+        {
+            var mid = (lo + hi) / 2.0;
+            var delta = CallDelta(s, mid, t, r, sigma);
+            if (double.IsNaN(delta)) return double.NaN;
+            if (delta > targetDelta) lo = mid;
+            else hi = mid;
+        }
+        return (lo + hi) / 2.0;
+    }
+
+    /// <summary>True range for one bar. <paramref name="prevClose"/> is ignored when NaN.</summary>
+    public static double TrueRange(double high, double low, double prevClose)
+    {
+        if (!double.IsFinite(prevClose))
+            return high - low;
+        return Math.Max(high - low, Math.Max(Math.Abs(high - prevClose), Math.Abs(low - prevClose)));
+    }
+
+    /// <summary>
+    /// Wilder-smoothed ATR over <paramref name="period"/> bars.
+    /// <paramref name="highs"/>, <paramref name="lows"/>, <paramref name="closes"/> must align.
+    /// </summary>
+    public static double Atr(IReadOnlyList<double> highs, IReadOnlyList<double> lows,
+        IReadOnlyList<double> closes, int period)
+    {
+        var n = Math.Min(highs.Count, Math.Min(lows.Count, closes.Count));
+        if (n < period || period < 1) return double.NaN;
+
+        var tr = new double[n];
+        for (var i = 0; i < n; i++)
+        {
+            var prevClose = i > 0 ? closes[i - 1] : double.NaN;
+            tr[i] = TrueRange(highs[i], lows[i], prevClose);
+        }
+
+        double atr = 0;
+        for (var i = 0; i < period; i++) atr += tr[i];
+        atr /= period;
+
+        for (var i = period; i < n; i++)
+            atr = (atr * (period - 1) + tr[i]) / period;
+
+        return atr;
+    }
 }

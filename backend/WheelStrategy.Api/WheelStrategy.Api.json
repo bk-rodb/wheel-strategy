@@ -257,6 +257,37 @@
   },
   "components": {
     "schemas": {
+      "AtrMetrics": {
+        "required": [
+          "atr7Pct",
+          "atr14Pct",
+          "atr21Pct"
+        ],
+        "type": "object",
+        "properties": {
+          "atr7Pct": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "atr14Pct": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "atr21Pct": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        }
+      },
       "CatalystEventDto": {
         "required": [
           "id",
@@ -351,6 +382,35 @@
           },
           "bullProb": {
             "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "HmmRegimeContext": {
+        "required": [
+          "currentRegime",
+          "bearProb",
+          "bullProb",
+          "expectedReturnPctAtDte"
+        ],
+        "type": "object",
+        "properties": {
+          "currentRegime": {
+            "type": "string"
+          },
+          "bearProb": {
+            "type": "number",
+            "format": "double"
+          },
+          "bullProb": {
+            "type": "number",
+            "format": "double"
+          },
+          "expectedReturnPctAtDte": {
+            "type": [
+              "null",
+              "number"
+            ],
             "format": "double"
           }
         }
@@ -561,6 +621,9 @@
           "level",
           "strike",
           "pctFromSpot",
+          "targetDelta",
+          "blackScholesDelta",
+          "distanceAtr14",
           "empiricalAssignmentProb",
           "blackScholesAssignmentProb",
           "estPremium",
@@ -576,6 +639,27 @@
             "format": "double"
           },
           "pctFromSpot": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "targetDelta": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "blackScholesDelta": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "distanceAtr14": {
             "type": [
               "null",
               "number"
@@ -649,6 +733,8 @@
           "sampleCount",
           "realizedVolAnnual",
           "riskFreeRate",
+          "atr",
+          "hmmRegime",
           "put",
           "call",
           "warnings"
@@ -695,6 +781,26 @@
           "riskFreeRate": {
             "type": "number",
             "format": "double"
+          },
+          "atr": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AtrMetrics"
+              }
+            ]
+          },
+          "hmmRegime": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/HmmRegimeContext"
+              }
+            ]
           },
           "put": {
             "type": [

@@ -19,10 +19,20 @@ public class AnalysisOptions
 
     public double RiskFreeRate { get; set; } = 0.045;
 
-    /// <summary>Target assignment probabilities mapped to each level.</summary>
-    public double SafeProb { get; set; } = 0.15;
-    public double RegularProb { get; set; } = 0.30;
-    public double RiskyProb { get; set; } = 0.45;
+    /// <summary>Target |delta| rule-of-thumb per level (conservative / balanced / aggressive).</summary>
+    public double SafeDelta { get; set; } = 0.20;
+    public double RegularDelta { get; set; } = 0.30;
+    public double RiskyDelta { get; set; } = 0.40;
+
+    /// <summary>Minimum OTM distance as a multiple of ATR when widening delta strikes.</summary>
+    public double SafeAtrMultiple { get; set; } = 1.5;
+    public double RegularAtrMultiple { get; set; } = 1.0;
+    public double RiskyAtrMultiple { get; set; } = 0.7;
+
+    /// <summary>HMM regime nudge applied to target delta (bear → safer, bull → puts closer).</summary>
+    public double HmmBearDeltaAdjust { get; set; } = -0.05;
+    public double HmmBullPutDeltaAdjust { get; set; } = 0.05;
+    public double HmmBullCallDeltaAdjust { get; set; } = -0.05;
 
     /// <summary>Minimum forward-return samples required before suggestions are produced.</summary>
     public int MinSamples { get; set; } = 20;

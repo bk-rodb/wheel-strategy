@@ -10,6 +10,18 @@ const LEVEL_COLOR: Record<AnalysisLevel, string> = {
   risky: "#f87171",
 };
 
+const LEVEL_LABEL: Record<AnalysisLevel, string> = {
+  safe: "CONSERVATIVE",
+  regular: "BALANCED",
+  risky: "AGGRESSIVE",
+};
+
+const LEVEL_DELTA_HINT: Record<AnalysisLevel, string> = {
+  safe: "0.20Δ",
+  regular: "0.30Δ",
+  risky: "0.40Δ",
+};
+
 const DTE_CHOICES = [21, 30, 35, 45];
 
 const GRANULARITY_CHOICES: { value: AnalysisGranularity; label: string; title: string }[] = [
@@ -141,13 +153,32 @@ function Header({
             <div style={{ fontSize: 11, fontFamily: "monospace", color: "#5a5a7a", marginTop: 6, display: "flex", gap: 16, flexWrap: "wrap" }}>
               <span>SPOT <b style={{ color: "#e8e8f8" }}>{fmt.currency(data.currentPrice)}</b></span>
               <span>IV(realized) <b style={{ color: "#e8e8f8" }}>{data.realizedVolAnnual != null ? `${(data.realizedVolAnnual * 100).toFixed(1)}%` : "—"}</b></span>
+              {data.atr && (
+                <span title="7 / 14 / 21-day ATR as % of spot">
+                  ATR <b style={{ color: "#e8e8f8" }}>
+                    {[data.atr.atr7Pct, data.atr.atr14Pct, data.atr.atr21Pct]
+                      .map((v) => (v != null ? `${(v * 100).toFixed(1)}%` : "—"))
+                      .join(" / ")}
+                  </b>
+                </span>
+              )}
+              {data.hmmRegime && (
+                <span title="HMM regime at option horizon">
+                  HMM <b style={{ color: "#e8e8f8" }}>{data.hmmRegime.currentRegime.toUpperCase()}</b>
+                  {data.hmmRegime.expectedReturnPctAtDte != null && (
+                    <> · <b style={{ color: data.hmmRegime.expectedReturnPctAtDte >= 0 ? "#34d399" : "#f87171" }}>
+                      {data.hmmRegime.expectedReturnPctAtDte >= 0 ? "+" : ""}
+                      {data.hmmRegime.expectedReturnPctAtDte.toFixed(1)}%
+                    </b></>
+                  )}
+                </span>
+              )}
               <span>HORIZON <b style={{ color: "#e8e8f8" }}>{data.horizonPeriods}× {data.granularity}</b></span>
               <span>LOOKBACK <b style={{ color: "#e8e8f8" }}>{(data.lookbackDays / 365).toFixed(1)}y</b></span>
               <span>SAMPLES <b style={{ color: "#e8e8f8" }}>{data.sampleCount}</b></span>
             </div>
             <div style={{ fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", marginTop: 4, letterSpacing: "0.04em" }}>
-              ~{data.sampleCount} overlapping windows ·{" "}
-              {data.granularity === "daily" ? "tighter empirical percentiles" : "coarser tails"}
+              conservative / balanced / aggressive via |delta| 0.20 / 0.30 / 0.40 · ATR + HMM review applied
             </div>
           </>
         )}
@@ -252,16 +283,23 @@ function SideCard({
             <span>LEVEL</span>
             <span style={{ textAlign: "right" }}>STRIKE</span>
             <span style={{ textAlign: "right" }}>% OTM</span>
+            <span style={{ textAlign: "right" }}>Δ / ATR</span>
             <span style={{ textAlign: "right" }}>ASSIGN (HIST/BS)</span>
             <span style={{ textAlign: "right" }}>PREM</span>
             <span style={{ textAlign: "right" }}>ANN YLD</span>
           </div>
           {rows.map((r) => (
             <div key={r.level} style={gridRow(false)}>
-              <span style={{ color: LEVEL_COLOR[r.level], fontWeight: 700 }}>{r.level.toUpperCase()}</span>
+              <span style={{ color: LEVEL_COLOR[r.level], fontWeight: 700 }} title={LEVEL_DELTA_HINT[r.level]}>
+                {LEVEL_LABEL[r.level]}
+              </span>
               <span style={{ textAlign: "right", color: "#e8e8f8", fontWeight: 700 }}>{fmt.currency(r.strike)}</span>
               <span style={{ textAlign: "right", color: (r.pctFromSpot ?? 0) >= 0 ? "#34d399" : "#f87171" }}>
                 {r.pctFromSpot != null ? `${(r.pctFromSpot * 100).toFixed(1)}%` : "—"}
+              </span>
+              <span style={{ textAlign: "right", color: "#a0a0c0" }} title={`target ${LEVEL_DELTA_HINT[r.level]}`}>
+                {r.blackScholesDelta != null ? `${(Math.abs(r.blackScholesDelta) * 100).toFixed(0)}Δ` : "—"}
+                {r.distanceAtr14 != null ? ` · ${r.distanceAtr14.toFixed(1)}×` : ""}
               </span>
               <span style={{ textAlign: "right", color: "#a0a0c0" }}>
                 {r.empiricalAssignmentProb != null && r.blackScholesAssignmentProb != null
@@ -273,7 +311,7 @@ function SideCard({
             </div>
           ))}
           <div style={{ padding: "8px 14px 4px", fontSize: 8, fontFamily: "monospace", color: "#3a3a5a", letterSpacing: "0.04em" }}>
-            spot {fmt.currency(spot)} · premium &amp; yield are Black-Scholes estimates (no IV skew)
+            spot {fmt.currency(spot)} · BS delta targets · ATR14 distance in × multiples
           </div>
         </div>
       )}
@@ -284,7 +322,7 @@ function SideCard({
 function gridRow(isHeader: boolean): React.CSSProperties {
   return {
     display: "grid",
-    gridTemplateColumns: "0.8fr 1fr 0.7fr 1.3fr 0.8fr 0.9fr",
+    gridTemplateColumns: "1.1fr 1fr 0.7fr 0.9fr 1.2fr 0.8fr 0.9fr",
     gap: 6,
     padding: isHeader ? "6px 14px" : "7px 14px",
     fontSize: isHeader ? 8 : 11,

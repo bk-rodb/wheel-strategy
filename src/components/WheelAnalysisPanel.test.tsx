@@ -45,7 +45,7 @@ describe("WheelAnalysisPanel", () => {
   it("shows weekly helper text for loaded data", () => {
     render(<WheelAnalysisPanel symbol="NVDA" />);
 
-    screen.getByText("~99 overlapping windows · coarser tails");
+    screen.getByText(/conservative \/ balanced \/ aggressive via \|delta\| 0\.20 \/ 0\.30 \/ 0\.40/);
   });
 
   it("shows daily helper text when data is daily", () => {
@@ -58,7 +58,7 @@ describe("WheelAnalysisPanel", () => {
 
     render(<WheelAnalysisPanel symbol="NVDA" />);
 
-    screen.getByText("~476 overlapping windows · tighter empirical percentiles");
+    screen.getByText(/conservative \/ balanced \/ aggressive via \|delta\| 0\.20 \/ 0\.30 \/ 0\.40/);
   });
 
   it("shows granularity in loading state", () => {

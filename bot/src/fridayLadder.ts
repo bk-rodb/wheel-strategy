@@ -7,6 +7,9 @@ export interface StrikeSuggestion {
   level: string;
   strike: number;
   pctFromSpot?: number | null;
+  targetDelta?: number | null;
+  blackScholesDelta?: number | null;
+  distanceAtr14?: number | null;
   empiricalAssignmentProb?: number | null;
   blackScholesAssignmentProb?: number | null;
   estPremium?: number | null;

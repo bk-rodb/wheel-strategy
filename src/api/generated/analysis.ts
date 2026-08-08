@@ -89,6 +89,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AtrMetrics: {
+            /** Format: double */
+            atr7Pct: null | number;
+            /** Format: double */
+            atr14Pct: null | number;
+            /** Format: double */
+            atr21Pct: null | number;
+        };
         CatalystEventDto: {
             id: string;
             type: string;
@@ -112,6 +120,15 @@ export interface components {
             bearProb: number;
             /** Format: double */
             bullProb: number;
+        };
+        HmmRegimeContext: {
+            currentRegime: string;
+            /** Format: double */
+            bearProb: number;
+            /** Format: double */
+            bullProb: number;
+            /** Format: double */
+            expectedReturnPctAtDte: null | number;
         };
         HmmStateSnapshot: {
             date: string;
@@ -163,6 +180,12 @@ export interface components {
             /** Format: double */
             pctFromSpot: null | number;
             /** Format: double */
+            targetDelta: null | number;
+            /** Format: double */
+            blackScholesDelta: null | number;
+            /** Format: double */
+            distanceAtr14: null | number;
+            /** Format: double */
             empiricalAssignmentProb: null | number;
             /** Format: double */
             blackScholesAssignmentProb: null | number;
@@ -195,6 +218,8 @@ export interface components {
             realizedVolAnnual: null | number;
             /** Format: double */
             riskFreeRate: number;
+            atr: null | components["schemas"]["AtrMetrics"];
+            hmmRegime: null | components["schemas"]["HmmRegimeContext"];
             put: null | components["schemas"]["StrikeSuggestion"][];
             call: null | components["schemas"]["StrikeSuggestion"][];
             warnings: string[];

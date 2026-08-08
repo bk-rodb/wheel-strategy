@@ -56,6 +56,9 @@ export type StrikeSuggestion = Omit<
   components["schemas"]["StrikeSuggestion"],
   | "level"
   | "pctFromSpot"
+  | "targetDelta"
+  | "blackScholesDelta"
+  | "distanceAtr14"
   | "empiricalAssignmentProb"
   | "blackScholesAssignmentProb"
   | "estPremium"
@@ -63,11 +66,17 @@ export type StrikeSuggestion = Omit<
 > & {
   level: AnalysisLevel;
   pctFromSpot: number | null;
+  targetDelta: number | null;
+  blackScholesDelta: number | null;
+  distanceAtr14: number | null;
   empiricalAssignmentProb: number | null;
   blackScholesAssignmentProb: number | null;
   estPremium: number | null;
   annualizedYield: number | null;
 };
+
+export type AtrMetrics = components["schemas"]["AtrMetrics"];
+export type HmmRegimeContext = components["schemas"]["HmmRegimeContext"];
 
 export type WheelAnalysis = Omit<
   components["schemas"]["WheelAnalysisResult"],
