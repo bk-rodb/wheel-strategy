@@ -81,7 +81,7 @@ Strike selection is now **delta-primary** (0.20 / 0.30 / 0.40) with **ATR14 floo
 
 | Hash | Message |
 |------|---------|
-| *(filled after commit)* | Update strike decision engine to delta + ATR + HMM review. |
+| `0adfe86` | Update strike decision engine to delta + ATR + HMM review. |
 
 PR: — (pushed to `main`)
 

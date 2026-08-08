@@ -57,7 +57,7 @@ Agents and humans: create the work file **when the work is planned**, not as an 
 
 | ID | Title | Status | Opened | Closed | Commits |
 |----|-------|--------|--------|--------|---------|
-| [E-001](./E-001%20-%20Update%20strike%20decision%20engine.md) | Update strike decision engine | done | 2026-08-08 | 2026-08-08 | *(see item)* |
+| [E-001](./E-001%20-%20Update%20strike%20decision%20engine.md) | Update strike decision engine | done | 2026-08-08 | 2026-08-08 | `0adfe86` |
 
 ---
 
