@@ -168,7 +168,17 @@ bot/
 
 ---
 
+## Automation (planned)
+
+N8N scheduling, HTTP trigger mode (`--serve`), Slack + email notifications.
+
+Full spec: [BOT_AUTOMATION.md](./BOT_AUTOMATION.md). Backlog: [ROADMAP.md](./ROADMAP.md) (F-1 through F-7).
+
+---
+
 ## Future (not implemented)
 
 - **Early close (CC only):** if a short covered call is profitable to BTC and next week's regular CC still looks good, close and reopen — stub in `evaluateEarlyCloseCoveredCall`.
 - Multi-ticker universe, rolls, holiday calendar, server-side SSE fill relay.
+
+See [ROADMAP.md](./ROADMAP.md) for the full backlog.
