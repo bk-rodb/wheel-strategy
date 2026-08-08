@@ -8,7 +8,7 @@
 | **Opened** | 2026-08-08 |
 | **Closed** | — |
 | **Owner** | — |
-| **Related** | [E-001](./E-001%20-%20Update%20strike%20decision%20engine.md) · [F-001](./F-001%20-%20Trade%20Retrospective%20Learning.md) Experience head · [docs/test.md](../test.md) · [NEXT_STEPS.md](../NEXT_STEPS.md) (liquidity L-18, earnings awareness) · Analysis API · `fetchFridayOptions` |
+| **Related** | [E-001](./E-001%20-%20Update%20strike%20decision%20engine.md) · [F-001](./F-001%20-%20Trade%20Retrospective%20Learning.md) Experience head · [NEXT_STEPS.md](../NEXT_STEPS.md) (liquidity L-18, earnings awareness) · Analysis API · `fetchFridayOptions` |
 
 ---
 
@@ -16,7 +16,7 @@
 
 > if i wanted a multi-source decision engine with Greeks being 1 head, ATR being another, HMM being another...what other factors should be part of the decision making engine? SMA?
 >
-> (Research reply in [docs/test.md](../test.md): structural SMA/VWAP anchors, liquidity/OI microstructure, earnings/event gates, and HMM-weighted synthesis / gatekeeper before execute.)
+> Research synthesis (captured here): structural SMA/VWAP anchors, liquidity/OI microstructure, earnings/event gates, and HMM-weighted synthesis / gatekeeper before execute. Follow-up posed: programmatic early buyback / close rules.
 
 ---
 
@@ -24,7 +24,7 @@
 
 E-001 shipped **delta-primary** strike selection (0.20 / 0.30 / 0.40) with **ATR14 floors** and **HMM delta nudges**. Empirical assignment remains a cross-check. The pipeline is sequential overlays, not weighted heads.
 
-Gaps vs the multi-source design in `docs/test.md`:
+Gaps vs the multi-source design (Greeks + ATR + HMM + SMA/liquidity/events):
 
 | Factor | Today |
 |--------|--------|
@@ -77,7 +77,7 @@ Decision heads → Macro synthesis (HMM sets weights) → Liquidity & event gate
 
 - [x] E-002 work file + Index row exist; status `planned`.
 - [x] Phase A–D requirements, implementation ACs, out of scope, and design notes recorded.
-- [x] Links to E-001, `docs/test.md`, and NEXT_STEPS liquidity/earnings gaps.
+- [x] Links to E-001, F-001, and NEXT_STEPS liquidity/earnings gaps.
 
 ### Phase A — implementation (when coding)
 
@@ -170,7 +170,7 @@ PR: —
 
 ### Follow-ups
 
-- Early close / buyback rule engine (posed at end of `docs/test.md`).
+- Early close / buyback rule engine (posed in original research prompt).
 - Order-flow imbalance head if a data source is added.
 - Optional ADR under `docs/adr/` for Phase D weight scheme.
 - Anchored / weekly VWAP as CSP strike ceiling.
