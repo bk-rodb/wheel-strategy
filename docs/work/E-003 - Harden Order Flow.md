@@ -81,7 +81,7 @@ Added a SQLite **order journal** updated by the Alpaca proxy on place/cancel, wi
 
 | Hash | Message |
 |------|---------|
-| — | *(commit when you ask to commit)* |
+| `428cbe7` | Add durable order journal for place/cancel intent (E-003). |
 
 PR: —
 
