@@ -367,10 +367,427 @@
           }
         }
       }
+    },
+    "/api/trades/outcomes": {
+      "get": {
+        "tags": [
+          "Trades"
+        ],
+        "operationId": "ListTradeOutcomes",
+        "parameters": [
+          {
+            "name": "underlying",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "outcomeLabel",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resolvedOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeOutcomeListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades/outcomes/{clientOrderId}": {
+      "get": {
+        "tags": [
+          "Trades"
+        ],
+        "operationId": "GetTradeOutcome",
+        "parameters": [
+          {
+            "name": "clientOrderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeOutcomeDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades/outcomes/{clientOrderId}/snapshot": {
+      "put": {
+        "tags": [
+          "Trades"
+        ],
+        "operationId": "AttachTradeOutcomeSnapshot",
+        "parameters": [
+          {
+            "name": "clientOrderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachSnapshotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeOutcomeDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades/outcomes/{clientOrderId}/reconcile": {
+      "post": {
+        "tags": [
+          "Trades"
+        ],
+        "operationId": "ReconcileTradeOutcome",
+        "parameters": [
+          {
+            "name": "clientOrderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeOutcomeDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades/outcomes/{clientOrderId}/resolve": {
+      "post": {
+        "tags": [
+          "Trades"
+        ],
+        "operationId": "ResolveTradeOutcome",
+        "parameters": [
+          {
+            "name": "clientOrderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveOutcomeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradeOutcomeDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades/retrospective": {
+      "get": {
+        "tags": [
+          "Trades"
+        ],
+        "operationId": "GetTradeRetrospective",
+        "parameters": [
+          {
+            "name": "underlying",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrospectiveSummaryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trades/outcomes.csv": {
+      "get": {
+        "tags": [
+          "Trades"
+        ],
+        "operationId": "ExportTradeOutcomesCsv",
+        "parameters": [
+          {
+            "name": "underlying",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AnomalyDto": {
+        "required": [
+          "clientOrderId",
+          "underlying",
+          "outcomeLabel",
+          "reason",
+          "cohortKey",
+          "realizedPnL",
+          "resolvedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "clientOrderId": {
+            "type": "string"
+          },
+          "underlying": {
+            "type": "string"
+          },
+          "outcomeLabel": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cohortKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "realizedPnL": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "resolvedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "AtrMetrics": {
         "required": [
           "atr7Pct",
@@ -399,6 +816,23 @@
               "number"
             ],
             "format": "double"
+          }
+        }
+      },
+      "AttachSnapshotRequest": {
+        "required": [
+          "snapshot"
+        ],
+        "type": "object",
+        "properties": {
+          "snapshot": {
+            "$ref": "#/components/schemas/DecisionSnapshotDto"
+          },
+          "source": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -458,6 +892,246 @@
             "format": "double"
           },
           "splitRatio": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CohortStatDto": {
+        "required": [
+          "cohortKey",
+          "sampleSize",
+          "assignmentRate",
+          "avgPremiumCash",
+          "avgEstPremium",
+          "premiumCaptureRatio",
+          "modelAssignmentProbAvg",
+          "recurringConditions"
+        ],
+        "type": "object",
+        "properties": {
+          "cohortKey": {
+            "type": "string"
+          },
+          "sampleSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assignmentRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "avgPremiumCash": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "avgEstPremium": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "premiumCaptureRatio": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "modelAssignmentProbAvg": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "recurringConditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DecisionSnapshotDto": {
+        "required": [
+          "underlying",
+          "optionRight",
+          "wheelSide",
+          "level",
+          "modelStrike",
+          "snappedStrike",
+          "targetDelta",
+          "hmmRegime",
+          "spotAtSubmit",
+          "suggestedLimit",
+          "midAtSubmit",
+          "bidAtSubmit",
+          "dte",
+          "granularity",
+          "earningsInWindow",
+          "empiricalAssignmentProb",
+          "estPremium"
+        ],
+        "type": "object",
+        "properties": {
+          "underlying": {
+            "type": "string"
+          },
+          "optionRight": {
+            "type": "string"
+          },
+          "wheelSide": {
+            "type": "string"
+          },
+          "level": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "modelStrike": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "snappedStrike": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "targetDelta": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "hmmRegime": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "spotAtSubmit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "suggestedLimit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "midAtSubmit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "bidAtSubmit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "dte": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "granularity": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "earningsInWindow": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "empiricalAssignmentProb": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "estPremium": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "contractSymbol": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ExperienceSignal": {
+        "required": [
+          "biasDelta",
+          "weightHint",
+          "confidence",
+          "reasons",
+          "sampleSize",
+          "cohortKey"
+        ],
+        "type": "object",
+        "properties": {
+          "biasDelta": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "weightHint": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sampleSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cohortKey": {
             "type": [
               "null",
               "string"
@@ -829,6 +1503,100 @@
           }
         }
       },
+      "ResolveOutcomeRequest": {
+        "type": "object",
+        "properties": {
+          "outcomeLabel": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "realizedPnL": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "wheelCycleId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fromActivities": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "RetrospectiveSummaryDto": {
+        "required": [
+          "totalOutcomes",
+          "resolvedCount",
+          "learningSampleSize",
+          "overallAssignmentRate",
+          "totalPremiumCash",
+          "totalRealizedPnL",
+          "cohorts",
+          "anomalies",
+          "cycles"
+        ],
+        "type": "object",
+        "properties": {
+          "totalOutcomes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resolvedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "learningSampleSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overallAssignmentRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalPremiumCash": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "totalRealizedPnL": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "cohorts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CohortStatDto"
+            }
+          },
+          "anomalies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnomalyDto"
+            }
+          },
+          "cycles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WheelCycleSummaryDto"
+            }
+          }
+        }
+      },
       "StrikeSuggestion": {
         "required": [
           "level",
@@ -934,6 +1702,188 @@
           }
         }
       },
+      "TradeOutcomeDto": {
+        "required": [
+          "clientOrderId",
+          "alpacaOrderId",
+          "wheelCycleId",
+          "underlying",
+          "symbol",
+          "side",
+          "optionRight",
+          "wheelSide",
+          "qty",
+          "filledQty",
+          "limitPrice",
+          "filledAvgPrice",
+          "premiumCash",
+          "fees",
+          "realizedPnL",
+          "outcomeLabel",
+          "source",
+          "snapshot",
+          "level",
+          "hmmRegime",
+          "cohortKey",
+          "isAnomaly",
+          "anomalyReason",
+          "createdAt",
+          "updatedAt",
+          "filledAt",
+          "resolvedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "clientOrderId": {
+            "type": "string"
+          },
+          "alpacaOrderId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "wheelCycleId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "underlying": {
+            "type": "string"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string"
+          },
+          "optionRight": {
+            "type": "string"
+          },
+          "wheelSide": {
+            "type": "string"
+          },
+          "qty": {
+            "type": "string"
+          },
+          "filledQty": {
+            "type": "string"
+          },
+          "limitPrice": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "filledAvgPrice": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "premiumCash": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "fees": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "realizedPnL": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "outcomeLabel": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "snapshot": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DecisionSnapshotDto"
+              }
+            ]
+          },
+          "level": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "hmmRegime": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cohortKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isAnomaly": {
+            "type": "boolean"
+          },
+          "anomalyReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "filledAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "TradeOutcomeListResponse": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TradeOutcomeDto"
+            }
+          }
+        }
+      },
       "WheelAnalysisResult": {
         "required": [
           "symbol",
@@ -948,6 +1898,8 @@
           "riskFreeRate",
           "atr",
           "hmmRegime",
+          "putExperience",
+          "callExperience",
           "put",
           "call",
           "warnings"
@@ -1015,6 +1967,26 @@
               }
             ]
           },
+          "putExperience": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExperienceSignal"
+              }
+            ]
+          },
+          "callExperience": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExperienceSignal"
+              }
+            ]
+          },
           "put": {
             "type": [
               "null",
@@ -1040,6 +2012,49 @@
             }
           }
         }
+      },
+      "WheelCycleSummaryDto": {
+        "required": [
+          "wheelCycleId",
+          "underlying",
+          "legCount",
+          "totalPremiumCash",
+          "totalRealizedPnL",
+          "clientOrderIds"
+        ],
+        "type": "object",
+        "properties": {
+          "wheelCycleId": {
+            "type": "string"
+          },
+          "underlying": {
+            "type": "string"
+          },
+          "legCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPremiumCash": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "totalRealizedPnL": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "clientOrderIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       }
     }
   },
@@ -1049,6 +2064,9 @@
     },
     {
       "name": "Orders"
+    },
+    {
+      "name": "Trades"
     }
   ]
 }

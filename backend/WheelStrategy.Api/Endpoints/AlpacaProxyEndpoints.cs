@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using WheelStrategy.Api.Alpaca;
 using WheelStrategy.Api.Options;
 using WheelStrategy.Api.Orders;
+using WheelStrategy.Api.Services;
 
 namespace WheelStrategy.Api.Endpoints;
 
@@ -63,6 +64,7 @@ public static class AlpacaProxyEndpoints
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(AlpacaProxyEndpoints));
         var journal = ctx.RequestServices.GetRequiredService<IOrderJournalService>();
+        var outcomes = ctx.RequestServices.GetRequiredService<ITradeOutcomeService>();
 
         var method = ctx.Request.Method;
         var ct = ctx.RequestAborted;
@@ -224,6 +226,8 @@ public static class AlpacaProxyEndpoints
                     using var orderDoc = JsonDocument.Parse(payload);
                     await journal.ApplyBrokerOrderJsonAsync(
                         placeIntent.ClientOrderId, orderDoc.RootElement, ct: ct);
+                    await outcomes.SyncFromBrokerOrderAsync(
+                        placeIntent.ClientOrderId, orderDoc.RootElement, ct);
                 }
                 catch (JsonException ex)
                 {
@@ -253,6 +257,7 @@ public static class AlpacaProxyEndpoints
                         && cidEl.GetString() is { Length: > 0 } cid)
                     {
                         await journal.ApplyBrokerOrderJsonAsync(cid, orderDoc.RootElement, ct: ct);
+                        await outcomes.SyncFromBrokerOrderAsync(cid, orderDoc.RootElement, ct);
                     }
                 }
                 catch (JsonException)
@@ -282,7 +287,7 @@ public static class AlpacaProxyEndpoints
             if (isPlace && placeIntent is not null)
             {
                 var recovered = await TryRecoverPlaceAsync(
-                    journal, http, alpaca, placeIntent, logger, ct);
+                    journal, outcomes, http, alpaca, placeIntent, logger, ct);
                 if (recovered is not null) return recovered;
             }
             return Results.Problem(
@@ -296,7 +301,7 @@ public static class AlpacaProxyEndpoints
             if (isPlace && placeIntent is not null)
             {
                 var recovered = await TryRecoverPlaceAsync(
-                    journal, http, alpaca, placeIntent, logger, ct);
+                    journal, outcomes, http, alpaca, placeIntent, logger, ct);
                 if (recovered is not null) return recovered;
             }
             return Results.Problem(
@@ -312,6 +317,7 @@ public static class AlpacaProxyEndpoints
     /// </summary>
     private static async Task<IResult?> TryRecoverPlaceAsync(
         IOrderJournalService journal,
+        ITradeOutcomeService outcomes,
         HttpClient http,
         AlpacaOptions alpaca,
         PlaceIntent intent,
@@ -334,6 +340,7 @@ public static class AlpacaProxyEndpoints
             {
                 using var doc = JsonDocument.Parse(bytes);
                 await journal.ApplyBrokerOrderJsonAsync(intent.ClientOrderId, doc.RootElement, ct: ct);
+                await outcomes.SyncFromBrokerOrderAsync(intent.ClientOrderId, doc.RootElement, ct);
                 logger.LogInformation(
                     "Recovered place via client_order_id {ClientOrderId}", intent.ClientOrderId);
                 return Results.Bytes(bytes, "application/json");
@@ -343,6 +350,7 @@ public static class AlpacaProxyEndpoints
                 intent.ClientOrderId,
                 $"POST failed and reconcile found no order (status={(int)res.StatusCode})",
                 ct);
+            await outcomes.MarkCanceledBeforeFillAsync(intent.ClientOrderId, ct);
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException)
         {

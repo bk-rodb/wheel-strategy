@@ -117,10 +117,133 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trades/outcomes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListTradeOutcomes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trades/outcomes/{clientOrderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetTradeOutcome"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trades/outcomes/{clientOrderId}/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AttachTradeOutcomeSnapshot"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trades/outcomes/{clientOrderId}/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReconcileTradeOutcome"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trades/outcomes/{clientOrderId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ResolveTradeOutcome"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trades/retrospective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetTradeRetrospective"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trades/outcomes.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExportTradeOutcomesCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AnomalyDto: {
+            clientOrderId: string;
+            underlying: string;
+            outcomeLabel: string;
+            reason: null | string;
+            cohortKey: null | string;
+            /** Format: double */
+            realizedPnL: null | number;
+            /** Format: date-time */
+            resolvedAt: null | string;
+        };
         AtrMetrics: {
             /** Format: double */
             atr7Pct: null | number;
@@ -128,6 +251,10 @@ export interface components {
             atr14Pct: null | number;
             /** Format: double */
             atr21Pct: null | number;
+        };
+        AttachSnapshotRequest: {
+            snapshot: components["schemas"]["DecisionSnapshotDto"];
+            source?: null | string;
         };
         CatalystEventDto: {
             id: string;
@@ -141,6 +268,64 @@ export interface components {
             /** Format: double */
             yieldPct: null | number;
             splitRatio: null | string;
+        };
+        CohortStatDto: {
+            cohortKey: string;
+            /** Format: int32 */
+            sampleSize: number;
+            /** Format: double */
+            assignmentRate: number;
+            /** Format: double */
+            avgPremiumCash: null | number;
+            /** Format: double */
+            avgEstPremium: null | number;
+            /** Format: double */
+            premiumCaptureRatio: null | number;
+            /** Format: double */
+            modelAssignmentProbAvg: null | number;
+            recurringConditions: string[];
+        };
+        DecisionSnapshotDto: {
+            underlying: string;
+            optionRight: string;
+            wheelSide: string;
+            level: null | string;
+            /** Format: double */
+            modelStrike: null | number;
+            /** Format: double */
+            snappedStrike: null | number;
+            /** Format: double */
+            targetDelta: null | number;
+            hmmRegime: null | string;
+            /** Format: double */
+            spotAtSubmit: null | number;
+            /** Format: double */
+            suggestedLimit: null | number;
+            /** Format: double */
+            midAtSubmit: null | number;
+            /** Format: double */
+            bidAtSubmit: null | number;
+            /** Format: int32 */
+            dte: null | number;
+            granularity: null | string;
+            earningsInWindow: null | boolean;
+            /** Format: double */
+            empiricalAssignmentProb: null | number;
+            /** Format: double */
+            estPremium: null | number;
+            contractSymbol?: null | string;
+        };
+        ExperienceSignal: {
+            /** Format: double */
+            biasDelta: null | number;
+            /** Format: double */
+            weightHint: null | number;
+            /** Format: double */
+            confidence: number;
+            reasons: string[];
+            /** Format: int32 */
+            sampleSize: number;
+            cohortKey: null | string;
         };
         HmmForecastHorizon: {
             /** Format: int32 */
@@ -228,6 +413,30 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
         };
+        ResolveOutcomeRequest: {
+            outcomeLabel?: null | string;
+            /** Format: double */
+            realizedPnL?: null | number;
+            wheelCycleId?: null | string;
+            fromActivities?: null | boolean;
+        };
+        RetrospectiveSummaryDto: {
+            /** Format: int32 */
+            totalOutcomes: number;
+            /** Format: int32 */
+            resolvedCount: number;
+            /** Format: int32 */
+            learningSampleSize: number;
+            /** Format: double */
+            overallAssignmentRate: number;
+            /** Format: double */
+            totalPremiumCash: null | number;
+            /** Format: double */
+            totalRealizedPnL: null | number;
+            cohorts: components["schemas"]["CohortStatDto"][];
+            anomalies: components["schemas"]["AnomalyDto"][];
+            cycles: components["schemas"]["WheelCycleSummaryDto"][];
+        };
         StrikeSuggestion: {
             level: string;
             /** Format: double */
@@ -254,6 +463,45 @@ export interface components {
             events: components["schemas"]["CatalystEventDto"][];
             warnings: string[];
         };
+        TradeOutcomeDto: {
+            clientOrderId: string;
+            alpacaOrderId: null | string;
+            wheelCycleId: null | string;
+            underlying: string;
+            symbol: string;
+            side: string;
+            optionRight: string;
+            wheelSide: string;
+            qty: string;
+            filledQty: string;
+            limitPrice: null | string;
+            filledAvgPrice: null | string;
+            /** Format: double */
+            premiumCash: null | number;
+            /** Format: double */
+            fees: null | number;
+            /** Format: double */
+            realizedPnL: null | number;
+            outcomeLabel: string;
+            source: string;
+            snapshot: null | components["schemas"]["DecisionSnapshotDto"];
+            level: null | string;
+            hmmRegime: null | string;
+            cohortKey: null | string;
+            isAnomaly: boolean;
+            anomalyReason: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            filledAt: null | string;
+            /** Format: date-time */
+            resolvedAt: null | string;
+        };
+        TradeOutcomeListResponse: {
+            items: components["schemas"]["TradeOutcomeDto"][];
+        };
         WheelAnalysisResult: {
             symbol: string;
             /** Format: double */
@@ -275,9 +523,22 @@ export interface components {
             riskFreeRate: number;
             atr: null | components["schemas"]["AtrMetrics"];
             hmmRegime: null | components["schemas"]["HmmRegimeContext"];
+            putExperience: null | components["schemas"]["ExperienceSignal"];
+            callExperience: null | components["schemas"]["ExperienceSignal"];
             put: null | components["schemas"]["StrikeSuggestion"][];
             call: null | components["schemas"]["StrikeSuggestion"][];
             warnings: string[];
+        };
+        WheelCycleSummaryDto: {
+            wheelCycleId: string;
+            underlying: string;
+            /** Format: int32 */
+            legCount: number;
+            /** Format: double */
+            totalPremiumCash: null | number;
+            /** Format: double */
+            totalRealizedPnL: null | number;
+            clientOrderIds: string[];
         };
     };
     responses: never;
@@ -522,6 +783,270 @@ export interface operations {
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
+            };
+        };
+    };
+    ListTradeOutcomes: {
+        parameters: {
+            query?: {
+                underlying?: string;
+                outcomeLabel?: string;
+                resolvedOnly?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeOutcomeListResponse"];
+                };
+            };
+        };
+    };
+    GetTradeOutcome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeOutcomeDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AttachTradeOutcomeSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachSnapshotRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeOutcomeDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReconcileTradeOutcome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeOutcomeDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ResolveTradeOutcome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientOrderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveOutcomeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradeOutcomeDto"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetTradeRetrospective: {
+        parameters: {
+            query?: {
+                underlying?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetrospectiveSummaryDto"];
+                };
+            };
+        };
+    };
+    ExportTradeOutcomesCsv: {
+        parameters: {
+            query?: {
+                underlying?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

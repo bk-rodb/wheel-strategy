@@ -22,6 +22,7 @@ interface WheelAnalysisResult {
   put: StrikeSuggestion[] | null;
   call: StrikeSuggestion[] | null;
   warnings?: string[] | null;
+  hmmRegime?: { currentRegime?: string } | null;
 }
 
 interface AlpacaOptionContract {
@@ -75,6 +76,7 @@ export interface FridayLadder {
   qty: number;
   row: LadderRow;
   warnings: string[];
+  hmmRegime: string | null;
 }
 
 /** Round to option tick ($0.01 below $3, $0.05 at/above), away from own side for sells. */
@@ -280,5 +282,6 @@ export async function fetchRegularLadder(opts: {
     qty: opts.qty,
     row,
     warnings,
+    hmmRegime: analysis.hmmRegime?.currentRegime ?? null,
   };
 }

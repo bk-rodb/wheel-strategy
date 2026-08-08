@@ -24,6 +24,7 @@ public class WheelAnalysisService(
     IBarCacheService bars,
     AlpacaMarketDataClient alpaca,
     IOptions<AnalysisOptions> analysisOptions,
+    IExperiencePriorService experience,
     ILogger<WheelAnalysisService> log) : IWheelAnalysisService
 {
     private readonly AnalysisOptions _opts = analysisOptions.Value;
@@ -68,7 +69,7 @@ public class WheelAnalysisService(
         else
         {
             warnings.Add("No price data available for symbol.");
-            return Empty(symbol, 0m, DateTimeOffset.UtcNow, req, horizon, weekly, 0, null, r, null, null, warnings);
+            return Empty(symbol, 0m, DateTimeOffset.UtcNow, req, horizon, weekly, 0, null, r, null, null, null, null, warnings);
         }
 
         warnings.Add("IEX feed: single-venue bars; OHLC may differ slightly from consolidated tape.");
@@ -89,7 +90,7 @@ public class WheelAnalysisService(
         if (fwd.Count < _opts.MinSamples)
         {
             warnings.Add($"Insufficient history: {fwd.Count} forward-return samples (< {_opts.MinSamples} required).");
-            return Empty(symbol, spot, asOf, req, horizon, weekly, fwd.Count, RoundVol(sigmaAnnual), r, null, null, warnings);
+            return Empty(symbol, spot, asOf, req, horizon, weekly, fwd.Count, RoundVol(sigmaAnnual), r, null, null, null, null, warnings);
         }
 
         warnings.Add("Strike levels use |delta| rule-of-thumb (conservative 0.20 / balanced 0.30 / aggressive 0.40), widened by ATR floors and nudged by HMM regime.");
@@ -103,6 +104,12 @@ public class WheelAnalysisService(
 
         var atr = await ComputeAtrMetricsAsync(symbol, start, (double)spot, req.Refresh, ct);
         var hmm = FitHmmRegime(series, horizon, warnings);
+
+        var putExp = await experience.GetSignalAsync(
+            symbol, "put", "regular", hmm?.CurrentRegime, req.Dte, earningsInWindow: null, ct);
+        var callExp = await experience.GetSignalAsync(
+            symbol, "call", "regular", hmm?.CurrentRegime, req.Dte, earningsInWindow: null, ct);
+        AddExperienceWarnings(putExp, callExp, warnings);
 
         var sorted = fwd.OrderBy(x => x).ToList();
         var s = (double)spot;
@@ -119,8 +126,8 @@ public class WheelAnalysisService(
 
         foreach (var (name, targetDelta, atrMultiple) in levels)
         {
-            var putDelta = EffectiveDelta(targetDelta, isPut: true, hmm);
-            var callDelta = EffectiveDelta(targetDelta, isPut: false, hmm);
+            var putDelta = EffectiveDelta(targetDelta, isPut: true, hmm, putExp);
+            var callDelta = EffectiveDelta(targetDelta, isPut: false, hmm, callExp);
 
             puts.Add(BuildPutSuggestion(name, s, putDelta, targetDelta, atrMultiple, atr, t, r, sigmaAnnual, fwd, req.Dte));
             calls.Add(BuildCallSuggestion(name, s, callDelta, targetDelta, atrMultiple, atr, t, r, sigmaAnnual, fwd, req.Dte));
@@ -132,7 +139,7 @@ public class WheelAnalysisService(
         return new WheelAnalysisResult(
             symbol, spot, asOf, req.LookbackDays, req.Dte, horizon,
             weekly ? "weekly" : "daily", fwd.Count, RoundVol(sigmaAnnual), r,
-            atr, hmm, puts, calls, warnings);
+            atr, hmm, putExp, callExp, puts, calls, warnings);
     }
 
     private async Task<AtrMetrics?> ComputeAtrMetricsAsync(
@@ -193,16 +200,39 @@ public class WheelAnalysisService(
             RoundProb(expectedPct));
     }
 
-    private double EffectiveDelta(double targetDelta, bool isPut, HmmRegimeContext? hmm)
+    private double EffectiveDelta(
+        double targetDelta, bool isPut, HmmRegimeContext? hmm, ExperienceSignal? experience)
     {
-        if (hmm is null) return targetDelta;
-        var adjust = hmm.CurrentRegime switch
+        var delta = targetDelta;
+        if (hmm is not null)
         {
-            "bear" => _opts.HmmBearDeltaAdjust,
-            "bull" => isPut ? _opts.HmmBullPutDeltaAdjust : _opts.HmmBullCallDeltaAdjust,
-            _ => 0.0,
-        };
-        return Math.Clamp(targetDelta + adjust, 0.10, 0.50);
+            var adjust = hmm.CurrentRegime switch
+            {
+                "bear" => _opts.HmmBearDeltaAdjust,
+                "bull" => isPut ? _opts.HmmBullPutDeltaAdjust : _opts.HmmBullCallDeltaAdjust,
+                _ => 0.0,
+            };
+            delta += adjust;
+        }
+
+        if (_opts.ExperienceApplyBias
+            && experience?.BiasDelta is { } bias
+            && experience.SampleSize >= _opts.ExperienceMinSamples
+            && experience.Confidence >= 0.25)
+        {
+            delta += bias;
+        }
+
+        return Math.Clamp(delta, 0.10, 0.50);
+    }
+
+    private static void AddExperienceWarnings(
+        ExperienceSignal putExp, ExperienceSignal callExp, List<string> warnings)
+    {
+        foreach (var reason in putExp.Reasons.Take(3))
+            warnings.Add($"Experience (put): {reason}");
+        foreach (var reason in callExp.Reasons.Take(2))
+            warnings.Add($"Experience (call): {reason}");
     }
 
     private static StrikeSuggestion BuildPutSuggestion(
@@ -301,9 +331,11 @@ public class WheelAnalysisService(
     private static WheelAnalysisResult Empty(
         string symbol, decimal spot, DateTimeOffset asOf, AnalysisRequest req,
         int horizon, bool weekly, int sampleCount, double? sigma, double r,
-        AtrMetrics? atr, HmmRegimeContext? hmm, List<string> warnings)
+        AtrMetrics? atr, HmmRegimeContext? hmm,
+        ExperienceSignal? putExp, ExperienceSignal? callExp, List<string> warnings)
         => new(symbol, spot, asOf, req.LookbackDays, req.Dte, horizon,
-            weekly ? "weekly" : "daily", sampleCount, sigma, r, atr, hmm, null, null, warnings);
+            weekly ? "weekly" : "daily", sampleCount, sigma, r, atr, hmm,
+            putExp, callExp, null, null, warnings);
 
     private static int ArgMax(IReadOnlyList<double> xs)
     {

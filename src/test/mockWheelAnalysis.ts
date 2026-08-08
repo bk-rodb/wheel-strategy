@@ -19,6 +19,8 @@ export function mockWheelAnalysis(overrides: Partial<WheelAnalysis> = {}): Wheel
       bullProb: 0.25,
       expectedReturnPctAtDte: 1.2,
     },
+    putExperience: null,
+    callExperience: null,
     put: [],
     call: [],
     warnings: [],

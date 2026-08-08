@@ -33,6 +33,8 @@ builder.Services.AddScoped<IBarCacheService, BarCacheService>();
 builder.Services.AddScoped<IWheelAnalysisService, WheelAnalysisService>();
 builder.Services.AddScoped<IHmmTrendService, HmmTrendService>();
 builder.Services.AddScoped<IOrderJournalService, OrderJournalService>();
+builder.Services.AddScoped<ITradeOutcomeService, TradeOutcomeService>();
+builder.Services.AddScoped<IExperiencePriorService, ExperiencePriorService>();
 
 // Finnhub: token on X-Finnhub-Token so IHttpClientFactory never logs it in the URI (H-20).
 builder.Services.AddHttpClient<ICatalystsService, CatalystsService>((sp, http) =>
@@ -140,6 +142,7 @@ app.MapWheelAnalysisEndpoints();
 app.MapHmmTrendEndpoints();
 app.MapCatalystsEndpoints();
 app.MapOrderJournalEndpoints();
+app.MapTradeOutcomeEndpoints();
 app.MapAlpacaProxyEndpoints();
 
 app.Run();

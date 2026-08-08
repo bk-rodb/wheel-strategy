@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WheelStrategy.Api.Data;
 
@@ -10,9 +11,11 @@ using WheelStrategy.Api.Data;
 namespace WheelStrategy.Api.Data.Migrations
 {
     [DbContext(typeof(WheelStrategyDbContext))]
-    partial class WheelStrategyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260808170844_TradeOutcomes")]
+    partial class TradeOutcomes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.18");

@@ -6,6 +6,7 @@ import { fmt, dayChange, dayChangePct, dte } from "../utils/formatters";
 import { PHASE_CONFIG, SOURCE_BADGE } from "../constants";
 import { WheelPhaseIndicator } from "./WheelPhaseIndicator";
 import { Sparkline } from "./Sparkline";
+import { RetrospectivePanel } from "./RetrospectivePanel";
 import { useOpenBlotterOrders } from "../hooks/useOpenBlotterOrders";
 import type { BlotterOrder, DeskOrderState } from "../store/orderBlotter";
 
@@ -167,6 +168,8 @@ export function SummaryDashboard({
           </div>
         ))}
       </div>
+
+      <RetrospectivePanel />
 
       <div
         style={{

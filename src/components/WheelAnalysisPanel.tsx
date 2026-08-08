@@ -173,6 +173,21 @@ function Header({
                   )}
                 </span>
               )}
+              {data.putExperience && (
+                <span
+                  title={(data.putExperience.reasons ?? []).join("\n")}
+                  style={{ color: "#a78bfa" }}
+                >
+                  EXP n={data.putExperience.sampleSize}
+                  {data.putExperience.biasDelta != null && (
+                    <> · Δ{data.putExperience.biasDelta >= 0 ? "+" : ""}
+                      {data.putExperience.biasDelta.toFixed(3)}</>
+                  )}
+                  {data.putExperience.confidence > 0 && (
+                    <> · conf {(data.putExperience.confidence * 100).toFixed(0)}%</>
+                  )}
+                </span>
+              )}
               <span>HORIZON <b style={{ color: "#e8e8f8" }}>{data.horizonPeriods}× {data.granularity}</b></span>
               <span>LOOKBACK <b style={{ color: "#e8e8f8" }}>{(data.lookbackDays / 365).toFixed(1)}y</b></span>
               <span>SAMPLES <b style={{ color: "#e8e8f8" }}>{data.sampleCount}</b></span>

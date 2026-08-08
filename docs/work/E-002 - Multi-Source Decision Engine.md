@@ -8,7 +8,7 @@
 | **Opened** | 2026-08-08 |
 | **Closed** | — |
 | **Owner** | — |
-| **Related** | [E-001](./E-001%20-%20Update%20strike%20decision%20engine.md) · [docs/test.md](../test.md) · [NEXT_STEPS.md](../NEXT_STEPS.md) (liquidity L-18, earnings awareness) · Analysis API · `fetchFridayOptions` |
+| **Related** | [E-001](./E-001%20-%20Update%20strike%20decision%20engine.md) · [F-001](./F-001%20-%20Trade%20Retrospective%20Learning.md) Experience head · [docs/test.md](../test.md) · [NEXT_STEPS.md](../NEXT_STEPS.md) (liquidity L-18, earnings awareness) · Analysis API · `fetchFridayOptions` |
 
 ---
 
@@ -174,3 +174,4 @@ PR: —
 - Order-flow imbalance head if a data source is added.
 - Optional ADR under `docs/adr/` for Phase D weight scheme.
 - Anchored / weekly VWAP as CSP strike ceiling.
+- Integrate [F-001](./F-001%20-%20Trade%20Retrospective%20Learning.md) Experience `weightHint` into Phase D synthesis ([ADR-002](../adr/ADR-002%20-%20Experience%20head%20priors.md)).

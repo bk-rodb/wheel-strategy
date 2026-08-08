@@ -10,6 +10,7 @@ import {
   isOrderFilled,
 } from "./orders.js";
 import { listOpenJournalForUnderlying } from "./orderJournal.js";
+import { attachBotDecisionSnapshot } from "./tradeOutcome.js";
 import { getAccount, getEquityShares, sideAndQty } from "./positions.js";
 import { preTradeCheck } from "./preTrade.js";
 import {
@@ -189,6 +190,30 @@ export async function runSellToOpenCycle(opts: {
   let order = await getOrderByClientId(clientOrderId, opts.signal);
   if (!order) {
     try {
+      await attachBotDecisionSnapshot(
+        clientOrderId,
+        {
+          underlying: symbol.toUpperCase(),
+          optionRight: side === "call" ? "call" : "put",
+          wheelSide: side === "call" ? "cc" : "csp",
+          level: config.level,
+          modelStrike: ladder.row.strike,
+          snappedStrike: ladder.row.strike,
+          targetDelta: null,
+          hmmRegime: ladder.hmmRegime ?? null,
+          spotAtSubmit: ladder.spot ?? null,
+          suggestedLimit: ladder.row.sellLimit,
+          midAtSubmit: ladder.row.mid,
+          bidAtSubmit: ladder.row.bid,
+          dte: ladder.dte ?? null,
+          granularity: "weekly",
+          earningsInWindow: null,
+          empiricalAssignmentProb: ladder.row.empiricalAssignmentProb,
+          estPremium: ladder.row.estPremium ?? null,
+          contractSymbol: ladder.row.contractSymbol,
+        },
+        opts.signal,
+      );
       order = await placeSellToOpen({
         contractSymbol: ladder.row.contractSymbol,
         qty: ladder.qty,

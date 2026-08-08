@@ -310,6 +310,39 @@ export function OpenOptionsSection({
         limitPrice: ticket.limitPrice,
         side: ticket.action === "sell_to_open" ? "sell" : "buy",
         positionIntent: ticket.action === "buy_to_close" ? "buy_to_close" : "sell_to_open",
+        decisionSnapshot:
+          ticket.action === "sell_to_open"
+            ? {
+                underlying: symbol.toUpperCase(),
+                optionRight: ticket.optionType,
+                wheelSide: ticket.optionType === "call" ? "cc" : "csp",
+                level: ticket.level ?? null,
+                modelStrike: ticket.strike,
+                snappedStrike: ticket.strike,
+                targetDelta: null,
+                hmmRegime: data?.hmmRegime ?? null,
+                spotAtSubmit: data?.spot ?? null,
+                suggestedLimit: ticket.limitPrice,
+                midAtSubmit: ticket.mid,
+                bidAtSubmit: ticket.bid,
+                dte: data?.dte ?? dteUntil(ticket.expiration),
+                granularity: "weekly",
+                earningsInWindow:
+                  catalystEvents?.some(
+                    (e) =>
+                      e.type === "earnings" &&
+                      typeof e.date === "string" &&
+                      e.date <= ticket.expiration,
+                  ) ?? null,
+                empiricalAssignmentProb:
+                  data?.rows.find((r) => r.contractSymbol === ticket.contractSymbol)
+                    ?.empiricalAssignmentProb ?? null,
+                estPremium:
+                  data?.rows.find((r) => r.contractSymbol === ticket.contractSymbol)
+                    ?.estPremium ?? null,
+                contractSymbol: ticket.contractSymbol,
+              }
+            : undefined,
       });
       if (order) {
         setFlashMsg(

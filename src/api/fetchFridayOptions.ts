@@ -49,6 +49,8 @@ export interface FridayOptionsBundle {
   warnings: string[];
   /** When live quotes were last fetched (ISO). */
   quotedAt: string | null;
+  /** HMM regime at analysis time (for decision snapshot / Experience). */
+  hmmRegime: string | null;
 }
 
 const LEVEL_LABEL: Record<AnalysisLevel, "LOW" | "MED" | "HIGH"> = {
@@ -361,6 +363,7 @@ export async function fetchFridayOptions(opts: {
       rows,
       warnings,
       quotedAt: null,
+      hmmRegime: analysis.hmmRegime?.currentRegime ?? null,
     };
   }
 
@@ -398,6 +401,7 @@ export async function fetchFridayOptions(opts: {
       rows,
       warnings,
       quotedAt: null,
+      hmmRegime: analysis.hmmRegime?.currentRegime ?? null,
     };
   }
 
@@ -447,5 +451,6 @@ export async function fetchFridayOptions(opts: {
     rows,
     warnings,
     quotedAt: latestQuoteTime(snapshots),
+    hmmRegime: analysis.hmmRegime?.currentRegime ?? null,
   };
 }

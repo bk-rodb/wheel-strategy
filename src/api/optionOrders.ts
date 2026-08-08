@@ -1,6 +1,8 @@
 import { IS_MOCK } from "../config";
 import { AlpacaHttpError, trading } from "./alpacaClient";
 import type { AlpacaOrder, AlpacaOrderRequest, AlpacaOrderStatus } from "./alpacaTypes";
+import { attachDecisionSnapshot } from "./fetchTradeOutcomes";
+import type { DecisionSnapshot } from "./fetchTradeOutcomes";
 
 export interface PlaceOptionOrderParams {
   contractSymbol: string;
@@ -12,6 +14,8 @@ export interface PlaceOptionOrderParams {
   positionIntent?: "buy_to_close" | "sell_to_close" | "buy_to_open" | "sell_to_open";
   /** Caller-supplied idempotency key; generated if omitted. */
   clientOrderId?: string;
+  /** Frozen decision context for TradeOutcome ledger (F-001). */
+  decisionSnapshot?: DecisionSnapshot;
 }
 
 /** Still live at the venue — blocks placing another order; cancelable until filled. */
@@ -171,6 +175,9 @@ export async function placeOptionOrder(params: PlaceOptionOrderParams): Promise<
   const clientOrderId = params.clientOrderId ?? newClientOrderId();
 
   if (IS_MOCK) {
+    if (params.decisionSnapshot) {
+      await attachDecisionSnapshot(clientOrderId, params.decisionSnapshot, "desk");
+    }
     const existingId = mockByClientId.get(clientOrderId);
     if (existingId) {
       const existing = mockOrders.get(existingId);
@@ -200,6 +207,14 @@ export async function placeOptionOrder(params: PlaceOptionOrderParams): Promise<
   }
   if (params.limitPrice != null) {
     body.limit_price = formatOptionLimitPrice(params.limitPrice, side);
+  }
+
+  if (params.decisionSnapshot) {
+    try {
+      await attachDecisionSnapshot(clientOrderId, params.decisionSnapshot, "desk");
+    } catch {
+      // Snapshot is best-effort; place still proceeds — reconcile can attach later.
+    }
   }
 
   return trading.post<AlpacaOrder>("/v2/orders", body);

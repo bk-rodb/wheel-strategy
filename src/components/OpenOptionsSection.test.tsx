@@ -19,6 +19,7 @@ const bundle: FridayOptionsBundle = {
   spot: 170,
   contracts: 1,
   quotedAt: null,
+  hmmRegime: null,
   warnings: [],
   rows: [
     {

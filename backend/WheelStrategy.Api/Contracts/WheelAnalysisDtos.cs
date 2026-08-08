@@ -39,6 +39,8 @@ public record WheelAnalysisResult(
     double RiskFreeRate,
     AtrMetrics? Atr,
     HmmRegimeContext? HmmRegime,
+    ExperienceSignal? PutExperience,
+    ExperienceSignal? CallExperience,
     IReadOnlyList<StrikeSuggestion>? Put,
     IReadOnlyList<StrikeSuggestion>? Call,
     IReadOnlyList<string> Warnings);
