@@ -98,7 +98,7 @@ Shipped a closed-trade `TradeOutcome` ledger separate from the order journal, re
 
 | Hash | Message |
 |------|---------|
-| — | — |
+| `a757f43` | Add trade retrospective ledger and Experience decision head (F-001). |
 
 PR: —
 
@@ -122,4 +122,4 @@ npm run check:api
 
 - Offline suggestion backtest as separate work item
 - E-002 Phase D weight integration for Experience `weightHint`
-- Commit hash when this ships
+- Commit hash when this ships → `a757f43`
