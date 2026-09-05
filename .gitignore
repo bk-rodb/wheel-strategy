@@ -35,6 +35,9 @@ backend/**/wheel.db
 backend/**/wheel.db-shm
 backend/**/wheel.db-wal
 
+# Unattended API stdout (scripts/start-api.cmd)
+backend/**/logs/
+
 # Playwright MCP artifacts
 .playwright-mcp/
 nvda-analysis.png

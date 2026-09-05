@@ -68,7 +68,7 @@ Stops Vite (`:5173`), the analysis API (`:5099`), and `npm run preview` (`:4173`
 
 ## Weekly NVDA bot (optional)
 
-Paper sell-to-open worker (NVDA, mid-tier strike). Requires the analysis API above with paper keys. Full docs: [BOT.md](./BOT.md).
+Paper sell-to-open worker (NVDA, mid-tier strike). Requires the analysis API above with paper keys. Full docs: [BOT.md](./BOT.md). Unattended (Task Scheduler): [runbooks/unattended-nvda-bot.md](./runbooks/unattended-nvda-bot.md).
 
 ```bash
 cd bot && cp .env.example .env && npm install

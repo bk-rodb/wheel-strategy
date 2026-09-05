@@ -82,6 +82,8 @@ npm run bot:test
 
 Both modes refuse to start if the API is unreachable.
 
+**Unattended on this Windows PC:** keep the API up at logon and schedule `--once` for Mon/Tue 9:35 ET. Step-by-step: [runbooks/unattended-nvda-bot.md](./runbooks/unattended-nvda-bot.md).
+
 ---
 
 ## Entry window (America/New_York)
@@ -168,11 +170,11 @@ bot/
 
 ---
 
-## Automation (planned)
+## Automation
 
-N8N scheduling, HTTP trigger mode (`--serve`), Slack + email notifications.
+**Today (local Windows PC):** Task Scheduler + `--once`. Playbook: [runbooks/unattended-nvda-bot.md](./runbooks/unattended-nvda-bot.md).
 
-Full spec: [BOT_AUTOMATION.md](./BOT_AUTOMATION.md). Backlog: [ROADMAP.md](./ROADMAP.md) (F-1 through F-7).
+**Planned (not implemented):** N8N scheduling, HTTP trigger mode (`--serve`), Slack + email notifications. Spec: [BOT_AUTOMATION.md](./BOT_AUTOMATION.md). Backlog: [ROADMAP.md](./ROADMAP.md).
 
 ---
 

@@ -81,7 +81,7 @@ Keep these **separate** from work items so ADRs and runbooks are not buried insi
 
 Existing anchors to link from work items instead of duplicating:
 
-- Setup: [PRE_LAUNCH.md](../PRE_LAUNCH.md) · [LAUNCH.md](../LAUNCH.md) · [BOT.md](../BOT.md)
+- Setup: [PRE_LAUNCH.md](../PRE_LAUNCH.md) · [LAUNCH.md](../LAUNCH.md) · [BOT.md](../BOT.md) · [Unattended bot runbook](../runbooks/unattended-nvda-bot.md)
 - Product gaps: [trading-desk-gaps.md](../trading-desk-gaps.md) · [trading-desk-outline.md](../trading-desk-outline.md)
 - Remediation history: [NEXT_STEPS.md](../NEXT_STEPS.md) · [CODE_REVIEW.md](../CODE_REVIEW.md)
 

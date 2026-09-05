@@ -2,7 +2,7 @@
 
 Paper sell-to-open worker for NVDA (covered call or CSP) at the analysis **`regular`** strike, via WheelStrategy.Api.
 
-**Full documentation:** [docs/BOT.md](../docs/BOT.md)
+**Full documentation:** [docs/BOT.md](../docs/BOT.md) · **Unattended (Windows):** [docs/runbooks/unattended-nvda-bot.md](../docs/runbooks/unattended-nvda-bot.md)
 
 ## Quick start
 
