@@ -49,6 +49,8 @@ export interface LastCycle {
   clientOrderId: string;
   at: string;
   status: string;
+  /** Number of same-friday retries already attempted (0 = first attempt). */
+  retryIndex?: number;
 }
 
 export function readLastCycle(): LastCycle | null {
@@ -70,4 +72,21 @@ export function alreadyCompletedForFriday(targetFriday: string): boolean {
   const last = readLastCycle();
   if (!last || last.targetFriday !== targetFriday) return false;
   return last.status === "placed" || last.status === "filled" || last.status === "dry_run";
+}
+
+/**
+ * Returns the next retry index to use for a clientOrderId on same-friday
+ * re-entries after a cancellation. Returns 0 on the very first attempt.
+ * Alpaca permanently reserves a clientOrderId even for canceled orders, so
+ * each retry needs a unique suffix (`-r1`, `-r2`, …).
+ */
+export function getNextRetryIndex(targetFriday: string): number {
+  const last = readLastCycle();
+  if (!last || last.targetFriday !== targetFriday) return 0;
+  // Only bump the index if the previous attempt was a cancelation/error;
+  // placed/filled/dry_run would have been caught by alreadyCompletedForFriday.
+  if (last.status === "canceled" || last.status === "error") {
+    return (last.retryIndex ?? 0) + 1;
+  }
+  return 0;
 }

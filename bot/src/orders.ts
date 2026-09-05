@@ -215,15 +215,23 @@ export async function pollUntilDone(opts: {
   }
 }
 
-/** Stable idempotency key for a weekly cycle. */
+/**
+ * Stable idempotency key for a weekly cycle.
+ * `retryIndex` > 0 appends `-r{n}` so same-day retries after a cancellation
+ * get a unique id (Alpaca permanently reserves a clientOrderId even for
+ * canceled orders, and reuse returns 422 "client_order_id must be unique").
+ */
 export function cycleClientOrderId(
   symbol: string,
   expiration: string,
   side: string,
   runDate: string,
+  retryIndex = 0,
 ): string {
   // Alpaca client_order_id max ~48 chars
   const exp = expiration.replace(/-/g, "");
   const day = runDate.replace(/-/g, "");
-  return `bot-${symbol.toLowerCase()}-${exp}-${side[0]}-${day}`.slice(0, 48);
+  const base = `bot-${symbol.toLowerCase()}-${exp}-${side[0]}-${day}`;
+  const suffix = retryIndex > 0 ? `-r${retryIndex}` : "";
+  return `${base}${suffix}`.slice(0, 48);
 }

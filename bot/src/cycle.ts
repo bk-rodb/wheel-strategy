@@ -17,6 +17,7 @@ import {
   alreadyCompletedForFriday,
   appendRun,
   writeLastCycle,
+  getNextRetryIndex,
   type RunRecord,
 } from "./state.js";
 
@@ -142,7 +143,8 @@ export async function runSellToOpenCycle(opts: {
     return { record };
   }
 
-  const clientOrderId = cycleClientOrderId(symbol, opts.targetFriday, side, runDate);
+  const retryIndex = getNextRetryIndex(opts.targetFriday);
+  const clientOrderId = cycleClientOrderId(symbol, opts.targetFriday, side, runDate, retryIndex);
 
   const ticket = {
     contractSymbol: ladder.row.contractSymbol,
@@ -181,6 +183,7 @@ export async function runSellToOpenCycle(opts: {
       clientOrderId,
       at,
       status: "dry_run",
+      retryIndex,
     });
     console.log(`[cycle] Dry-run complete (no order placed).`);
     return { record };
@@ -264,6 +267,7 @@ export async function runSellToOpenCycle(opts: {
     clientOrderId,
     at: new Date().toISOString(),
     status,
+    retryIndex,
   });
   console.log(`[cycle] Done: ${status} (${final.status})`);
   return { record };
