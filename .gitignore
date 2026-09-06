@@ -54,3 +54,4 @@ nvda-analysis.png
 
 # Graphify knowledge-graph output (regenerable via /graphify)
 graphify*/
+scripts/install-user-env.local.ps1
