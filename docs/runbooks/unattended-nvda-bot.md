@@ -73,25 +73,25 @@ cd bot && npm install && cd ..
 
 ### 1.3 Alpaca **paper** keys on the backend (not in the bot)
 
-The bot has **no** Alpaca credentials. Keys live in backend user-secrets for **your Windows user**.
+The bot has **no** Alpaca credentials. Keys live in Windows user environment variables for **your Windows user**.
 
-```bash
-cd /c/repos/wheel-strategy/backend/WheelStrategy.Api
-dotnet user-secrets set "Alpaca:ApiKeyId" "<paper-key-id>"
-dotnet user-secrets set "Alpaca:ApiSecretKey" "<paper-secret>"
+```powershell
+[Environment]::SetEnvironmentVariable("ALPACA_API_KEY_ID", "<paper-key-id>", "User")
+[Environment]::SetEnvironmentVariable("ALPACA_API_SECRET_KEY", "<paper-secret>", "User")
 ```
 
 Get paper keys from the [Alpaca paper dashboard](https://app.alpaca.markets/paper-trading).
 
-Confirm (no secrets printed if you only list keys):
+Confirm names only (do not print values):
 
-```bash
-dotnet user-secrets list
+```powershell
+@("ALPACA_API_KEY_ID","ALPACA_API_SECRET_KEY") | ForEach-Object {
+  $v = [Environment]::GetEnvironmentVariable($_, "User")
+  "{0} {1}" -f $_, $(if ([string]::IsNullOrWhiteSpace($v)) { "MISSING" } else { "set" })
+}
 ```
 
-You should see `Alpaca:ApiKeyId` and `Alpaca:ApiSecretKey`.
-
-**Gotcha:** Task Scheduler must run as **this same Windows user**. User-secrets live under `%APPDATA%\Microsoft\UserSecrets\wheel-strategy-api\` and will not load for another account.
+**Gotcha:** Task Scheduler must run as **this same Windows user**. User env vars are per-account and will not load for another account. Restart the API process after changing them.
 
 ### 1.4 Confirm paper URL and order kill switch
 
@@ -192,7 +192,7 @@ Only continue to Phase 4–5 after a ticket you would have been willing to leave
 
 The bot refuses to start if `:5099` is down. Schedule the API to start when **you** log on.
 
-Helper already in the repo: [`scripts/start-api.cmd`](../../scripts/start-api.cmd). It skips if `:5099` is already listening, forces `ASPNETCORE_ENVIRONMENT=Development` (required for user-secrets), and appends stdout to `backend/WheelStrategy.Api/logs/api.log`.
+Helper already in the repo: [`scripts/start-api.cmd`](../../scripts/start-api.cmd). It skips if `:5099` is already listening, sets `ASPNETCORE_ENVIRONMENT=Development` (user-secrets fallback only; live keys come from Windows user env), and appends stdout to `backend/WheelStrategy.Api/logs/api.log`.
 
 ### 4.1 Power so Monday morning exists
 
@@ -248,7 +248,7 @@ Idempotency: a second fire the same Friday is a no-op if `last-cycle.json` alrea
 
 1. **Create Task** → Name: `Wheel NVDA bot once`
 2. **General**
-   - Run only when user is logged on (same user as the API / user-secrets)
+   - Run only when user is logged on (same user as the API / Windows user env vars)
    - Configure for: Windows 10
 3. **Triggers** → New
    - Begin the task: **On a schedule**
@@ -322,7 +322,7 @@ You are unattended when both tasks exist, API comes up at logon, `BOT_DRY_RUN=fa
 | Dry-run looks good, no Alpaca order | `BOT_DRY_RUN=true` | Set `false` in `bot/.env`; clear `last-cycle.json` if that Friday was a dry-run |
 | `Skipped: already completed` | Idempotency for this Friday | Leave it. Clear `last-cycle.json` only to intentionally retry |
 | `403 Order entry disabled` | Proxy kill switch | `AlpacaProxy:AllowOrderPlacement` true; restart API |
-| `503` from Alpaca proxy | Secrets missing for this user/env | Same Windows user; `ASPNETCORE_ENVIRONMENT=Development`; `dotnet user-secrets list` |
+| `503` from Alpaca proxy | Secrets missing for this user/env | Same Windows user; `ALPACA_API_KEY_ID` / `ALPACA_API_SECRET_KEY` set; restart the API |
 | Task runs, `scheduler.log` empty / `npm` not found | PATH in Task Scheduler | Confirm `where npm`; `run-once.cmd` prepends `Program Files\nodejs` |
 | API task exits immediately | Port in use, or `dotnet run` failed | `logs/api.log`; `netstat` for `:5099` |
 | Missed Monday | PC slept or nobody logged on | Phase 4.1 power; stay logged in; wake-to-run is not enough if the API never started |
@@ -339,7 +339,7 @@ Full table: [BOT.md](../BOT.md) troubleshooting.
 One-time:
 
 - [ ] Node 20+, .NET 10, `npm install` at repo root and in `bot/`
-- [ ] Paper keys in user-secrets; `TradingBaseUrl` is paper
+- [ ] Paper keys in Windows user env (`ALPACA_API_KEY_ID`, `ALPACA_API_SECRET_KEY`); `TradingBaseUrl` is paper
 - [ ] `bot/.env` exists with `BOT_DRY_RUN=true`
 - [ ] Mon/Tue dry-run ticket inspected in `runs.jsonl`
 - [ ] One attended paper order with `BOT_DRY_RUN=false`

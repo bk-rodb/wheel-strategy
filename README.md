@@ -6,7 +6,7 @@ An options **trading desk** — currently focused on the wheel strategy (cash-se
 
 | Doc | When to read |
 |-----|--------------|
-| [docs/PRE_LAUNCH.md](docs/PRE_LAUNCH.md) | First time — requirements, install, `.env`, backend secrets |
+| [docs/PRE_LAUNCH.md](docs/PRE_LAUNCH.md) | First time — requirements, install, `.env`, Windows user env vars |
 | [docs/LAUNCH.md](docs/LAUNCH.md) | Every session — start frontend and analysis API |
 | [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) | Roadmap and planned features |
 | [CLAUDE.md](CLAUDE.md) | Architecture and agent/developer reference |

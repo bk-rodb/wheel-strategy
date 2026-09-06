@@ -3,8 +3,10 @@ namespace WheelStrategy.Api.Options;
 /// <summary>
 /// Alpaca config shared by the analysis services and the browser-facing proxy.
 /// Base URLs and feed are non-secret and live in appsettings; the API key/secret
-/// are pulled from user-secrets or environment variables. These are the only
-/// Alpaca credentials in the system — the browser bundle holds none.
+/// come from Windows user environment variables <c>ALPACA_API_KEY_ID</c> and
+/// <c>ALPACA_API_SECRET_KEY</c> (see <see cref="UserEnvironmentSecrets"/>).
+/// User-secrets remain a silent fallback. These are the only Alpaca credentials
+/// in the system — the browser bundle holds none.
 /// </summary>
 public class AlpacaOptions
 {

@@ -62,6 +62,7 @@ Agents and humans: create the work file **when the work is planned**, not as an 
 | [E-003](./E-003%20-%20Harden%20Order%20Flow.md) | Harden Order Flow | done | 2026-08-08 | 2026-08-08 | `428cbe7` |
 | [E-004](./E-004%20-%20SideCard%20Title%20Info%20Tooltips.md) | SideCard Title Info Tooltips | planned | 2026-08-08 | — | — |
 | [F-001](./F-001%20-%20Trade%20Retrospective%20Learning.md) | Trade Retrospective Learning | done | 2026-08-08 | 2026-08-08 | `a757f43` |
+| [E-005](./E-005%20-%20Move%20Secrets%20To%20User%20Environment.md) | Move Secrets To User Environment | done | 2026-09-06 | 2026-09-06 | — |
 
 ---
 

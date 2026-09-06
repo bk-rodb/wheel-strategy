@@ -4,7 +4,7 @@ Headless paper-trading worker under [`bot/`](../bot/). It weekly **sell-to-opens
 
 **Canonical package docs:** this file. Quick start also lives in [`bot/README.md`](../bot/README.md).
 
-The bot holds **no Alpaca keys**. Credentials stay in backend user-secrets; the bot is an HTTP client to `http://localhost:5099`.
+The bot holds **no Alpaca keys**. Credentials stay in Windows user environment variables on the backend (`ALPACA_API_KEY_ID` / `ALPACA_API_SECRET_KEY`); the bot is an HTTP client to `http://localhost:5099`.
 
 ---
 
@@ -28,7 +28,7 @@ The bot holds **no Alpaca keys**. Credentials stay in backend user-secrets; the 
 Same backend setup as live desk trading — see [PRE_LAUNCH.md](./PRE_LAUNCH.md).
 
 1. Backend running: `cd backend/WheelStrategy.Api && dotnet run` → http://localhost:5099
-2. Paper Alpaca keys in user-secrets (`Alpaca:ApiKeyId`, `Alpaca:ApiSecretKey`)
+2. Paper Alpaca keys as Windows user env vars (`ALPACA_API_KEY_ID`, `ALPACA_API_SECRET_KEY`)
 3. `Alpaca:TradingBaseUrl` = `https://paper-api.alpaca.markets`
 4. `AlpacaProxy:AllowOrderPlacement` = `true` when you want real paper orders (not only dry-run)
 5. Paper account holds NVDA shares if you want the covered-call path (≥100)
@@ -154,7 +154,7 @@ bot/
 | `--once` exits without ticket | Outside Mon/Tue window | Expected mid-week; use `npm start` or wait until Monday |
 | Dry-run looks good but no order | `BOT_DRY_RUN=true` | Set `BOT_DRY_RUN=false` in `bot/.env` |
 | `403 Order entry disabled` | Proxy kill switch | Set `AlpacaProxy:AllowOrderPlacement` true |
-| `503` from Alpaca proxy | Missing backend secrets | `dotnet user-secrets set` for both Alpaca keys |
+| `503` from Alpaca proxy | Missing backend secrets | Set `ALPACA_API_KEY_ID` and `ALPACA_API_SECRET_KEY` as Windows user env vars; restart the API |
 | Skipped: already completed | Idempotency for this Friday | Clear `bot/data/last-cycle.json` only if you intend to re-run |
 | Skipped: open option order | Working order on NVDA | Cancel in the desk UI or Alpaca paper dashboard |
 | Blocked: need 100 shares | Flat or under 100 NVDA | Put path needs cash; call path needs ≥100 shares |

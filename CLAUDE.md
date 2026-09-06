@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Local setup and launch
 
-- **First-time setup:** [docs/PRE_LAUNCH.md](docs/PRE_LAUNCH.md) — requirements, `npm install`, `.env`, backend user-secrets
+- **First-time setup:** [docs/PRE_LAUNCH.md](docs/PRE_LAUNCH.md) — requirements, `npm install`, `.env`, Windows user env vars for Alpaca/Finnhub
 - **Run the app:** [docs/LAUNCH.md](docs/LAUNCH.md) — `npm run dev` + `dotnet run`
 - **Weekly paper bot:** [docs/BOT.md](docs/BOT.md) — headless NVDA sell-to-open under `bot/`
 - **Work items (F/E/B):** [docs/work/README.md](docs/work/README.md) — plan → AC → completion + commit hash for each change
@@ -75,9 +75,13 @@ The desk can sell-to-open the next-Friday put/call and manage that order — end
 
 ### Alpaca credential proxy
 
-**No Alpaca credential exists in the frontend.** Vite inlines every `VITE_`-prefixed variable into the bundle as a literal string, so a browser-held key — one that also authorizes `POST /v2/orders` — used to ship in every `dist/` build. The browser now calls the backend, which attaches the `APCA-*` headers from user-secrets:
+**No Alpaca credential exists in the frontend.** Vite inlines every `VITE_`-prefixed variable into the bundle as a literal string, so a browser-held key — one that also authorizes `POST /v2/orders` — used to ship in every `dist/` build. The browser now calls the backend, which attaches the `APCA-*` headers from Windows user environment variables (`ALPACA_API_KEY_ID` / `ALPACA_API_SECRET_KEY`):
 
 `Browser` → `WheelStrategy.Api` (`/api/alpaca/…`) → `Alpaca`
+
+Credentials are Windows user environment variables `ALPACA_API_KEY_ID` and
+`ALPACA_API_SECRET_KEY` (optional `FINNHUB_API_KEY`), overlaid by
+`UserEnvironmentSecrets`. `.env` holds only `VITE_*` / `BOT_*` app config.
 
 - **[Endpoints/AlpacaProxyEndpoints.cs](backend/WheelStrategy.Api/Endpoints/AlpacaProxyEndpoints.cs)** — `/api/alpaca/trading/{**path}` (GET/POST/DELETE) and `/api/alpaca/data/{**path}` (GET). Forwards the query string verbatim, passes the upstream status/body/`Retry-After` straight back so `AlpacaHttpError` still sees Alpaca's own message, and maps timeout → 504, transport failure → 502, missing credentials → 503. Excluded from the OpenAPI doc, so it does not affect `npm run check:api`.
 - **[Alpaca/AlpacaProxyPolicy.cs](backend/WheelStrategy.Api/Alpaca/AlpacaProxyPolicy.cs)** — pure, tested policy. Routes are an **allowlist**, not a filter: anything unlisted is refused with 404, so `DELETE /v2/positions` (liquidate-all) is unreachable. Order bodies are validated field-by-field, and **unknown fields are rejected rather than stripped** — dropping one silently would place an order the caller did not describe.

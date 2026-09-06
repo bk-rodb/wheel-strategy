@@ -10,6 +10,9 @@ dist-ssr/
 .env.local
 .env.*.local
 
+# Local-only: copies this machine's Windows user env (secrets) for a new PC
+scripts/install-user-env.local.ps1
+
 # editor
 .vscode/
 .idea/

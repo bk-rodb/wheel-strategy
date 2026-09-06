@@ -15,7 +15,8 @@ namespace WheelStrategy.Api.Endpoints;
 /// Vite inlines every VITE_-prefixed variable into the production bundle as a
 /// literal string, which put a key that authorizes POST /v2/orders into every
 /// dist/ build. The browser now calls these routes instead and the APCA-* headers
-/// are attached here, from user-secrets.
+/// are attached here, from Windows user environment variables
+/// (ALPACA_API_KEY_ID / ALPACA_API_SECRET_KEY).
 ///
 /// Requests are allowlisted by <see cref="AlpacaProxyPolicy"/> and order bodies
 /// are validated against <see cref="AlpacaProxyOptions"/> — this endpoint holds
@@ -82,8 +83,8 @@ public static class AlpacaProxyEndpoints
         {
             return Results.Problem(
                 title: "Alpaca credentials not configured",
-                detail: "Set Alpaca:ApiKeyId and Alpaca:ApiSecretKey via user-secrets "
-                    + "or environment variables on the backend.",
+                detail: "Set ALPACA_API_KEY_ID and ALPACA_API_SECRET_KEY as Windows "
+                    + "user environment variables on the backend.",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
         }
 

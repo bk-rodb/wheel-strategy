@@ -13,17 +13,17 @@ The app has three parts:
 **All Alpaca credentials live on the backend.** Vite inlines every `VITE_`-prefixed
 variable into the production bundle as a literal string, so the browser is given no key
 at all: it calls `/api/alpaca/...` on the backend, which attaches the `APCA-*` headers
-from user-secrets. There is nothing to configure on the frontend but a mock toggle and
-the backend URL.
+from Windows user environment variables. There is nothing to configure on the frontend
+but a mock toggle and the backend URL.
 
 ### What to configure
 
-| Goal | Frontend `.env` | Backend user-secrets |
-|------|-----------------|----------------------|
+| Goal | Frontend `.env` | Backend Windows user env |
+|------|-----------------|--------------------------|
 | Explore UI with mock positions/quotes/orders | `VITE_USE_MOCK=true` (the default) | Not needed |
-| Live Alpaca paper positions, prices, and order entry | `VITE_USE_MOCK=false` | **Required** (`Alpaca:ApiKeyId`, `Alpaca:ApiSecretKey`) |
+| Live Alpaca paper positions, prices, and order entry | `VITE_USE_MOCK=false` | **Required** (`ALPACA_API_KEY_ID`, `ALPACA_API_SECRET_KEY`) |
 | Wheel Analysis strike panel | — | **Required** (same two keys) |
-| Earnings / dividend catalysts | — | Optional (`Finnhub:ApiKey`) |
+| Earnings / dividend catalysts | — | Optional (`FINNHUB_API_KEY`) |
 
 ---
 
@@ -80,26 +80,37 @@ Restart `npm run dev` after any `.env` change — Vite reads env vars at startup
 ### Backend (API + Alpaca proxy)
 
 The backend holds **the only** Alpaca credentials in the system. They are used both by
-the analysis services and by the proxy that serves the browser:
+the analysis services and by the proxy that serves the browser. Set them as **Windows
+user** environment variables (PowerShell). Restart Cursor / terminals / `dotnet run`
+afterward so new processes see the values:
 
-```bash
-cd backend/WheelStrategy.Api
-dotnet user-secrets set "Alpaca:ApiKeyId" "<your-key-id>"
-dotnet user-secrets set "Alpaca:ApiSecretKey" "<your-secret>"
+```powershell
+[Environment]::SetEnvironmentVariable("ALPACA_API_KEY_ID", "<your-key-id>", "User")
+[Environment]::SetEnvironmentVariable("ALPACA_API_SECRET_KEY", "<your-secret>", "User")
 
 # Optional — earnings/dividend catalysts. Without it the catalysts panel
 # degrades to macro-only events.
-dotnet user-secrets set "Finnhub:ApiKey" "<your-token>"
+[Environment]::SetEnvironmentVariable("FINNHUB_API_KEY", "<your-token>", "User")
 ```
 
-Or set environment variables `Alpaca__ApiKeyId` and `Alpaca__ApiSecretKey`.
+Confirm names only (do not print values):
+
+```powershell
+@("ALPACA_API_KEY_ID","ALPACA_API_SECRET_KEY","FINNHUB_API_KEY") | ForEach-Object {
+  $v = [Environment]::GetEnvironmentVariable($_, "User")
+  "{0} {1}" -f $_, $(if ([string]::IsNullOrWhiteSpace($v)) { "MISSING" } else { "set" })
+}
+```
 
 Paper keys: [Alpaca paper dashboard](https://app.alpaca.markets/paper-trading).
 Finnhub tokens: [finnhub.io](https://finnhub.io).
 
-User-secrets are stored outside the repo (on Windows,
-`%APPDATA%\Microsoft\UserSecrets\wheel-strategy-api\secrets.json`), so they cannot be
-committed by accident.
+`.NET` user-secrets remain a silent fallback if an env var is unset. Do not put keys
+in `.env` — Vite loads that file into the Node process even for unprefixed names.
+
+To port keys to another Windows PC, copy the gitignored
+`scripts/install-user-env.local.ps1` (not in git) and run it as that user, then
+restart terminals / Cursor / `dotnet run`.
 
 Non-secret settings live in `backend/WheelStrategy.Api/appsettings.json` (SQLite path,
 CORS origins, analysis defaults, Alpaca base URLs and feed, proxy order caps). If you use
@@ -132,12 +143,12 @@ so.
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | Top bar shows **MOCK DATA** | `VITE_USE_MOCK` is not `false` | Set `VITE_USE_MOCK=false` and restart the dev server |
-| `503 Alpaca credentials not configured` | Backend has no keys | Run `dotnet user-secrets set` for both Alpaca keys |
+| `503 Alpaca credentials not configured` | Backend has no keys | Set `ALPACA_API_KEY_ID` and `ALPACA_API_SECRET_KEY` as Windows user env vars; restart the API |
 | Every Alpaca call fails with a connection error | Backend not running | Start it: `cd backend/WheelStrategy.Api && dotnet run` |
 | `404 Route not proxied` | Path is not on the proxy allowlist | Add it to `AlpacaProxyPolicy`, or check for a typo in the path |
 | `400 Order rejected by proxy policy` | Order breached a validation rule or cap | The response `detail` names the rule; raise the cap in `AlpacaProxy` if intended |
 | `403 Order entry disabled` | `AlpacaProxy:AllowOrderPlacement` is `false` | Set it back to `true` |
-| Analysis returns errors / empty bars | Backend secrets not set | Run `dotnet user-secrets set` for both Alpaca keys |
+| Analysis returns errors / empty bars | Backend secrets not set | Set both `ALPACA_*` user env vars; restart the API |
 | CORS error from the backend | Frontend origin not allowed | Default is `http://localhost:5173`; update `Cors:AllowedOrigins` if needed |
 | `dotnet run` fails | .NET 10 SDK missing | Install .NET 10 SDK |
 | Build fails: file locked by `WheelStrategy.Api` | The API is still running | Stop it before `dotnet build` |

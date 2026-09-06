@@ -4,7 +4,7 @@
  * Vite inlines every VITE_-prefixed variable into the bundle as a literal string,
  * so a browser-held key — one that also authorizes POST /v2/orders — shipped in
  * every dist/ build. WheelStrategy.Api attaches the APCA-* headers server-side
- * from user-secrets; nothing here is a credential.
+ * from Windows user environment variables; nothing here is a credential.
  */
 import { API_BASE } from "../config";
 

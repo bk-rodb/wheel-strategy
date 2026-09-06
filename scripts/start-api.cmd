@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions
 REM Start WheelStrategy.Api on :5099 if it is not already listening.
-REM Run as the same Windows user who set `dotnet user-secrets` (Development loads those secrets).
+REM Run as the same Windows user who set ALPACA_API_KEY_ID / ALPACA_API_SECRET_KEY.
 REM Usage: scripts\start-api.cmd   (from Task Scheduler "At logon", or double-click)
 
 set "ROOT=%~dp0.."

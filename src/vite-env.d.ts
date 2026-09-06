@@ -3,7 +3,7 @@
 /**
  * Browser-visible config only. Every VITE_-prefixed value is inlined into the
  * production bundle as a literal string, so nothing secret may be declared here —
- * Alpaca credentials live in backend user-secrets and are attached by the proxy.
+ * Alpaca credentials live in Windows user environment variables and are attached by the proxy.
  */
 interface ImportMetaEnv {
   /** `"false"` opts into live data through the backend proxy; anything else is mock. */

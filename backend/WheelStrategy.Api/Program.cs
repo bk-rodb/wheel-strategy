@@ -16,6 +16,7 @@ builder.Services.Configure<AlpacaOptions>(builder.Configuration.GetSection(Alpac
 builder.Services.Configure<AnalysisOptions>(builder.Configuration.GetSection(AnalysisOptions.SectionName));
 builder.Services.Configure<FinnhubOptions>(builder.Configuration.GetSection(FinnhubOptions.SectionName));
 builder.Services.Configure<AlpacaProxyOptions>(builder.Configuration.GetSection(AlpacaProxyOptions.SectionName));
+builder.Services.AddUserEnvironmentSecrets();
 
 // Database (SQLite for the runnable default)
 var conn = builder.Configuration.GetConnectionString("Default") ?? "Data Source=wheel.db";
