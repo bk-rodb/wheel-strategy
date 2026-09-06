@@ -70,7 +70,7 @@ Secrets no longer live in `.env`. The API overlays `ALPACA_API_KEY_ID`, `ALPACA_
 
 | Hash | Message |
 |------|---------|
-| — | — |
+| `40e8449` | Read Alpaca and Finnhub keys from Windows user environment variables. |
 
 PR: —
 
