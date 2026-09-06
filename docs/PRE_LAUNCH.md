@@ -102,6 +102,14 @@ Confirm names only (do not print values):
 }
 ```
 
+Any of these pairs work; the first non-empty wins (`Alpaca__*` / user-secrets
+override the flat names):
+
+| Options key | Hierarchical env | Flat alias (also accepted) |
+|-------------|------------------|----------------------------|
+| `Alpaca:ApiKeyId` | `Alpaca__ApiKeyId` | `ALPACA_API_KEY_ID` |
+| `Alpaca:ApiSecretKey` | `Alpaca__ApiSecretKey` | `ALPACA_API_SECRET_KEY` |
+
 Paper keys: [Alpaca paper dashboard](https://app.alpaca.markets/paper-trading).
 Finnhub tokens: [finnhub.io](https://finnhub.io).
 
@@ -143,7 +151,7 @@ so.
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | Top bar shows **MOCK DATA** | `VITE_USE_MOCK` is not `false` | Set `VITE_USE_MOCK=false` and restart the dev server |
-| `503 Alpaca credentials not configured` | Backend has no keys | Set `ALPACA_API_KEY_ID` and `ALPACA_API_SECRET_KEY` as Windows user env vars; restart the API |
+| `503 Alpaca credentials not configured` | Backend has no keys (or only `ALPACA_API_*` was set on an older build) | Set `ALPACA_API_KEY_ID` and `ALPACA_API_SECRET_KEY` as Windows user env vars; restart the API |
 | Every Alpaca call fails with a connection error | Backend not running | Start it: `cd backend/WheelStrategy.Api && dotnet run` |
 | `404 Route not proxied` | Path is not on the proxy allowlist | Add it to `AlpacaProxyPolicy`, or check for a typo in the path |
 | `400 Order rejected by proxy policy` | Order breached a validation rule or cap | The response `detail` names the rule; raise the cap in `AlpacaProxy` if intended |

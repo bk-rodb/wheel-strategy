@@ -11,6 +11,9 @@ using WheelStrategy.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Flat ALPACA_API_* env names (used by local machine env) map onto Alpaca:* when unset.
+AlpacaCredentialAliases.Apply(builder.Configuration);
+
 // Options
 builder.Services.Configure<AlpacaOptions>(builder.Configuration.GetSection(AlpacaOptions.SectionName));
 builder.Services.Configure<AnalysisOptions>(builder.Configuration.GetSection(AnalysisOptions.SectionName));
