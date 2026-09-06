@@ -24,7 +24,7 @@ async function ensureApi(): Promise<void> {
 async function runOnce(): Promise<void> {
   await ensureApi();
   log(
-    `Config symbol=${config.symbol} level=${config.level} dryRun=${config.dryRun}`,
+    `Config symbols=${config.symbols.join(",")} level=${config.level} dryRun=${config.dryRun}`,
   );
 
   const decision = decideEntry();
@@ -44,7 +44,13 @@ async function runOnce(): Promise<void> {
   }
 
   log(decision.reason);
-  await runSellToOpenCycle({ targetFriday: decision.targetFriday });
+  for (const symbol of config.symbols) {
+    try {
+      await runSellToOpenCycle({ symbol, targetFriday: decision.targetFriday });
+    } catch (e) {
+      console.error(`[bot] Cycle failed for ${symbol}:`, e);
+    }
+  }
 }
 
 async function runLoop(): Promise<void> {

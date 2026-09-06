@@ -1,6 +1,8 @@
-# Weekly NVDA wheel bot
+# CLAUDE.md (bot/)
 
-Paper sell-to-open worker for NVDA (covered call or CSP) at the analysis **`regular`** strike, via WheelStrategy.Api.
+Guidance for Claude Code when working in this directory. See the [repo-root CLAUDE.md](../CLAUDE.md) for overall project context.
+
+Paper sell-to-open worker (covered call or CSP) at the analysis **`regular`** strike, via WheelStrategy.Api. Trades NVDA, SPCX, and RKLB by default, one independent cycle per symbol.
 
 **Full documentation:** [docs/BOT.md](../docs/BOT.md) · **Unattended (Windows):** [docs/runbooks/unattended-nvda-bot.md](../docs/runbooks/unattended-nvda-bot.md)
 
@@ -23,7 +25,7 @@ From repo root: `npm run bot` / `npm run bot:once` / `npm run bot:test`.
 | Variable | Default | Notes |
 |---|---|---|
 | `BOT_DRY_RUN` | `true` | No orders until you set `false` |
-| `BOT_SYMBOL` | `NVDA` | |
+| `BOT_SYMBOLS` | `NVDA,SPCX,RKLB` | Comma-separated; each traded independently every cycle |
 | `BOT_LEVEL` | `regular` | MED / ~30% assign |
 
 **Entry window (ET):** Mon–Tue → this Friday; Wed–Fri → wait until next Monday. Details, cycle steps, troubleshooting, and safety checklist are in [docs/BOT.md](../docs/BOT.md).

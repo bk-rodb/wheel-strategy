@@ -136,7 +136,7 @@ Leave these unless you have a reason to change them:
 
 ```text
 BOT_API_BASE=http://localhost:5099
-BOT_SYMBOL=NVDA
+BOT_SYMBOLS=NVDA,SPCX,RKLB
 BOT_LEVEL=regular
 BOT_DRY_RUN=true
 ```

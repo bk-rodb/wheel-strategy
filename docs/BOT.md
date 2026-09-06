@@ -1,8 +1,8 @@
-# Weekly NVDA wheel bot
+# Weekly wheel bot
 
-Headless paper-trading worker under [`bot/`](../bot/). It weekly **sell-to-opens** NVDA covered calls or cash-secured puts at the analysis **`regular`** (MED / ~30% assignment) strike, using the same WheelStrategy.Api analysis + Alpaca proxy as the desk UI.
+Headless paper-trading worker under [`bot/`](../bot/). It weekly **sell-to-opens** covered calls or cash-secured puts, one independent cycle per configured symbol, at the analysis **`regular`** (MED / ~30% assignment) strike, using the same WheelStrategy.Api analysis + Alpaca proxy as the desk UI.
 
-**Canonical package docs:** this file. Quick start also lives in [`bot/README.md`](../bot/README.md).
+**Canonical package docs:** this file. Quick start also lives in [`bot/CLAUDE.md`](../bot/CLAUDE.md).
 
 The bot holds **no Alpaca keys**. Credentials stay in Windows user environment variables on the backend (`ALPACA_API_KEY_ID` / `ALPACA_API_SECRET_KEY`); the bot is an HTTP client to `http://localhost:5099`.
 
@@ -13,13 +13,13 @@ The bot holds **no Alpaca keys**. Credentials stay in Windows user environment v
 | Decision | Behavior |
 |----------|----------|
 | Account | Alpaca **paper** only (`Alpaca:TradingBaseUrl` = paper) |
-| Universe | **NVDA** only |
+| Universe | `BOT_SYMBOLS`, default **NVDA, SPCX, RKLB** — each symbol runs its own independent cycle (own shares/side/qty, own open-order gate, own dedupe state) |
 | Action | **Sell-to-open** only (no buy-to-close, no rolls) |
-| Strike | Analysis level `regular` (override via `BOT_LEVEL`) |
+| Strike | Analysis level `regular` (override via `BOT_LEVEL`, shared across all symbols) |
 | Side | Shares ≥ 100 → covered **call**, qty = `floor(shares/100)`; else cash-secured **put**, qty = 1 |
 | Limit | Live mid → bid → Black-Scholes est premium (desk parity) |
 
-**Not in v1:** live money, multi-ticker, rolls, BTC, NYSE holiday calendar, SSE fill relay. Covered-call early close is **scaffolded** in [`bot/src/earlyClose.ts`](../bot/src/earlyClose.ts) but not wired into the loop.
+**Not in v1:** live money, rolls, BTC, NYSE holiday calendar, SSE fill relay. Covered-call early close is **scaffolded** in [`bot/src/earlyClose.ts`](../bot/src/earlyClose.ts) but not wired into the loop. A failed cycle for one symbol is logged and does not block the others.
 
 ---
 
@@ -50,7 +50,7 @@ npm install
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BOT_API_BASE` | `http://localhost:5099` | Analysis + Alpaca proxy base URL |
-| `BOT_SYMBOL` | `NVDA` | Underlying (v1 is single-ticker) |
+| `BOT_SYMBOLS` | `NVDA,SPCX,RKLB` | Comma-separated underlyings, each traded independently every cycle |
 | `BOT_LEVEL` | `regular` | `safe` \| `regular` \| `risky` |
 | `BOT_DRY_RUN` | `true` | Log the ticket; **do not** POST `/v2/orders` |
 | `BOT_POLL_MS` | `5000` | Poll interval while a working order is open |

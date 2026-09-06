@@ -42,9 +42,20 @@ function envLevel(raw: string | undefined): AnalysisLevel {
   return "regular";
 }
 
+function envSymbols(): string[] {
+  // BOT_SYMBOLS is the multi-symbol form ("NVDA,SPCX,RKLB"); BOT_SYMBOL (singular)
+  // is kept as a single-symbol override for back-compat with existing setups.
+  const raw = process.env.BOT_SYMBOLS ?? process.env.BOT_SYMBOL ?? "NVDA,SPCX,RKLB";
+  const symbols = raw
+    .split(",")
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+  return symbols.length > 0 ? Array.from(new Set(symbols)) : ["NVDA"];
+}
+
 export const config = {
   apiBase: (process.env.BOT_API_BASE ?? "http://localhost:5099").replace(/\/$/, ""),
-  symbol: (process.env.BOT_SYMBOL ?? "NVDA").toUpperCase(),
+  symbols: envSymbols(),
   level: envLevel(process.env.BOT_LEVEL),
   dryRun: envBool("BOT_DRY_RUN", true),
   pollMs: Number(process.env.BOT_POLL_MS ?? 5000) || 5000,

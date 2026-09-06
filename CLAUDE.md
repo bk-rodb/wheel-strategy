@@ -2,11 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Active Claude Code sessions
+
+- **2026-09-06 — multi-symbol bot (NVDA/SPCX/RKLB) + BOT_DRY_RUN=false:** https://claude.ai/code/session_015Fc88KL7oKMQnZCUeBY76z — added `BOT_SYMBOLS` support to `bot/`, previewed tickets for all three symbols, and flipped `bot/.env` to `BOT_DRY_RUN=false` (paper account). Resume this link from another machine to continue.
+
 ## Local setup and launch
 
 - **First-time setup:** [docs/PRE_LAUNCH.md](docs/PRE_LAUNCH.md) — requirements, `npm install`, `.env`, Windows user env vars for Alpaca/Finnhub
 - **Run the app:** [docs/LAUNCH.md](docs/LAUNCH.md) — `npm run dev` + `dotnet run`
-- **Weekly paper bot:** [docs/BOT.md](docs/BOT.md) — headless NVDA sell-to-open under `bot/`
+- **Weekly paper bot:** [docs/BOT.md](docs/BOT.md) — headless multi-symbol (NVDA, SPCX, RKLB) sell-to-open under `bot/`
 - **Work items (F/E/B):** [docs/work/README.md](docs/work/README.md) — plan → AC → completion + commit hash for each change
 - **Roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md) — features, enhancements, risk/fixes backlog
 
@@ -54,7 +58,7 @@ A React + TypeScript SPA (Vite) — the **Wheel Strategy trading desk**: it trac
 
 ### Weekly bot (`bot/`)
 
-Headless TypeScript worker that reuses the same analysis + Alpaca proxy HTTP surface as the desk: Mon/Tue entry for this Friday’s expiry, NVDA only, mid-tier (`regular`) sell-to-open, paper by default with `BOT_DRY_RUN=true`. No Alpaca keys in the bot process. See **[docs/BOT.md](docs/BOT.md)**.
+Headless TypeScript worker that reuses the same analysis + Alpaca proxy HTTP surface as the desk: Mon/Tue entry for this Friday’s expiry, one independent cycle per `BOT_SYMBOLS` entry (default NVDA, SPCX, RKLB), mid-tier (`regular`) sell-to-open, paper by default with `BOT_DRY_RUN=true`. No Alpaca keys in the bot process. See **[docs/BOT.md](docs/BOT.md)**.
 
 ### Order execution layer
 

@@ -55,7 +55,7 @@ New capabilities not yet in the app.
 | F-2 | Bot Slack notifications | P0 | Planned | Webhook POST on every cycle outcome. Spec: [BOT_AUTOMATION.md](./BOT_AUTOMATION.md) |
 | F-3 | Bot email notifications via N8N | P1 | Planned | N8N workflow parses bot response, sends SMTP email. Spec: [BOT_AUTOMATION.md](./BOT_AUTOMATION.md) |
 | F-4 | Bot early close (CC only) | P2 | Proposed | BTC a profitable short covered call and reopen next week. Scaffold in `bot/src/earlyClose.ts`; not wired into loop |
-| F-5 | Multi-ticker bot universe | P2 | Proposed | Extend beyond NVDA-only; config-driven symbol list |
+| F-5 | Multi-ticker bot universe | P2 | Done | `BOT_SYMBOLS` config-driven list (default NVDA, SPCX, RKLB); each symbol runs its own independent sell-to-open cycle |
 | F-6 | Bot assignment / roll handling | P3 | Idea | Detect assignment, transition to next wheel phase, auto-open next leg |
 | F-7 | Docker deployment (bot + API + N8N) | P2 | Proposed | `docker-compose.yml` when dedicated host is ready. Migration path in [BOT_AUTOMATION.md](./BOT_AUTOMATION.md) |
 

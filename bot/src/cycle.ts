@@ -29,10 +29,11 @@ export interface CycleResult {
  * One weekly sell-to-open cycle for the configured symbol / target Friday.
  */
 export async function runSellToOpenCycle(opts: {
+  symbol: string;
   targetFriday: string;
   signal?: AbortSignal;
 }): Promise<CycleResult> {
-  const symbol = config.symbol;
+  const symbol = opts.symbol;
   const at = new Date().toISOString();
   const runDate = toDateString(new Date());
 
@@ -43,7 +44,7 @@ export async function runSellToOpenCycle(opts: {
     dryRun: config.dryRun,
   };
 
-  if (alreadyCompletedForFriday(opts.targetFriday)) {
+  if (alreadyCompletedForFriday(symbol, opts.targetFriday)) {
     const record: RunRecord = {
       ...base,
       side: "?",
@@ -143,7 +144,7 @@ export async function runSellToOpenCycle(opts: {
     return { record };
   }
 
-  const retryIndex = getNextRetryIndex(opts.targetFriday);
+  const retryIndex = getNextRetryIndex(symbol, opts.targetFriday);
   const clientOrderId = cycleClientOrderId(symbol, opts.targetFriday, side, runDate, retryIndex);
 
   const ticket = {
@@ -178,7 +179,7 @@ export async function runSellToOpenCycle(opts: {
       warnings: [...ladder.warnings, ...check.warnings],
     };
     appendRun(record);
-    writeLastCycle({
+    writeLastCycle(symbol, {
       targetFriday: opts.targetFriday,
       clientOrderId,
       at,
@@ -262,7 +263,7 @@ export async function runSellToOpenCycle(opts: {
     warnings: [...ladder.warnings, ...check.warnings],
   };
   appendRun(record);
-  writeLastCycle({
+  writeLastCycle(symbol, {
     targetFriday: opts.targetFriday,
     clientOrderId,
     at: new Date().toISOString(),

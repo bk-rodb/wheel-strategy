@@ -36,8 +36,8 @@ function runsPath(): string {
   return join(ensureDataDir(), "runs.jsonl");
 }
 
-function lastCyclePath(): string {
-  return join(ensureDataDir(), "last-cycle.json");
+function lastCyclePath(symbol: string): string {
+  return join(ensureDataDir(), `last-cycle-${symbol.toLowerCase()}.json`);
 }
 
 export function appendRun(record: RunRecord): void {
@@ -53,23 +53,43 @@ export interface LastCycle {
   retryIndex?: number;
 }
 
-export function readLastCycle(): LastCycle | null {
-  const path = lastCyclePath();
-  if (!existsSync(path)) return null;
-  try {
-    return JSON.parse(readFileSync(path, "utf8")) as LastCycle;
-  } catch {
-    return null;
-  }
+/** Legacy single-symbol state file, from before multi-symbol support (BOT_SYMBOL=NVDA only). */
+function legacyLastCyclePath(): string {
+  return join(ensureDataDir(), "last-cycle.json");
 }
 
-export function writeLastCycle(cycle: LastCycle): void {
-  writeFileSync(lastCyclePath(), JSON.stringify(cycle, null, 2), "utf8");
+export function readLastCycle(symbol: string): LastCycle | null {
+  const path = lastCyclePath(symbol);
+  if (existsSync(path)) {
+    try {
+      return JSON.parse(readFileSync(path, "utf8")) as LastCycle;
+    } catch {
+      return null;
+    }
+  }
+  // Fall back to the pre-multi-symbol NVDA state file so upgrading the bot
+  // doesn't lose dedupe protection for a Friday already handled under the
+  // old single-symbol layout.
+  if (symbol.toUpperCase() === "NVDA") {
+    const legacyPath = legacyLastCyclePath();
+    if (existsSync(legacyPath)) {
+      try {
+        return JSON.parse(readFileSync(legacyPath, "utf8")) as LastCycle;
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+export function writeLastCycle(symbol: string, cycle: LastCycle): void {
+  writeFileSync(lastCyclePath(symbol), JSON.stringify(cycle, null, 2), "utf8");
 }
 
 /** True if we already completed a successful place/fill/dry_run for this Friday. */
-export function alreadyCompletedForFriday(targetFriday: string): boolean {
-  const last = readLastCycle();
+export function alreadyCompletedForFriday(symbol: string, targetFriday: string): boolean {
+  const last = readLastCycle(symbol);
   if (!last || last.targetFriday !== targetFriday) return false;
   return last.status === "placed" || last.status === "filled" || last.status === "dry_run";
 }
@@ -80,8 +100,8 @@ export function alreadyCompletedForFriday(targetFriday: string): boolean {
  * Alpaca permanently reserves a clientOrderId even for canceled orders, so
  * each retry needs a unique suffix (`-r1`, `-r2`, …).
  */
-export function getNextRetryIndex(targetFriday: string): number {
-  const last = readLastCycle();
+export function getNextRetryIndex(symbol: string, targetFriday: string): number {
+  const last = readLastCycle(symbol);
   if (!last || last.targetFriday !== targetFriday) return 0;
   // Only bump the index if the previous attempt was a cancelation/error;
   // placed/filled/dry_run would have been caught by alreadyCompletedForFriday.
