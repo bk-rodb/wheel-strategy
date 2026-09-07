@@ -75,7 +75,7 @@ Desk BOT tab plus API persistence for shared bot knobs (symbols, level, dry-run,
 
 | Hash | Message |
 |------|---------|
-| *(filled after commit)* | |
+| `03e357a` | Add a desk BOT tab that persists worker knobs and run history in the API. |
 
 PR: —
 
