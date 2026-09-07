@@ -15,10 +15,10 @@ N8N, Slack, email, and `--serve` are **not built yet** — see [BOT_AUTOMATION.m
 | Piece | Role | Must stay up? |
 |-------|------|----------------|
 | **WheelStrategy.Api** (`:5099`) | Holds Alpaca paper keys; analysis + order proxy | Yes, whenever the bot might fire |
-| **Bot `--once`** | One cycle: skip if not Mon/Tue, else sell-to-open NVDA at `regular` | No — Task Scheduler starts it, it exits |
-| Desk UI (`npm run dev`) | Optional. Useful to inspect the first paper fill | No |
+| **Bot `--once`** | One cycle per configured symbol: skip if not Mon/Tue, else sell-to-open | No — Task Scheduler starts it, it exits |
+| Desk UI (`npm run dev`) | Optional. BOT tab edits symbols / level / dry-run / pause and re-arms | No |
 
-Default behavior: **NVDA only**, paper account, **sell-to-open** only, strike level `regular` (~30% assignment). Shares ≥ 100 → covered call (qty = floor(shares/100)); otherwise one cash-secured put.
+Default behavior: universe from the desk BOT tab (seed **NVDA, SPCX, RKLB**), paper account, **sell-to-open** only, strike level `regular` (~30% assignment). Shares ≥ 100 → covered call (qty = floor(shares/100)); otherwise one cash-secured put. Env (`BOT_SYMBOLS` / `BOT_LEVEL` / `BOT_DRY_RUN`) is fallback if `GET /api/bot/config` fails.
 
 There is **no NYSE holiday calendar**. On a Monday holiday the bot may still attempt a day order.
 

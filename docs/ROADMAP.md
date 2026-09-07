@@ -69,6 +69,7 @@ New capabilities not yet in the app.
 | F-11 | Dedicated blotter page | P2 | Proposed | Full order history view; currently only pending strip on Summary |
 | F-12 | Realized P&L tracking | P2 | Proposed | Premium collected is tracked; full realized/assignment P&L is not |
 | F-13 | Multi-symbol portfolio ranking | P2 | Proposed | Run analysis across watchlist, rank by annualized yield at a chosen assignment-probability level |
+| F-17 | Bot config management tab | P1 | Done | Desk BOT tab: symbol list, shared level/dry-run/pause, per-symbol last-cycle + run history. Work item [F-002](./work/F-002%20-%20Bot%20Config%20Management%20Tab.md) |
 
 ### Analysis backend
 

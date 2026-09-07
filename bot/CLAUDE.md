@@ -24,8 +24,8 @@ From repo root: `npm run bot` / `npm run bot:once` / `npm run bot:test`.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `BOT_DRY_RUN` | `true` | No orders until you set `false` |
-| `BOT_SYMBOLS` | `NVDA,SPCX,RKLB` | Comma-separated; each traded independently every cycle |
-| `BOT_LEVEL` | `regular` | MED / ~30% assign |
+| `BOT_DRY_RUN` | `true` | Fallback if `GET /api/bot/config` fails |
+| `BOT_SYMBOLS` | `NVDA,SPCX,RKLB` | Fallback universe; live list is the desk BOT tab |
+| `BOT_LEVEL` | `regular` | Fallback; live level is the desk BOT tab |
 
 **Entry window (ET):** Mon–Tue → this Friday; Wed–Fri → wait until next Monday. Details, cycle steps, troubleshooting, and safety checklist are in [docs/BOT.md](../docs/BOT.md).

@@ -10,6 +10,7 @@ import { SummaryDashboard } from "./components/SummaryDashboard";
 import { TickerDetail } from "./components/TickerDetail";
 import { WatchlistTickerDetail } from "./components/WatchlistTickerDetail";
 import { WatchlistPanel } from "./components/WatchlistPanel";
+import { BotPanel } from "./components/BotPanel";
 
 export default function WheelDashboard() {
   const [broker, setBroker] = useState<BrokerType>("alpaca-paper");
@@ -62,6 +63,7 @@ export default function WheelDashboard() {
 
   const tabs = [
     { id: "__summary__", label: "DASHBOARD" },
+    { id: "__bot__", label: "BOT" },
     ...positions.map((p) => ({ id: p.id, label: p.ticker })),
     ...watchlistTabs.map((sym) => ({ id: sym, label: sym, closeable: true })),
   ];
@@ -139,7 +141,9 @@ export default function WheelDashboard() {
               </div>
             )}
 
-            {loading && positions.length === 0 ? (
+            {activeTab === "__bot__" ? (
+              <BotPanel />
+            ) : loading && positions.length === 0 ? (
               <div style={{ textAlign: "center", padding: 80, color: "#2a2a4a", fontFamily: "monospace", fontSize: 12 }}>
                 <div style={{ fontSize: 24, marginBottom: 8 }}>◌</div>
                 LOADING POSITIONS...

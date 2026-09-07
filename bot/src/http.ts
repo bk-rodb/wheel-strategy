@@ -87,6 +87,27 @@ export function analysisGet<T>(
   return request<T>("GET", path, { params, signal });
 }
 
+/** Desk/API JSON endpoints (bot config, runs). */
+export function apiGet<T>(
+  path: string,
+  params?: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<T> {
+  return request<T>("GET", path, { params, signal });
+}
+
+export function apiPost<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return request<T>("POST", path, { body, signal });
+}
+
+export function apiDelete<T>(
+  path: string,
+  params?: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<T> {
+  return request<T>("DELETE", path, { params, signal, allowEmpty: true });
+}
+
 /** Alpaca trading proxy. */
 export const trading = {
   get<T>(path: string, params?: Record<string, string>, signal?: AbortSignal): Promise<T> {

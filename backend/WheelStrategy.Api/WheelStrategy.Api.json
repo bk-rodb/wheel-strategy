@@ -735,6 +735,206 @@
           }
         }
       }
+    },
+    "/api/bot/config": {
+      "get": {
+        "tags": [
+          "Bot"
+        ],
+        "operationId": "GetBotConfig",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Bot"
+        ],
+        "operationId": "UpdateBotConfig",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBotSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotConfigResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bot/runs": {
+      "get": {
+        "tags": [
+          "Bot"
+        ],
+        "operationId": "ListBotRuns",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotRunListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Bot"
+        ],
+        "operationId": "AppendBotRun",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBotRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotRunDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bot/last-cycle": {
+      "post": {
+        "tags": [
+          "Bot"
+        ],
+        "operationId": "UpsertBotLastCycle",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertBotLastCycleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotLastCycleDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Bot"
+        ],
+        "operationId": "ClearBotLastCycle",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -833,6 +1033,203 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "BotConfigResponse": {
+        "required": [
+          "settings",
+          "lastCycles"
+        ],
+        "type": "object",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/BotSettingsDto"
+          },
+          "lastCycles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BotLastCycleDto"
+            }
+          }
+        }
+      },
+      "BotLastCycleDto": {
+        "required": [
+          "symbol",
+          "targetFriday",
+          "clientOrderId",
+          "at",
+          "status",
+          "retryIndex"
+        ],
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "targetFriday": {
+            "type": "string"
+          },
+          "clientOrderId": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "retryIndex": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "BotRunDto": {
+        "required": [
+          "at",
+          "symbol",
+          "targetFriday",
+          "side",
+          "qty",
+          "dryRun",
+          "status",
+          "reason",
+          "contractSymbol",
+          "strike",
+          "sellLimit",
+          "orderId",
+          "clientOrderId",
+          "blockers",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "targetFriday": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string"
+          },
+          "qty": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "contractSymbol": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "strike": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "sellLimit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "orderId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clientOrderId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "blockers": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "BotRunListResponse": {
+        "required": [
+          "runs"
+        ],
+        "type": "object",
+        "properties": {
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BotRunDto"
+            }
+          }
+        }
+      },
+      "BotSettingsDto": {
+        "required": [
+          "symbols",
+          "level",
+          "dryRun",
+          "paused",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "symbols": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "level": {
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "paused": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -953,6 +1350,107 @@
           },
           "recurringConditions": {
             "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "CreateBotRunRequest": {
+        "required": [
+          "at",
+          "symbol",
+          "targetFriday",
+          "side",
+          "qty",
+          "dryRun",
+          "status",
+          "reason",
+          "contractSymbol",
+          "strike",
+          "sellLimit",
+          "orderId",
+          "clientOrderId",
+          "blockers",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "symbol": {
+            "type": "string"
+          },
+          "targetFriday": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string"
+          },
+          "qty": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "contractSymbol": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "strike": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "sellLimit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "orderId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "clientOrderId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "blockers": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string"
             }
@@ -1884,6 +2382,80 @@
           }
         }
       },
+      "UpdateBotSettingsRequest": {
+        "required": [
+          "symbols",
+          "level",
+          "dryRun",
+          "paused"
+        ],
+        "type": "object",
+        "properties": {
+          "symbols": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "level": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dryRun": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "paused": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "UpsertBotLastCycleRequest": {
+        "required": [
+          "symbol",
+          "targetFriday",
+          "clientOrderId",
+          "at",
+          "status",
+          "retryIndex"
+        ],
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "targetFriday": {
+            "type": "string"
+          },
+          "clientOrderId": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "retryIndex": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "WheelAnalysisResult": {
         "required": [
           "symbol",
@@ -2067,6 +2639,9 @@
     },
     {
       "name": "Trades"
+    },
+    {
+      "name": "Bot"
     }
   ]
 }

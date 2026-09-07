@@ -87,9 +87,17 @@ export function writeLastCycle(symbol: string, cycle: LastCycle): void {
   writeFileSync(lastCyclePath(symbol), JSON.stringify(cycle, null, 2), "utf8");
 }
 
-/** True if we already completed a successful place/fill/dry_run for this Friday. */
-export function alreadyCompletedForFriday(symbol: string, targetFriday: string): boolean {
-  const last = readLastCycle(symbol);
+/**
+ * True if we already completed a successful place/fill/dry_run for this Friday.
+ * When `apiLast` is passed (`null` = API has no row), that wins over the local file
+ * so a desk re-arm is visible to the next `--once`.
+ */
+export function alreadyCompletedForFriday(
+  symbol: string,
+  targetFriday: string,
+  apiLast?: LastCycle | null,
+): boolean {
+  const last = apiLast !== undefined ? apiLast : readLastCycle(symbol);
   if (!last || last.targetFriday !== targetFriday) return false;
   return last.status === "placed" || last.status === "filled" || last.status === "dry_run";
 }
@@ -100,8 +108,12 @@ export function alreadyCompletedForFriday(symbol: string, targetFriday: string):
  * Alpaca permanently reserves a clientOrderId even for canceled orders, so
  * each retry needs a unique suffix (`-r1`, `-r2`, …).
  */
-export function getNextRetryIndex(symbol: string, targetFriday: string): number {
-  const last = readLastCycle(symbol);
+export function getNextRetryIndex(
+  symbol: string,
+  targetFriday: string,
+  apiLast?: LastCycle | null,
+): number {
+  const last = apiLast !== undefined ? apiLast : readLastCycle(symbol);
   if (!last || last.targetFriday !== targetFriday) return 0;
   // Only bump the index if the previous attempt was a cancelation/error;
   // placed/filled/dry_run would have been caught by alreadyCompletedForFriday.

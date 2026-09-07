@@ -1,4 +1,5 @@
-import { config } from "./config.js";
+import { config, type AnalysisLevel } from "./config.js";
+import { persistLastCycle, persistRun } from "./botApi.js";
 import { toDateString } from "./calendar.js";
 import { fetchRegularLadder } from "./fridayLadder.js";
 import {
@@ -15,9 +16,8 @@ import { getAccount, getEquityShares, sideAndQty } from "./positions.js";
 import { preTradeCheck } from "./preTrade.js";
 import {
   alreadyCompletedForFriday,
-  appendRun,
-  writeLastCycle,
   getNextRetryIndex,
+  type LastCycle,
   type RunRecord,
 } from "./state.js";
 
@@ -31,9 +31,14 @@ export interface CycleResult {
 export async function runSellToOpenCycle(opts: {
   symbol: string;
   targetFriday: string;
+  level?: AnalysisLevel;
+  dryRun?: boolean;
+  lastCycle?: LastCycle | null;
   signal?: AbortSignal;
 }): Promise<CycleResult> {
   const symbol = opts.symbol;
+  const level = opts.level ?? config.level;
+  const dryRun = opts.dryRun ?? config.dryRun;
   const at = new Date().toISOString();
   const runDate = toDateString(new Date());
 
@@ -41,10 +46,10 @@ export async function runSellToOpenCycle(opts: {
     at,
     symbol,
     targetFriday: opts.targetFriday,
-    dryRun: config.dryRun,
+    dryRun,
   };
 
-  if (alreadyCompletedForFriday(symbol, opts.targetFriday)) {
+  if (alreadyCompletedForFriday(symbol, opts.targetFriday, opts.lastCycle)) {
     const record: RunRecord = {
       ...base,
       side: "?",
@@ -52,7 +57,7 @@ export async function runSellToOpenCycle(opts: {
       status: "skipped",
       reason: `Already completed a cycle for ${opts.targetFriday}`,
     };
-    appendRun(record);
+    await persistRun(record, opts.signal);
     console.log(`[cycle] ${record.reason}`);
     return { record };
   }
@@ -67,7 +72,7 @@ export async function runSellToOpenCycle(opts: {
       reason: `Open option order(s) already exist for ${symbol}: ${openOrders.map((o) => o.id).join(", ")}`,
       orderId: openOrders[0]?.id,
     };
-    appendRun(record);
+    await persistRun(record, opts.signal);
     console.log(`[cycle] ${record.reason}`);
     return { record };
   }
@@ -84,7 +89,7 @@ export async function runSellToOpenCycle(opts: {
         reason: `Open journal intent for ${symbol}: client_order_id=${j.clientOrderId} deskState=${j.deskState}`,
         orderId: j.alpacaOrderId ?? undefined,
       };
-      appendRun(record);
+      await persistRun(record, opts.signal);
       console.log(`[cycle] ${record.reason}`);
       return { record };
     }
@@ -101,7 +106,7 @@ export async function runSellToOpenCycle(opts: {
     side,
     qty,
     expiration: opts.targetFriday,
-    level: config.level,
+    level,
     signal: opts.signal,
   });
 
@@ -139,12 +144,12 @@ export async function runSellToOpenCycle(opts: {
       strike: ladder.row.strike,
       sellLimit: ladder.row.sellLimit,
     };
-    appendRun(record);
+    await persistRun(record, opts.signal);
     console.error(`[cycle] Blocked:`, check.blockers.join("; "));
     return { record };
   }
 
-  const retryIndex = getNextRetryIndex(symbol, opts.targetFriday);
+  const retryIndex = getNextRetryIndex(symbol, opts.targetFriday, opts.lastCycle);
   const clientOrderId = cycleClientOrderId(symbol, opts.targetFriday, side, runDate, retryIndex);
 
   const ticket = {
@@ -154,7 +159,7 @@ export async function runSellToOpenCycle(opts: {
     qty: ladder.qty,
     side,
     expiration: opts.targetFriday,
-    level: config.level,
+    level,
     empiricalAssign: ladder.row.empiricalAssignmentProb,
     bsAssign: ladder.row.blackScholesAssignmentProb,
     bid: ladder.row.bid,
@@ -165,7 +170,7 @@ export async function runSellToOpenCycle(opts: {
 
   console.log(`[cycle] Ticket:`, JSON.stringify(ticket, null, 2));
 
-  if (config.dryRun) {
+  if (dryRun) {
     const record: RunRecord = {
       ...base,
       side,
@@ -178,14 +183,14 @@ export async function runSellToOpenCycle(opts: {
       clientOrderId,
       warnings: [...ladder.warnings, ...check.warnings],
     };
-    appendRun(record);
-    writeLastCycle(symbol, {
+    await persistRun(record, opts.signal);
+    await persistLastCycle(symbol, {
       targetFriday: opts.targetFriday,
       clientOrderId,
       at,
       status: "dry_run",
       retryIndex,
-    });
+    }, opts.signal);
     console.log(`[cycle] Dry-run complete (no order placed).`);
     return { record };
   }
@@ -200,7 +205,7 @@ export async function runSellToOpenCycle(opts: {
           underlying: symbol.toUpperCase(),
           optionRight: side === "call" ? "call" : "put",
           wheelSide: side === "call" ? "cc" : "csp",
-          level: config.level,
+          level,
           modelStrike: ladder.row.strike,
           snappedStrike: ladder.row.strike,
           targetDelta: null,
@@ -262,14 +267,14 @@ export async function runSellToOpenCycle(opts: {
     clientOrderId,
     warnings: [...ladder.warnings, ...check.warnings],
   };
-  appendRun(record);
-  writeLastCycle(symbol, {
+  await persistRun(record, opts.signal);
+  await persistLastCycle(symbol, {
     targetFriday: opts.targetFriday,
     clientOrderId,
     at: new Date().toISOString(),
     status,
     retryIndex,
-  });
+  }, opts.signal);
   console.log(`[cycle] Done: ${status} (${final.status})`);
   return { record };
 }

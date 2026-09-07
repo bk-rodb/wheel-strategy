@@ -9,6 +9,9 @@ public class WheelStrategyDbContext(DbContextOptions<WheelStrategyDbContext> opt
     public DbSet<HistoricalBar> HistoricalBars => Set<HistoricalBar>();
     public DbSet<OrderJournalEntry> OrderJournalEntries => Set<OrderJournalEntry>();
     public DbSet<TradeOutcome> TradeOutcomes => Set<TradeOutcome>();
+    public DbSet<BotSettings> BotSettings => Set<BotSettings>();
+    public DbSet<BotRun> BotRuns => Set<BotRun>();
+    public DbSet<BotLastCycle> BotLastCycles => Set<BotLastCycle>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -78,6 +81,35 @@ public class WheelStrategyDbContext(DbContextOptions<WheelStrategyDbContext> opt
             e.Property(x => x.SuggestedLimit).HasPrecision(18, 4);
             e.Property(x => x.MidAtSubmit).HasPrecision(18, 4);
             e.Property(x => x.BidAtSubmit).HasPrecision(18, 4);
+        });
+
+        b.Entity<BotSettings>(e =>
+        {
+            e.Property(x => x.SymbolsJson).HasMaxLength(512);
+            e.Property(x => x.Level).HasMaxLength(16);
+        });
+
+        b.Entity<BotRun>(e =>
+        {
+            e.HasIndex(x => new { x.Symbol, x.At });
+            e.HasIndex(x => new { x.TargetFriday, x.Status });
+            e.Property(x => x.Symbol).HasMaxLength(16);
+            e.Property(x => x.TargetFriday).HasMaxLength(16);
+            e.Property(x => x.Side).HasMaxLength(8);
+            e.Property(x => x.Status).HasMaxLength(16);
+            e.Property(x => x.Reason).HasMaxLength(500);
+            e.Property(x => x.ContractSymbol).HasMaxLength(64);
+            e.Property(x => x.OrderId).HasMaxLength(128);
+            e.Property(x => x.ClientOrderId).HasMaxLength(128);
+        });
+
+        b.Entity<BotLastCycle>(e =>
+        {
+            e.HasIndex(x => x.Symbol).IsUnique();
+            e.Property(x => x.Symbol).HasMaxLength(16);
+            e.Property(x => x.TargetFriday).HasMaxLength(16);
+            e.Property(x => x.ClientOrderId).HasMaxLength(128);
+            e.Property(x => x.Status).HasMaxLength(16);
         });
     }
 }

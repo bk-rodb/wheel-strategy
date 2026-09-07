@@ -1,5 +1,6 @@
-import { config } from "./config.js";
+import { lastCycleFor, loadRuntimeConfig, persistRun } from "./botApi.js";
 import { decideEntry, nextMondayOpen, sleepUntil } from "./calendar.js";
+import { config } from "./config.js";
 import { runSellToOpenCycle } from "./cycle.js";
 import { pingApi } from "./http.js";
 
@@ -23,8 +24,9 @@ async function ensureApi(): Promise<void> {
 
 async function runOnce(): Promise<void> {
   await ensureApi();
+  const runtime = await loadRuntimeConfig();
   log(
-    `Config symbols=${config.symbols.join(",")} level=${config.level} dryRun=${config.dryRun}`,
+    `Config symbols=${runtime.symbols.join(",")} level=${runtime.level} dryRun=${runtime.dryRun} paused=${runtime.paused} source=${runtime.source}`,
   );
 
   const decision = decideEntry();
@@ -44,9 +46,31 @@ async function runOnce(): Promise<void> {
   }
 
   log(decision.reason);
-  for (const symbol of config.symbols) {
+  if (runtime.paused) {
+    const record = {
+      at: new Date().toISOString(),
+      symbol: "*",
+      targetFriday: decision.targetFriday,
+      side: "?",
+      qty: 0,
+      dryRun: runtime.dryRun,
+      status: "skipped" as const,
+      reason: "Bot paused — window skipped",
+    };
+    await persistRun(record);
+    log(record.reason);
+    return;
+  }
+
+  for (const symbol of runtime.symbols) {
     try {
-      await runSellToOpenCycle({ symbol, targetFriday: decision.targetFriday });
+      await runSellToOpenCycle({
+        symbol,
+        targetFriday: decision.targetFriday,
+        level: runtime.level,
+        dryRun: runtime.dryRun,
+        lastCycle: lastCycleFor(runtime, symbol),
+      });
     } catch (e) {
       console.error(`[bot] Cycle failed for ${symbol}:`, e);
     }
