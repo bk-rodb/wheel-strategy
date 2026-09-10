@@ -5,13 +5,7 @@ vi.mock("../config", () => ({
   API_BASE: "http://localhost:5099",
 }));
 
-import {
-  clearBotLastCycle,
-  fetchBotConfig,
-  fetchBotRuns,
-  resetMockBotState,
-  saveBotConfig,
-} from "./fetchBot";
+import { clearBotLastCycle, fetchBotConfig, fetchBotRuns, resetMockBotState } from "./fetchBot";
 
 describe("bot client (mock)", () => {
   beforeEach(() => {
@@ -26,9 +20,7 @@ describe("bot client (mock)", () => {
     expect(runs.length).toBeGreaterThan(0);
   });
 
-  it("saves level and re-arms a symbol", async () => {
-    const saved = await saveBotConfig({ level: "safe" });
-    expect(saved.settings.level).toBe("safe");
+  it("re-arms a symbol", async () => {
     const cleared = await clearBotLastCycle("NVDA");
     expect(cleared).toBe(1);
     const cfg = await fetchBotConfig();

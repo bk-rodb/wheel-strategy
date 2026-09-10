@@ -1,6 +1,6 @@
 import type { AnalysisLevel } from "./config.js";
 import { config } from "./config.js";
-import { apiGet, apiPost } from "./http.js";
+import { apiPost } from "./http.js";
 import {
   appendRun,
   writeLastCycle,
@@ -8,6 +8,7 @@ import {
   type RunRecord,
 } from "./state.js";
 
+/** Whether `lastCycles` came from the API (idempotency) or is empty because the API was unreachable. */
 export type RuntimeSource = "api" | "env";
 
 export interface RuntimeConfig {
@@ -41,11 +42,6 @@ interface BotConfigResponse {
   lastCycles: BotLastCycleDto[];
 }
 
-function asLevel(raw: string | undefined): AnalysisLevel {
-  if (raw === "safe" || raw === "regular" || raw === "risky") return raw;
-  return "regular";
-}
-
 function toLastCycle(row: BotLastCycleDto): LastCycle {
   return {
     targetFriday: row.targetFriday,
@@ -56,29 +52,40 @@ function toLastCycle(row: BotLastCycleDto): LastCycle {
   };
 }
 
-/** Env fallback when `/api/bot/config` is unreachable. */
+/** The bot's own governance settings — always sourced from bot/.env, never from the API. */
 export function envRuntimeConfig(): RuntimeConfig {
   return {
     symbols: [...config.symbols],
     level: config.level,
     dryRun: config.dryRun,
-    paused: false,
+    paused: config.paused,
     lastCycles: new Map(),
     source: "env",
   };
 }
 
+/**
+ * Builds the runtime config from bot/.env (the only source of truth for symbols / level /
+ * dry-run / paused) and best-effort self-reports it to `/api/bot/config` so the desk BOT tab
+ * mirrors what the bot is actually doing. The POST response's `lastCycles` is reused for
+ * idempotency; if the API is unreachable, governance still comes from env, just without
+ * cross-process idempotency for this run.
+ */
 export async function loadRuntimeConfig(signal?: AbortSignal): Promise<RuntimeConfig> {
+  const runtime = envRuntimeConfig();
   try {
-    const res = await apiGet<BotConfigResponse>("/api/bot/config", undefined, signal);
-    const symbols = (res.settings.symbols ?? [])
-      .map((s) => s.trim().toUpperCase())
-      .filter(Boolean);
+    const res = await apiPost<BotConfigResponse>(
+      "/api/bot/config",
+      {
+        symbols: runtime.symbols,
+        level: runtime.level,
+        dryRun: runtime.dryRun,
+        paused: runtime.paused,
+      },
+      signal,
+    );
     return {
-      symbols: symbols.length > 0 ? Array.from(new Set(symbols)) : [...config.symbols],
-      level: asLevel(res.settings.level),
-      dryRun: res.settings.dryRun,
-      paused: res.settings.paused,
+      ...runtime,
       lastCycles: new Map(
         (res.lastCycles ?? []).map((c) => [c.symbol.toUpperCase(), toLastCycle(c)]),
       ),
@@ -86,8 +93,8 @@ export async function loadRuntimeConfig(signal?: AbortSignal): Promise<RuntimeCo
     };
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
-    console.warn(`[bot] Config GET failed — using env (${detail})`);
-    return envRuntimeConfig();
+    console.warn(`[bot] Config self-report failed — dashboard may be stale, no cross-process idempotency this run (${detail})`);
+    return runtime;
   }
 }
 

@@ -169,6 +169,9 @@ export async function cancelOrder(orderId: string, signal?: AbortSignal): Promis
 export async function pollUntilDone(opts: {
   orderId: string;
   pollMs: number;
+  /** Absolute epoch-ms. If set, return the still-open order once reached — the caller decides
+   *  whether to cancel/reprice/give up. This function never self-cancels for this path. */
+  deadlineMs?: number;
   signal?: AbortSignal;
   onTick?: (order: AlpacaOrder) => void;
 }): Promise<AlpacaOrder> {
@@ -182,6 +185,10 @@ export async function pollUntilDone(opts: {
       isOrderCanceled(order.status) ||
       isOrderDoneUnfilled(order)
     ) {
+      return order;
+    }
+
+    if (opts.deadlineMs !== undefined && Date.now() >= opts.deadlineMs) {
       return order;
     }
 

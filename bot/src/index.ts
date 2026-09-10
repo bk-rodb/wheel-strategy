@@ -62,17 +62,23 @@ async function runOnce(): Promise<void> {
     return;
   }
 
-  for (const symbol of runtime.symbols) {
-    try {
-      await runSellToOpenCycle({
+  // Each symbol runs its own independent cycle — run them concurrently so a slow-filling
+  // order on one symbol doesn't block the others from ever being tried today.
+  const results = await Promise.allSettled(
+    runtime.symbols.map((symbol) =>
+      runSellToOpenCycle({
         symbol,
         targetFriday: decision.targetFriday,
         level: runtime.level,
         dryRun: runtime.dryRun,
         lastCycle: lastCycleFor(runtime, symbol),
-      });
-    } catch (e) {
-      console.error(`[bot] Cycle failed for ${symbol}:`, e);
+      }),
+    ),
+  );
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    if (r?.status === "rejected") {
+      console.error(`[bot] Cycle failed for ${runtime.symbols[i]}:`, r.reason);
     }
   }
 }

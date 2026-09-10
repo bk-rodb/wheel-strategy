@@ -52,13 +52,6 @@ export interface BotRun {
   warnings: string[] | null;
 }
 
-export interface UpdateBotSettings {
-  symbols?: string[];
-  level?: BotLevel;
-  dryRun?: boolean;
-  paused?: boolean;
-}
-
 const mockUpdatedAt = "2026-09-06T16:00:00.000Z";
 
 let mockConfig: BotConfig = {
@@ -130,40 +123,16 @@ async function readError(res: Response, label: string): Promise<Error> {
   return new Error(`${label} → ${res.status}: ${text}`);
 }
 
+/**
+ * Read-only mirror of the bot's own governance settings. The bot self-reports symbols / level /
+ * dry-run / paused (sourced from bot/.env) on every cycle via `POST /api/bot/config`; this UI
+ * never writes those knobs — edit bot/.env and restart the worker to change them.
+ */
 export async function fetchBotConfig(signal?: AbortSignal): Promise<BotConfig> {
   if (IS_MOCK) return structuredClone(mockConfig);
 
   const res = await fetch(`${API_BASE}/api/bot/config`, { signal: requestSignal(signal) });
   if (!res.ok) throw await readError(res, "Bot config");
-  return (await res.json()) as BotConfig;
-}
-
-export async function saveBotConfig(
-  body: UpdateBotSettings,
-  signal?: AbortSignal,
-): Promise<BotConfig> {
-  if (IS_MOCK) {
-    mockConfig = {
-      settings: {
-        ...mockConfig.settings,
-        ...body,
-        symbols: body.symbols ?? mockConfig.settings.symbols,
-        updatedAt: new Date().toISOString(),
-      },
-      lastCycles: mockConfig.lastCycles.filter((c) =>
-        (body.symbols ?? mockConfig.settings.symbols).includes(c.symbol),
-      ),
-    };
-    return structuredClone(mockConfig);
-  }
-
-  const res = await fetch(`${API_BASE}/api/bot/config`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: requestSignal(signal),
-  });
-  if (!res.ok) throw await readError(res, "Bot config save");
   return (await res.json()) as BotConfig;
 }
 

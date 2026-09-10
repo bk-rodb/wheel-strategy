@@ -13,7 +13,7 @@ The bot holds **no Alpaca keys**. Credentials stay in Windows user environment v
 | Decision | Behavior |
 |----------|----------|
 | Account | Alpaca **paper** only (`Alpaca:TradingBaseUrl` = paper) |
-| Universe | `BOT_SYMBOLS`, default **NVDA, SPCX, RKLB** — each symbol runs its own independent cycle (own shares/side/qty, own open-order gate, own dedupe state) |
+| Universe | `BOT_SYMBOLS`, default **NVDA, SPCX, RKLB** — each symbol runs its own independent cycle **concurrently** (own shares/side/qty, own open-order gate, own dedupe state) |
 | Action | **Sell-to-open** only (no buy-to-close, no rolls) |
 | Strike | Analysis level `regular` (override via `BOT_LEVEL`, shared across all symbols) |
 | Side | Shares ≥ 100 → covered **call**, qty = `floor(shares/100)`; else cash-secured **put**, qty = 1 |
@@ -50,14 +50,24 @@ npm install
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BOT_API_BASE` | `http://localhost:5099` | Analysis + Alpaca proxy base URL |
-| `BOT_SYMBOLS` | `NVDA,SPCX,RKLB` | Fallback universe if `GET /api/bot/config` fails |
-| `BOT_LEVEL` | `regular` | Fallback `safe` \| `regular` \| `risky` |
-| `BOT_DRY_RUN` | `true` | Fallback; **do not** POST `/v2/orders` when true |
+| `BOT_SYMBOLS` | `NVDA,SPCX,RKLB` | Universe — comma-separated |
+| `BOT_LEVEL` | `regular` | `safe` \| `regular` \| `risky` |
+| `BOT_DRY_RUN` | `true` | **Do not** POST `/v2/orders` when true |
+| `BOT_PAUSED` | `false` | When true, every symbol is skipped each window |
 | `BOT_POLL_MS` | `5000` | Poll interval while a working order is open |
+| `BOT_REPRICE_ENABLED` | `false` | When true, cancel+reprice+resubmit unfilled live orders instead of waiting until session close |
+| `BOT_REPRICE_TIMEOUT_MS` | `30000` | How long to wait for a fill before repricing (only when `BOT_REPRICE_ENABLED=true`) |
+| `BOT_REPRICE_MAX_ATTEMPTS` | `3` | Max reprice/resubmit attempts before giving up and recording `canceled` |
 
-**Source of truth** for symbols / level / dry-run / paused is the desk **BOT** tab (`GET/POST /api/bot/config`). Env is used only when that GET fails. `BOT_API_BASE` and `BOT_POLL_MS` stay file-only.
+Symbols run **fully concurrently** (not sequentially) — each with its own independent open-order
+gate, journal gate, and reprice loop, so a slow-filling order on one symbol never blocks another
+from being tried in the same run. Concurrent cycles do not serialize their pre-trade
+buying-power/collateral checks against each other (each reads the account snapshot independently);
+this is an accepted low-stakes race on a paper account, not something the bot guards against.
 
-**Always keep dry-run ON** (desk toggle or `BOT_DRY_RUN=true`) until a ticket looks correct, then turn it off in the BOT tab.
+**Source of truth** for symbols / level / dry-run / paused is `bot/.env` — the bot never reads governance settings from the API. On every cycle it self-reports its env-sourced settings via `POST /api/bot/config`, so the desk **BOT** tab (`GET /api/bot/config`) mirrors what the bot is actually doing; the tab is read-only and cannot override `.env`. `BOT_API_BASE` and `BOT_POLL_MS` stay file-only always.
+
+**Always keep dry-run ON** (`BOT_DRY_RUN=true`) until a ticket looks correct, then set `BOT_DRY_RUN=false` and restart the worker.
 
 ---
 
@@ -104,19 +114,20 @@ There is no NYSE holiday calendar yet — on a Monday holiday the bot may still 
 ## Cycle (one week)
 
 ```text
-GET /api/bot/config → for each symbol:
+self-report config → for each symbol (concurrently):
   positions → side/qty → analysis(level) → snap listed contract
-  → pre-trade gates → dry-run log  OR  day limit sell_to_open → poll → cancel at session end
+  → pre-trade gates → dry-run log  OR  day limit sell_to_open → poll → (reprice?) → cancel at session end
 ```
 
-1. Load API config once per window. If `paused`, write one skipped run and stop.
-2. For each symbol, skip if last-cycle (API, else `bot/data/last-cycle-{symbol}.json`) already records a successful dry-run / place / fill for this Friday.
+1. Self-report env config to the API once per window. If `paused`, write one skipped run and stop.
+2. For each symbol — run concurrently, not sequentially — skip if last-cycle (API, else `bot/data/last-cycle-{symbol}.json`) already records a successful dry-run / place / fill for this Friday.
 3. Skip if an open option order already exists for that symbol.
 4. `GET /api/analysis/wheel?symbol=…&dte=…&granularity=daily` → pick the configured level.
 5. Snap nearest standard 100-multiplier listed contract for the target Friday.
 6. Pre-trade blockers: coverage (calls), collateral / options buying power (puts), fat-finger vs mid, tradable flag.
 7. Dual-write the run to `bot/data/runs.jsonl` and `POST /api/bot/runs`.
 8. Live paper: `POST /api/alpaca/trading/v2/orders` with stable `client_order_id`; poll until filled / canceled / rejected; cancel unfilled near ET session close.
+9. **If `BOT_REPRICE_ENABLED=true`**: instead of polling until session close, poll only up to `BOT_REPRICE_TIMEOUT_MS`. If still unfilled, cancel, recompute the ladder from scratch (fresh analysis + spot — the original strike may no longer be right), re-check pre-trade, and resubmit — up to `BOT_REPRICE_MAX_ATTEMPTS` times. A pre-trade block on a recomputed ladder stops repricing immediately (`status=blocked`); exhausting all attempts while still unfilled cancels and records `status=canceled`.
 
 ### Idempotency
 
@@ -156,7 +167,7 @@ bot/
 |---------|--------------|-----|
 | `Cannot reach WheelStrategy.Api` | Backend down | `dotnet run` in `backend/WheelStrategy.Api` |
 | `--once` exits without ticket | Outside Mon/Tue window | Expected mid-week; use `npm start` or wait until Monday |
-| Dry-run looks good but no order | Dry-run is on | Turn dry-run off in the desk BOT tab (or `BOT_DRY_RUN=false` if API config is unreachable) |
+| Dry-run looks good but no order | `BOT_DRY_RUN=true` in `bot/.env` | Set `BOT_DRY_RUN=false` in `bot/.env` and restart the worker — the desk BOT tab cannot turn this off, it only mirrors what the bot last reported |
 | `403 Order entry disabled` | Proxy kill switch | Set `AlpacaProxy:AllowOrderPlacement` true |
 | `503` from Alpaca proxy | Missing backend secrets | Set `ALPACA_API_KEY_ID` and `ALPACA_API_SECRET_KEY` as Windows user env vars; restart the API |
 | Skipped: already completed | Idempotency for this Friday | Re-arm that symbol on the desk BOT tab |
@@ -168,8 +179,8 @@ bot/
 ## Safety checklist (paper)
 
 1. Confirm paper TradingBaseUrl (not `api.alpaca.markets`).
-2. Dry-run once on a Monday or Tuesday (desk BOT tab dry-run ON) → `npm run once` → inspect the BOT tab history (and `bot/data/runs.jsonl`).
-3. Turn dry-run off in the BOT tab, re-arm any symbol already recorded as dry-run for this Friday, run again.
+2. Dry-run once on a Monday or Tuesday (`BOT_DRY_RUN=true` in `bot/.env`) → `npm run once` → inspect the BOT tab history (and `bot/data/runs.jsonl`).
+3. Set `BOT_DRY_RUN=false` in `bot/.env`, re-arm any symbol already recorded as dry-run for this Friday on the desk BOT tab, run again.
 4. Watch the order in the Alpaca paper dashboard or desk blotter; cancel if unwanted.
 
 ---

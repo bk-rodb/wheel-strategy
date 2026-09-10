@@ -3,15 +3,12 @@ import {
   clearBotLastCycle,
   fetchBotConfig,
   fetchBotRuns,
-  saveBotConfig,
   type BotConfig,
   type BotLastCycle,
-  type BotLevel,
   type BotRun,
 } from "../api/fetchBot";
 import { nextFriday, toDateString } from "../utils/nextFriday";
 
-const LEVELS: BotLevel[] = ["safe", "regular", "risky"];
 const STATUSES = ["", "skipped", "dry_run", "placed", "filled", "canceled", "blocked", "error"];
 
 function completedStatuses(status: string): boolean {
@@ -33,10 +30,7 @@ function lastFor(cycles: BotLastCycle[], symbol: string): BotLastCycle | undefin
   return cycles.find((c) => c.symbol === symbol);
 }
 
-type ConfirmKind =
-  | { kind: "dry_run_off" }
-  | { kind: "pause_on" }
-  | { kind: "rearm"; symbol?: string };
+type ConfirmKind = { kind: "rearm"; symbol?: string };
 
 const card: CSSProperties = {
   background: "#08081a",
@@ -72,7 +66,6 @@ export function BotPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [symbolDraft, setSymbolDraft] = useState("");
   const [filterSymbol, setFilterSymbol] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
@@ -103,56 +96,8 @@ export function BotPanel() {
     return () => ctrl.abort();
   }, [reload]);
 
-  const apply = async (patch: Parameters<typeof saveBotConfig>[0]) => {
-    setSaving(true);
-    setError(null);
-    try {
-      const next = await saveBotConfig(patch);
-      setConfig(next);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
-      setConfirm(null);
-    }
-  };
-
-  const addSymbol = () => {
-    if (!config) return;
-    const sym = symbolDraft.trim().toUpperCase();
-    if (!sym || config.settings.symbols.includes(sym)) {
-      setSymbolDraft("");
-      return;
-    }
-    void apply({ symbols: [...config.settings.symbols, sym] });
-    setSymbolDraft("");
-  };
-
-  const removeSymbol = (sym: string) => {
-    if (!config || config.settings.symbols.length <= 1) return;
-    void apply({ symbols: config.settings.symbols.filter((s) => s !== sym) });
-  };
-
-  const requestDryRun = (next: boolean) => {
-    if (!next) setConfirm({ kind: "dry_run_off" });
-    else void apply({ dryRun: true });
-  };
-
-  const requestPaused = (next: boolean) => {
-    if (next) setConfirm({ kind: "pause_on" });
-    else void apply({ paused: false });
-  };
-
   const doConfirm = async () => {
     if (!confirm) return;
-    if (confirm.kind === "dry_run_off") {
-      await apply({ dryRun: false });
-      return;
-    }
-    if (confirm.kind === "pause_on") {
-      await apply({ paused: true });
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
@@ -189,8 +134,9 @@ export function BotPanel() {
       <div style={{ marginBottom: 18 }}>
         <div style={{ ...sectionTitle, marginBottom: 4 }}>BOT · WEEKLY SELL-TO-OPEN</div>
         <div style={{ fontSize: 13, color: "#c0c0e0" }}>
-          Shared knobs for the paper worker. Changes apply on the next Mon/Tue cycle — the process
-          is still started by Task Scheduler or npm.
+          Mirrors what the worker last self-reported. Symbols, level, dry-run, and paused are
+          governed by <code>bot/.env</code> on the machine running the worker — edit it and
+          restart to change them; this tab cannot override them.
         </div>
       </div>
 
@@ -227,14 +173,9 @@ export function BotPanel() {
           }}
         >
           <span>
-            {confirm.kind === "dry_run_off" &&
-              "Turn dry-run OFF? The next cycle will POST paper sell-to-open orders."}
-            {confirm.kind === "pause_on" &&
-              "Pause the bot? Task Scheduler still fires; every symbol will skip."}
-            {confirm.kind === "rearm" &&
-              (confirm.symbol
-                ? `Re-arm ${confirm.symbol} for this Friday? The next --once may place again.`
-                : "Re-arm ALL symbols for this Friday?")}
+            {confirm.symbol
+              ? `Re-arm ${confirm.symbol} for this Friday? The next --once may place again.`
+              : "Re-arm ALL symbols for this Friday?"}
           </span>
           <span style={{ display: "flex", gap: 8 }}>
             <button type="button" style={btn} onClick={() => setConfirm(null)} disabled={saving}>
@@ -327,19 +268,16 @@ export function BotPanel() {
 
       <div style={card}>
         <div style={{ padding: "12px 14px", borderBottom: "1px solid #12122a" }}>
-          <div style={sectionTitle}>CONFIG</div>
+          <div style={sectionTitle}>CONFIG · READ-ONLY (bot/.env)</div>
         </div>
-        <div style={{ padding: 14, display: "grid", gap: 16 }}>
+        <div style={{ padding: 14, display: "grid", gap: 12 }}>
           <div>
             <div style={{ ...sectionTitle, marginBottom: 8 }}>SYMBOLS</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {settings.symbols.map((sym) => (
                 <span
                   key={sym}
                   style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
                     padding: "4px 8px",
                     border: "1px solid #2a2a4a",
                     borderRadius: 4,
@@ -348,84 +286,13 @@ export function BotPanel() {
                   }}
                 >
                   {sym}
-                  <button
-                    type="button"
-                    aria-label={`Remove ${sym}`}
-                    disabled={saving || settings.symbols.length <= 1}
-                    onClick={() => removeSymbol(sym)}
-                    style={{ color: "#6b6b8a", cursor: "pointer", fontSize: 11 }}
-                  >
-                    ✕
-                  </button>
                 </span>
               ))}
-              <input
-                value={symbolDraft}
-                onChange={(e) => setSymbolDraft(e.target.value.toUpperCase())}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addSymbol();
-                  }
-                }}
-                placeholder="ADD"
-                disabled={saving}
-                style={{
-                  width: 80,
-                  background: "#101028",
-                  border: "1px solid #2a2a4a",
-                  color: "#c0c0e0",
-                  padding: "4px 8px",
-                  fontSize: 12,
-                  fontFamily: "monospace",
-                }}
-              />
-              <button type="button" style={btn} disabled={saving || !symbolDraft} onClick={addSymbol}>
-                ADD
-              </button>
             </div>
           </div>
-
-          <div>
-            <div style={{ ...sectionTitle, marginBottom: 8 }}>LEVEL</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {LEVELS.map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void apply({ level })}
-                  style={{
-                    ...btn,
-                    borderColor: settings.level === level ? "#34d399" : "#2a2a4a",
-                    color: settings.level === level ? "#34d399" : "#c0c0e0",
-                  }}
-                >
-                  {level.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-              <input
-                type="checkbox"
-                checked={settings.dryRun}
-                disabled={saving}
-                onChange={(e) => requestDryRun(e.target.checked)}
-              />
-              DRY RUN
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-              <input
-                type="checkbox"
-                checked={settings.paused}
-                disabled={saving}
-                onChange={(e) => requestPaused(e.target.checked)}
-              />
-              PAUSED
-            </label>
+          <div style={{ fontSize: 11, color: "#6b6b8a" }}>
+            Last reported {fmtTime(settings.updatedAt)} — LEVEL, DRY RUN, and MODE badges above
+            are the current values.
           </div>
         </div>
       </div>

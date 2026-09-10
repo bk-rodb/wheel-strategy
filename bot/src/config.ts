@@ -58,7 +58,11 @@ export const config = {
   symbols: envSymbols(),
   level: envLevel(process.env.BOT_LEVEL),
   dryRun: envBool("BOT_DRY_RUN", true),
+  paused: envBool("BOT_PAUSED", false),
   pollMs: Number(process.env.BOT_POLL_MS ?? 5000) || 5000,
+  repriceEnabled: envBool("BOT_REPRICE_ENABLED", false),
+  repriceTimeoutMs: Number(process.env.BOT_REPRICE_TIMEOUT_MS ?? 30000) || 30000,
+  repriceMaxAttempts: Math.max(1, Number(process.env.BOT_REPRICE_MAX_ATTEMPTS ?? 3) || 3),
   dataDir: join(BOT_ROOT, "data"),
   botRoot: BOT_ROOT,
 } as const;

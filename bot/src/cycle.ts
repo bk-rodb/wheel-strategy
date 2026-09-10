@@ -1,18 +1,22 @@
 import { config, type AnalysisLevel } from "./config.js";
 import { persistLastCycle, persistRun } from "./botApi.js";
-import { toDateString } from "./calendar.js";
-import { fetchRegularLadder } from "./fridayLadder.js";
+import { sleep, toDateString } from "./calendar.js";
+import { fetchRegularLadder, type FridayLadder } from "./fridayLadder.js";
 import {
+  cancelOrder,
   cycleClientOrderId,
+  getOrder,
   getOrderByClientId,
   listOpenOptionOrdersForUnderlying,
   placeSellToOpen,
   pollUntilDone,
   isOrderFilled,
+  type AlpacaOrder,
 } from "./orders.js";
-import { listOpenJournalForUnderlying } from "./orderJournal.js";
+import { listOpenJournalForUnderlying, waitForJournalClear } from "./orderJournal.js";
+import { decideReprice } from "./reprice.js";
 import { attachBotDecisionSnapshot } from "./tradeOutcome.js";
-import { getAccount, getEquityShares, sideAndQty } from "./positions.js";
+import { getAccount, getEquityShares, sideAndQty, type OptionSide } from "./positions.js";
 import { preTradeCheck } from "./preTrade.js";
 import {
   alreadyCompletedForFriday,
@@ -23,6 +27,68 @@ import {
 
 export interface CycleResult {
   record: RunRecord;
+}
+
+/** Places (or reconciles an already-placed) sell-to-open order for one clientOrderId. */
+async function placeAndReconcile(opts: {
+  clientOrderId: string;
+  symbol: string;
+  side: OptionSide;
+  level: AnalysisLevel;
+  ladder: FridayLadder;
+  signal?: AbortSignal;
+}): Promise<AlpacaOrder> {
+  const tag = `[cycle:${opts.symbol}]`;
+  let order = await getOrderByClientId(opts.clientOrderId, opts.signal);
+  if (!order) {
+    try {
+      await attachBotDecisionSnapshot(
+        opts.clientOrderId,
+        {
+          underlying: opts.symbol.toUpperCase(),
+          optionRight: opts.side === "call" ? "call" : "put",
+          wheelSide: opts.side === "call" ? "cc" : "csp",
+          level: opts.level,
+          modelStrike: opts.ladder.row.strike,
+          snappedStrike: opts.ladder.row.strike,
+          targetDelta: null,
+          hmmRegime: opts.ladder.hmmRegime ?? null,
+          spotAtSubmit: opts.ladder.spot ?? null,
+          suggestedLimit: opts.ladder.row.sellLimit,
+          midAtSubmit: opts.ladder.row.mid,
+          bidAtSubmit: opts.ladder.row.bid,
+          dte: opts.ladder.dte ?? null,
+          granularity: "weekly",
+          earningsInWindow: null,
+          empiricalAssignmentProb: opts.ladder.row.empiricalAssignmentProb,
+          estPremium: opts.ladder.row.estPremium ?? null,
+          contractSymbol: opts.ladder.row.contractSymbol,
+        },
+        opts.signal,
+      );
+      order = await placeSellToOpen({
+        contractSymbol: opts.ladder.row.contractSymbol,
+        qty: opts.ladder.qty,
+        limitPrice: opts.ladder.row.sellLimit,
+        clientOrderId: opts.clientOrderId,
+        signal: opts.signal,
+      });
+    } catch (e) {
+      order = await getOrderByClientId(opts.clientOrderId, opts.signal);
+      if (!order) throw e;
+      console.warn(`${tag} Place failed but order found by client_order_id — reconciling`);
+    }
+  } else {
+    console.log(`${tag} Reusing existing order ${order.id} for ${opts.clientOrderId}`);
+  }
+  console.log(`${tag} Placed order ${order.id} status=${order.status}`);
+  return order;
+}
+
+function finalRunStatus(final: AlpacaOrder): RunRecord["status"] {
+  if (isOrderFilled(final)) return "filled";
+  if (final.status === "canceled" || final.status === "expired" || final.status === "rejected") return "canceled";
+  return "placed";
 }
 
 /**
@@ -37,6 +103,7 @@ export async function runSellToOpenCycle(opts: {
   signal?: AbortSignal;
 }): Promise<CycleResult> {
   const symbol = opts.symbol;
+  const tag = `[cycle:${symbol}]`;
   const level = opts.level ?? config.level;
   const dryRun = opts.dryRun ?? config.dryRun;
   const at = new Date().toISOString();
@@ -58,7 +125,7 @@ export async function runSellToOpenCycle(opts: {
       reason: `Already completed a cycle for ${opts.targetFriday}`,
     };
     await persistRun(record, opts.signal);
-    console.log(`[cycle] ${record.reason}`);
+    console.log(`${tag} ${record.reason}`);
     return { record };
   }
 
@@ -73,7 +140,7 @@ export async function runSellToOpenCycle(opts: {
       orderId: openOrders[0]?.id,
     };
     await persistRun(record, opts.signal);
-    console.log(`[cycle] ${record.reason}`);
+    console.log(`${tag} ${record.reason}`);
     return { record };
   }
 
@@ -90,18 +157,18 @@ export async function runSellToOpenCycle(opts: {
         orderId: j.alpacaOrderId ?? undefined,
       };
       await persistRun(record, opts.signal);
-      console.log(`[cycle] ${record.reason}`);
+      console.log(`${tag} ${record.reason}`);
       return { record };
     }
   } catch (e) {
-    console.warn(`[cycle] Journal check failed (continuing with Alpaca open-order gate):`, e);
+    console.warn(`${tag} Journal check failed (continuing with Alpaca open-order gate):`, e);
   }
 
   const shares = await getEquityShares(symbol, opts.signal);
   const { side, qty } = sideAndQty(shares);
-  console.log(`[cycle] ${symbol} shares=${shares} → ${side} x${qty}`);
+  console.log(`${tag} shares=${shares} → ${side} x${qty}`);
 
-  const ladder = await fetchRegularLadder({
+  let ladder = await fetchRegularLadder({
     symbol,
     side,
     qty,
@@ -110,10 +177,10 @@ export async function runSellToOpenCycle(opts: {
     signal: opts.signal,
   });
 
-  for (const w of ladder.warnings) console.warn(`[cycle] warn: ${w}`);
+  for (const w of ladder.warnings) console.warn(`${tag} warn: ${w}`);
 
-  const account = await getAccount(opts.signal);
-  const check = preTradeCheck({
+  let account = await getAccount(opts.signal);
+  let check = preTradeCheck({
     optionType: side,
     contractSymbol: ladder.row.contractSymbol,
     strike: ladder.row.strike,
@@ -129,7 +196,7 @@ export async function runSellToOpenCycle(opts: {
     contractMultiplier: ladder.row.multiplier,
   });
 
-  for (const w of check.warnings) console.warn(`[cycle] pretrade: ${w}`);
+  for (const w of check.warnings) console.warn(`${tag} pretrade: ${w}`);
 
   if (!check.ok) {
     const record: RunRecord = {
@@ -145,7 +212,7 @@ export async function runSellToOpenCycle(opts: {
       sellLimit: ladder.row.sellLimit,
     };
     await persistRun(record, opts.signal);
-    console.error(`[cycle] Blocked:`, check.blockers.join("; "));
+    console.error(`${tag} Blocked:`, check.blockers.join("; "));
     return { record };
   }
 
@@ -168,7 +235,7 @@ export async function runSellToOpenCycle(opts: {
     clientOrderId,
   };
 
-  console.log(`[cycle] Ticket:`, JSON.stringify(ticket, null, 2));
+  console.log(`${tag} Ticket:`, JSON.stringify(ticket, null, 2));
 
   if (dryRun) {
     const record: RunRecord = {
@@ -191,90 +258,162 @@ export async function runSellToOpenCycle(opts: {
       status: "dry_run",
       retryIndex,
     }, opts.signal);
-    console.log(`[cycle] Dry-run complete (no order placed).`);
+    console.log(`${tag} Dry-run complete (no order placed).`);
     return { record };
   }
 
-  // Live paper place — reconcile by client_order_id if POST races
-  let order = await getOrderByClientId(clientOrderId, opts.signal);
-  if (!order) {
-    try {
-      await attachBotDecisionSnapshot(
-        clientOrderId,
-        {
-          underlying: symbol.toUpperCase(),
-          optionRight: side === "call" ? "call" : "put",
-          wheelSide: side === "call" ? "cc" : "csp",
-          level,
-          modelStrike: ladder.row.strike,
-          snappedStrike: ladder.row.strike,
-          targetDelta: null,
-          hmmRegime: ladder.hmmRegime ?? null,
-          spotAtSubmit: ladder.spot ?? null,
-          suggestedLimit: ladder.row.sellLimit,
-          midAtSubmit: ladder.row.mid,
-          bidAtSubmit: ladder.row.bid,
-          dte: ladder.dte ?? null,
-          granularity: "weekly",
-          earningsInWindow: null,
-          empiricalAssignmentProb: ladder.row.empiricalAssignmentProb,
-          estPremium: ladder.row.estPremium ?? null,
-          contractSymbol: ladder.row.contractSymbol,
-        },
-        opts.signal,
-      );
-      order = await placeSellToOpen({
-        contractSymbol: ladder.row.contractSymbol,
-        qty: ladder.qty,
-        limitPrice: ladder.row.sellLimit,
-        clientOrderId,
-        signal: opts.signal,
-      });
-    } catch (e) {
-      order = await getOrderByClientId(clientOrderId, opts.signal);
-      if (!order) throw e;
-      console.warn(`[cycle] Place failed but order found by client_order_id — reconciling`);
+  // Live paper place — reconcile by client_order_id if POST races.
+  async function finalize(
+    status: RunRecord["status"],
+    reason: string,
+    finalOrder: AlpacaOrder | undefined,
+    activeClientOrderId: string,
+    persistCycle: boolean,
+  ): Promise<CycleResult> {
+    const record: RunRecord = {
+      ...base,
+      side,
+      qty: ladder.qty,
+      status,
+      reason,
+      contractSymbol: ladder.row.contractSymbol,
+      strike: ladder.row.strike,
+      sellLimit: ladder.row.sellLimit,
+      orderId: finalOrder?.id,
+      clientOrderId: activeClientOrderId,
+      blockers: status === "blocked" ? check.blockers : undefined,
+      warnings: [...ladder.warnings, ...check.warnings],
+    };
+    await persistRun(record, opts.signal);
+    if (persistCycle) {
+      await persistLastCycle(symbol, {
+        targetFriday: opts.targetFriday,
+        clientOrderId: activeClientOrderId,
+        at: new Date().toISOString(),
+        status,
+        retryIndex,
+      }, opts.signal);
     }
-  } else {
-    console.log(`[cycle] Reusing existing order ${order.id} for ${clientOrderId}`);
+    return { record };
   }
 
-  console.log(`[cycle] Placed order ${order.id} status=${order.status}`);
+  let activeClientOrderId = clientOrderId;
+  let order = await placeAndReconcile({ clientOrderId: activeClientOrderId, symbol, side, level, ladder, signal: opts.signal });
 
-  const final = await pollUntilDone({
-    orderId: order.id,
-    pollMs: config.pollMs,
-    signal: opts.signal,
-    onTick: (o) => console.log(`[cycle] poll ${o.id} status=${o.status} filled=${o.filled_qty ?? 0}`),
-  });
+  let attempt = 1;
+  for (;;) {
+    const deadlineMs = config.repriceEnabled ? Date.now() + config.repriceTimeoutMs : undefined;
+    const final = await pollUntilDone({
+      orderId: order.id,
+      pollMs: config.pollMs,
+      deadlineMs,
+      signal: opts.signal,
+      onTick: (o) =>
+        console.log(
+          `[${new Date().toISOString()}] ${tag} poll ${o.id} status=${o.status} filled=${o.filled_qty ?? 0}`,
+        ),
+    });
 
-  const status: RunRecord["status"] = isOrderFilled(final)
-    ? "filled"
-    : final.status === "canceled" || final.status === "expired" || final.status === "rejected"
-      ? "canceled"
-      : "placed";
+    const decision = decideReprice({
+      final,
+      repriceEnabled: config.repriceEnabled,
+      attempt,
+      maxAttempts: config.repriceMaxAttempts,
+    });
 
-  const record: RunRecord = {
-    ...base,
-    side,
-    qty: ladder.qty,
-    status,
-    reason: `Final status=${final.status}`,
-    contractSymbol: ladder.row.contractSymbol,
-    strike: ladder.row.strike,
-    sellLimit: ladder.row.sellLimit,
-    orderId: final.id,
-    clientOrderId,
-    warnings: [...ladder.warnings, ...check.warnings],
-  };
-  await persistRun(record, opts.signal);
-  await persistLastCycle(symbol, {
-    targetFriday: opts.targetFriday,
-    clientOrderId,
-    at: new Date().toISOString(),
-    status,
-    retryIndex,
-  }, opts.signal);
-  console.log(`[cycle] Done: ${status} (${final.status})`);
-  return { record };
+    if (decision.action === "done") {
+      const status = finalRunStatus(final);
+      console.log(`${tag} Done: ${status} (${final.status})`);
+      return finalize(status, `Final status=${final.status}`, final, activeClientOrderId, true);
+    }
+
+    console.log(
+      `[${new Date().toISOString()}] ${tag} Reprice: order ${final.id} unfilled after ${config.repriceTimeoutMs}ms (attempt ${attempt}/${config.repriceMaxAttempts})`,
+    );
+    try {
+      await cancelOrder(final.id, opts.signal);
+    } catch (e) {
+      console.warn(`${tag} Reprice cancel failed:`, e);
+    }
+
+    if (decision.action === "giveUp") {
+      console.log(`[${new Date().toISOString()}] ${tag} Reprice: max attempts reached — giving up`);
+      return finalize(
+        "canceled",
+        `Unfilled after ${attempt} reprice attempt(s) — gave up`,
+        final,
+        activeClientOrderId,
+        true,
+      );
+    }
+
+    // A DELETE alone leaves the desk journal stuck at cancel_pending forever — nothing
+    // reconciles it in the background. The backend only reconciles a journal row as a side
+    // effect of a follow-up single-order GET (see AlpacaProxyEndpoints.cs), which the proxy's
+    // per-underlying open-order gate then requires before it'll accept a resubmit. Force that
+    // GET, then confirm the underlying's journal is actually clear before resubmitting.
+    await sleep(2_000, opts.signal);
+    try {
+      const reconciled = await getOrder(final.id, opts.signal);
+      console.log(
+        `[${new Date().toISOString()}] ${tag} Reprice: post-cancel reconcile — status=${reconciled.status}`,
+      );
+    } catch (e) {
+      console.warn(`${tag} Reprice: post-cancel reconcile GET failed:`, e);
+    }
+
+    const journalClear = await waitForJournalClear(symbol, { timeoutMs: 8_000, pollMs: 1_000, signal: opts.signal });
+    if (!journalClear) {
+      console.warn(
+        `[${new Date().toISOString()}] ${tag} Reprice: desk journal still open for ${symbol} after reconcile — giving up`,
+      );
+      return finalize(
+        "canceled",
+        "Desk journal still open for this underlying after reconcile — gave up",
+        final,
+        activeClientOrderId,
+        true,
+      );
+    }
+
+    // Recompute the ladder from scratch — the price/vol that picked the original strike may
+    // have moved enough that it's no longer the right one.
+    ladder = await fetchRegularLadder({
+      symbol,
+      side,
+      qty,
+      expiration: opts.targetFriday,
+      level,
+      signal: opts.signal,
+    });
+    account = await getAccount(opts.signal);
+    check = preTradeCheck({
+      optionType: side,
+      contractSymbol: ladder.row.contractSymbol,
+      strike: ladder.row.strike,
+      expiration: ladder.expiration,
+      qty: ladder.qty,
+      limitPrice: ladder.row.sellLimit,
+      bid: ladder.row.bid,
+      ask: ladder.row.ask,
+      mid: ladder.row.mid,
+      shares,
+      account,
+      tradable: ladder.row.tradable,
+      contractMultiplier: ladder.row.multiplier,
+    });
+
+    if (!check.ok) {
+      console.log(`[${new Date().toISOString()}] ${tag} Reprice: recomputed ladder now blocked — stopping`);
+      console.error(`${tag} Blocked:`, check.blockers.join("; "));
+      return finalize("blocked", "Pre-trade blockers (during reprice)", final, activeClientOrderId, false);
+    }
+
+    attempt += 1;
+    activeClientOrderId = cycleClientOrderId(symbol, opts.targetFriday, side, runDate, retryIndex + attempt - 1);
+    order = await placeAndReconcile({ clientOrderId: activeClientOrderId, symbol, side, level, ladder, signal: opts.signal });
+    console.log(
+      `[${new Date().toISOString()}] ${tag} Reprice: resubmitted ${order.id} at strike=${ladder.row.strike} limit=${ladder.row.sellLimit}`,
+    );
+  }
 }

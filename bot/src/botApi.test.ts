@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { lastCycleFor, loadRuntimeConfig, type RuntimeConfig } from "./botApi.ts";
+import { envRuntimeConfig, lastCycleFor, loadRuntimeConfig, type RuntimeConfig } from "./botApi.ts";
 
 describe("lastCycleFor", () => {
   it("returns undefined when config came from env", () => {
@@ -33,14 +33,17 @@ describe("loadRuntimeConfig", () => {
     delete (globalThis as { fetch?: typeof fetch }).fetch;
   });
 
-  it("maps API settings and last-cycles", async () => {
+  it("governs itself from env regardless of what the API reports back", async () => {
+    const envSettings = envRuntimeConfig();
     globalThis.fetch = (async () =>
+      // The API echoes back settings that DIFFER from env (e.g. a stale desk-tab value from
+      // before this fix) plus last-cycles — env must still win for governance.
       new Response(
         JSON.stringify({
           settings: {
-            symbols: ["nvda", "RKLB"],
+            symbols: ["AAPL"],
             level: "risky",
-            dryRun: false,
+            dryRun: true,
             paused: true,
             updatedAt: "2026-09-07T00:00:00Z",
           },
@@ -60,20 +63,21 @@ describe("loadRuntimeConfig", () => {
 
     const runtime = await loadRuntimeConfig();
     assert.equal(runtime.source, "api");
-    assert.deepEqual(runtime.symbols, ["NVDA", "RKLB"]);
-    assert.equal(runtime.level, "risky");
-    assert.equal(runtime.dryRun, false);
-    assert.equal(runtime.paused, true);
+    assert.deepEqual(runtime.symbols, envSettings.symbols);
+    assert.equal(runtime.level, envSettings.level);
+    assert.equal(runtime.dryRun, envSettings.dryRun);
+    assert.equal(runtime.paused, envSettings.paused);
     assert.equal(runtime.lastCycles.get("NVDA")?.status, "filled");
   });
 
-  it("falls back to env when GET fails", async () => {
+  it("still governs itself from env when the self-report POST fails", async () => {
     globalThis.fetch = (async () =>
       new Response("nope", { status: 500 })) as typeof fetch;
 
     const runtime = await loadRuntimeConfig();
     assert.equal(runtime.source, "env");
     assert.equal(runtime.paused, false);
+    assert.equal(runtime.lastCycles.size, 0);
     assert.ok(runtime.symbols.length > 0);
   });
 });
