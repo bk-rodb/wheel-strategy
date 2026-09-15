@@ -21,6 +21,7 @@ interface WatchlistsState {
   version: 2;
   activeId: string;
   watchlists: Watchlist[];
+  defaultsSeeded?: boolean;
 }
 
 const KEY = "wheel-watchlist";
@@ -205,14 +206,15 @@ function ensureDefaultsFor(
 }
 
 function withDefaultSeeds(state: WatchlistsState): { state: WatchlistsState; changed: boolean } {
-  const defaultWl = getDefaultWatchlist(state);
-  const seededDefault = ensureDefaultsFor(defaultWl.entries, DEFAULT_WATCHLIST);
-  const defaultChanged = seededDefault !== defaultWl.entries;
-
+  // Default tickers are seeded once, so a symbol the user removes stays removed.
   let next = state;
+  const defaultChanged = !state.defaultsSeeded;
   if (defaultChanged) {
+    const defaultWl = getDefaultWatchlist(state);
+    const seededDefault = ensureDefaultsFor(defaultWl.entries, DEFAULT_WATCHLIST);
     next = {
       ...next,
+      defaultsSeeded: true,
       watchlists: next.watchlists.map((w) =>
         w.id === defaultWl.id ? { ...w, entries: seededDefault } : w,
       ),
