@@ -2,10 +2,8 @@ import { useMemo } from "react";
 import type { AccountInfo, WheelPosition } from "../types";
 import type { BalanceActivity } from "../api/fetchAccountActivities";
 import { sumOptionPremiumCollected } from "../api/fetchAccountActivities";
-import { fmt, dayChange, dayChangePct, dte } from "../utils/formatters";
-import { PHASE_CONFIG, SOURCE_BADGE } from "../constants";
-import { WheelPhaseIndicator } from "./WheelPhaseIndicator";
-import { Sparkline } from "./Sparkline";
+import { fmt, dayChange, dte, fmtShortDateTime } from "../utils/formatters";
+import { PositionCard } from "./PositionCard";
 import { RetrospectivePanel } from "./RetrospectivePanel";
 import { useOpenBlotterOrders } from "../hooks/useOpenBlotterOrders";
 import type { BlotterOrder, DeskOrderState } from "../store/orderBlotter";
@@ -57,17 +55,6 @@ function withRunningBalances(
     const row = { ...activity, balanceAfter: balance };
     balance -= activity.amount;
     return row;
-  });
-}
-
-function formatActivityTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
-  return d.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
   });
 }
 
@@ -302,7 +289,7 @@ export function SummaryDashboard({
                           marginTop: 2,
                         }}
                       >
-                        {formatActivityTime(row.timestamp)}
+                        {fmtShortDateTime(row.timestamp)}
                         {row.activityType !== "FILL" && (
                           <span style={{ marginLeft: 8, color: "#3a3a5a" }}>
                             {row.activityType}
@@ -551,167 +538,9 @@ export function SummaryDashboard({
             gap: 12,
           }}
         >
-          {positions.map((pos) => {
-            const chg = dayChange(pos);
-            const chgPct = dayChangePct(pos);
-            const chgColor = chg >= 0 ? "#34d399" : "#f87171";
-            const phaseCfg = PHASE_CONFIG[pos.phase];
-
-            return (
-              <button
-                key={pos.id}
-                onClick={() => onSelectTicker(pos.id)}
-                style={{
-                  background: "#08081a",
-                  border: "1px solid #1a1a30",
-                  borderRadius: 8,
-                  padding: 0,
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "border-color 0.15s, transform 0.15s",
-                  overflow: "hidden",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = phaseCfg.color + "60";
-                  (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = "#1a1a30";
-                  (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-                }}
-              >
-                <div style={{ height: 2, background: phaseCfg.color, opacity: 0.7 }} />
-                <div style={{ padding: 14 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: 8,
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontFamily: "'Syne','Trebuchet MS',sans-serif",
-                          fontSize: 18,
-                          fontWeight: 800,
-                          color: "#e0e0f8",
-                          letterSpacing: "-0.01em",
-                        }}
-                      >
-                        {pos.ticker}
-                      </div>
-                      <div style={{ fontSize: 10, color: "#3a3a5a", fontFamily: "monospace" }}>
-                        {pos.companyName}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div
-                        style={{
-                          fontFamily: "monospace",
-                          fontSize: 15,
-                          fontWeight: 700,
-                          color: "#d8d8f0",
-                        }}
-                      >
-                        {fmt.currency(pos.currentPrice)}
-                      </div>
-                      <div style={{ fontFamily: "monospace", fontSize: 10, color: chgColor }}>
-                        {fmt.pct(chgPct)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <WheelPhaseIndicator phase={pos.phase} />
-                    <span
-                      style={{
-                        fontSize: 9,
-                        color: "#fff",
-                        background: SOURCE_BADGE[pos.dataSource],
-                        padding: "1px 6px",
-                        borderRadius: 2,
-                        fontFamily: "monospace",
-                      }}
-                    >
-                      {pos.dataSource}
-                    </span>
-                  </div>
-
-                  <div style={{ height: 48, marginBottom: 10 }}>
-                    <Sparkline data={pos.priceHistory} color={phaseCfg.color} />
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-                    <div>
-                      <div style={{ fontSize: 9, color: "#3a3a5a", fontFamily: "monospace" }}>
-                        UNREALIZED
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          fontFamily: "monospace",
-                          color: pos.unrealizedPnL >= 0 ? "#34d399" : "#f87171",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {fmt.currency(pos.unrealizedPnL)}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 9, color: "#3a3a5a", fontFamily: "monospace" }}>
-                        PREMIUM
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          fontFamily: "monospace",
-                          color: "#34d399",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {fmt.currency(pos.premiumCollectedTotal)}
-                      </div>
-                    </div>
-                    {pos.activeOption && (
-                      <>
-                        <div>
-                          <div style={{ fontSize: 9, color: "#3a3a5a", fontFamily: "monospace" }}>
-                            STRIKE
-                          </div>
-                          <div style={{ fontSize: 12, fontFamily: "monospace", color: "#c0c0e0" }}>
-                            {fmt.currency(pos.activeOption.strike)}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 9, color: "#3a3a5a", fontFamily: "monospace" }}>
-                            DTE
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              fontFamily: "monospace",
-                              color: dte(pos.activeOption.expiration) <= 7 ? "#ef4444" : "#c0c0e0",
-                            }}
-                          >
-                            {dte(pos.activeOption.expiration)}d
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+          {positions.map((pos) => (
+            <PositionCard key={pos.id} position={pos} onSelect={onSelectTicker} />
+          ))}
         </div>
       )}
     </div>

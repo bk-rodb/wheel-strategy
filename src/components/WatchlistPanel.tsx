@@ -1,16 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useDebounce } from "../hooks/useDebounce";
 import { useWatchlist } from "../hooks/useWatchlist";
 import { searchAssets, type AssetResult } from "../api/searchAssets";
 import { WatchlistItem } from "./WatchlistItem";
-
-function useDebounce<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return debounced;
-}
 
 export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string) => void }) {
   const {

@@ -3,22 +3,7 @@ import type { PricePoint } from "../types";
 import { buildTrendSnapshot } from "../utils/trendMetrics";
 import { PriceTrendChart } from "./PriceTrendChart";
 import { TrendSnapshotChips } from "./TrendSnapshotChips";
-
-const cardLabelStyle: React.CSSProperties = {
-  fontSize: 10,
-  color: "#4a4a6a",
-  fontFamily: "monospace",
-  letterSpacing: "0.08em",
-  marginBottom: 8,
-};
-
-const emptyStyle: React.CSSProperties = {
-  fontSize: 11,
-  color: "#3a3a5a",
-  fontFamily: "monospace",
-  padding: "12px 0",
-  textAlign: "center",
-};
+import { CardLabel, EmptyState } from "./ui";
 
 /** Last 30 sessions for the chart; full history feeds SMA50 in trend chips. */
 function chartWindow(data: PricePoint[]): PricePoint[] {
@@ -45,14 +30,14 @@ export function PriceTrendSection({
 
   return (
     <div>
-      <div style={cardLabelStyle}>30-DAY PRICE TREND</div>
+      <CardLabel>30-DAY PRICE TREND</CardLabel>
       {chartData.length > 0 ? (
         <>
           <PriceTrendChart data={chartData} costBasis={costBasis} strike={strike} />
           <TrendSnapshotChips chips={snapshot.chips} />
         </>
       ) : (
-        <div style={emptyStyle}>NO PRICE HISTORY</div>
+        <EmptyState>NO PRICE HISTORY</EmptyState>
       )}
     </div>
   );

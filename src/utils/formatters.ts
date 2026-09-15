@@ -34,6 +34,18 @@ export const dte = (expiration: string): number => {
   return Math.max(0, Math.ceil(diff / 86400000));
 };
 
+/** Short local timestamp for ledgers and run history (e.g. "Sep 14, 3:05 PM"). */
+export function fmtShortDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 /** Relative time for news timestamps (e.g. "3h ago"). */
 export function fmtRelativeTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();

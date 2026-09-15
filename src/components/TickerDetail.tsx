@@ -8,17 +8,10 @@ import { PriceTrendSection } from "./PriceTrendSection";
 import { StatRow } from "./StatRow";
 import { OpenOptionsSection } from "./OpenOptionsSection";
 import { ResearchSection } from "./ResearchSection";
-import { TickerTabLabel } from "./TickerTabLabel";
+import { TickerHeader } from "./TickerHeader";
+import { Card, CardLabel } from "./ui";
 import { VolatilityBar } from "./VolatilityBar";
 import { WheelAnalysisPanel } from "./WheelAnalysisPanel";
-
-const cardStyle: React.CSSProperties = {
-  background: "#08081a",
-  border: "1px solid #1a1a30",
-  borderRadius: 6,
-  padding: 14,
-  marginBottom: 16,
-};
 
 export function TickerDetail({
   pos,
@@ -33,97 +26,52 @@ export function TickerDetail({
   onFocusOpenOptionsHandled?: () => void;
   onPositionRefresh?: () => void;
 }) {
-  const chg = dayChange(pos);
-  const chgPct = dayChangePct(pos);
-  const chgColor = chg >= 0 ? "#34d399" : "#f87171";
-
   return (
     <div style={{ padding: "0 4px" }}>
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <TickerTabLabel
-            symbol={pos.ticker}
-            companyName={pos.companyName}
-            badge={
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "#fff",
-                  background: SOURCE_BADGE[pos.dataSource],
-                  padding: "2px 7px",
-                  borderRadius: 3,
-                  fontFamily: "monospace",
-                  fontWeight: 700,
-                }}
-              >
-                {pos.dataSource.toUpperCase()}
-              </span>
-            }
-            subtitle={pos.sector !== "—" ? pos.sector : undefined}
-          />
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div
-            style={{ fontSize: 26, fontFamily: "monospace", fontWeight: 700, color: "#e8e8f8" }}
+      <TickerHeader
+        symbol={pos.ticker}
+        companyName={pos.companyName}
+        badge={
+          <span
+            style={{
+              fontSize: 10,
+              color: "#fff",
+              background: SOURCE_BADGE[pos.dataSource],
+              padding: "2px 7px",
+              borderRadius: 3,
+              fontFamily: "monospace",
+              fontWeight: 700,
+            }}
           >
-            {fmt.currency(pos.currentPrice)}
-          </div>
-          <div style={{ fontSize: 13, fontFamily: "monospace", color: chgColor }}>
-            {chg >= 0 ? "▲" : "▼"} {fmt.currency(Math.abs(chg))} ({fmt.pct(chgPct)})
-          </div>
-        </div>
-      </div>
+            {pos.dataSource.toUpperCase()}
+          </span>
+        }
+        subtitle={pos.sector !== "—" ? pos.sector : undefined}
+        price={pos.currentPrice}
+        change={dayChange(pos)}
+        changePct={dayChangePct(pos)}
+      />
 
       <div style={{ marginBottom: 20 }}>
         <WheelPhaseIndicator phase={pos.phase} />
       </div>
 
-      {/* Price Chart */}
-      <div style={cardStyle}>
+      <Card marginBottom={16}>
         <PriceTrendSection
           data={pos.priceHistory}
           currentPrice={pos.currentPrice}
           costBasis={pos.costBasis}
           strike={pos.activeOption?.strike}
         />
-      </div>
+      </Card>
 
-      {/* Catalysts & News */}
-      <div style={cardStyle}>
+      <Card marginBottom={16}>
         <CatalystsAndNews symbol={pos.ticker} />
-      </div>
+      </Card>
 
-      {/* 2-col stats */}
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}
-      >
-        <div
-          style={{
-            background: "#08081a",
-            border: "1px solid #1a1a30",
-            borderRadius: 6,
-            padding: 14,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              color: "#4a4a6a",
-              fontFamily: "monospace",
-              letterSpacing: "0.08em",
-              marginBottom: 8,
-            }}
-          >
-            STOCK DETAILS
-          </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        <Card>
+          <CardLabel>STOCK DETAILS</CardLabel>
           <StatRow label="Shares" value={fmt.num(pos.shares)} />
           <StatRow label="Cost Basis" value={pos.costBasis > 0 ? fmt.currency(pos.costBasis) : "—"} />
           <StatRow label="Day High" value={fmt.currency(pos.dayHigh)} />
@@ -137,26 +85,9 @@ export function TickerDetail({
             <StatRow label="Market Cap" value={fmt.compact(pos.marketCap)} />
           )}
           <VolatilityBar symbol={pos.ticker} />
-        </div>
-        <div
-          style={{
-            background: "#08081a",
-            border: "1px solid #1a1a30",
-            borderRadius: 6,
-            padding: 14,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              color: "#4a4a6a",
-              fontFamily: "monospace",
-              letterSpacing: "0.08em",
-              marginBottom: 8,
-            }}
-          >
-            P&amp;L SUMMARY
-          </div>
+        </Card>
+        <Card>
+          <CardLabel>P&amp;L SUMMARY</CardLabel>
           <StatRow label="Cash Deployed" value={fmt.currency(pos.cashDeployed)} />
           <StatRow
             label="Unrealized P&L"
@@ -165,25 +96,15 @@ export function TickerDetail({
           />
           <StatRow label="Premium Collected" value={fmt.currency(pos.premiumCollectedTotal)} accent />
           <StatRow label="Prev. Close" value={fmt.currency(pos.previousClose)} />
-        </div>
+        </Card>
       </div>
 
-      <div style={cardStyle}>
-        <div
-          style={{
-            fontSize: 10,
-            color: "#4a4a6a",
-            fontFamily: "monospace",
-            letterSpacing: "0.08em",
-            marginBottom: 12,
-          }}
-        >
-          RESEARCH
-        </div>
+      <Card marginBottom={16}>
+        <CardLabel marginBottom={12}>RESEARCH</CardLabel>
         <ResearchSection symbol={pos.ticker} />
-      </div>
+      </Card>
 
-      <div style={cardStyle}>
+      <Card marginBottom={16}>
         <OpenOptionsSection
           symbol={pos.ticker}
           shares={pos.shares}
@@ -195,22 +116,12 @@ export function TickerDetail({
           onFocusHandled={onFocusOpenOptionsHandled}
           onPositionRefresh={onPositionRefresh}
         />
-      </div>
+      </Card>
 
-      <div style={cardStyle}>
-        <div
-          style={{
-            fontSize: 10,
-            color: "#4a4a6a",
-            fontFamily: "monospace",
-            letterSpacing: "0.08em",
-            marginBottom: 12,
-          }}
-        >
-          OPTIONS ENTRY SUGGESTIONS
-        </div>
+      <Card marginBottom={16}>
+        <CardLabel marginBottom={12}>OPTIONS ENTRY SUGGESTIONS</CardLabel>
         <WheelAnalysisPanel symbol={pos.ticker} />
-      </div>
+      </Card>
 
       <div
         style={{
