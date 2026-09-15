@@ -4,9 +4,9 @@
 |-------|-------|
 | **ID** | `E-006` |
 | **Type** | Enhancement |
-| **Status** | in-progress |
+| **Status** | done |
 | **Opened** | 2026-09-14 |
-| **Closed** | — |
+| **Closed** | 2026-09-14 |
 | **Owner** | — |
 | **Related** | [docs/THEMING.md](../THEMING.md) |
 
@@ -60,3 +60,42 @@ Styling lived in inline `style={{}}` objects with ~440 hardcoded hex colors spre
 - `alpha(color, opacity)` uses `color-mix()` because the old `${hex}40` suffix trick cannot work on a `var()`.
 - SVG presentation attributes ignore CSS variables, so charts use `useTheme().theme` / `resolve()`.
 - The migration was done with a codemod: hex → semantic token map, then fixed by hand for concatenations, charts, and the frame shadow.
+
+---
+
+## Completed
+
+### Summary
+
+Colors, font stacks, and the frame shadow come from `src/theme/themes/{dark,light,custom}.ts`. Every component and CSS file references theme variables, and a top-bar switcher changes themes at runtime, with the choice persisted. Dark keeps the original look; light and amber were checked in a browser.
+
+### Commits
+
+| Hash | Message |
+|------|---------|
+| `b7571b9` | Add central theme framework with dark, light, and custom themes (E-006). |
+| `987b285` | Merge branch 'feature/theme-framework' |
+
+PR: — (merged locally, pushed to `origin/main`)
+
+### Key changes
+
+- `src/theme/` — token contract (`types.ts`), themes, CSS-variable emitter (`cssVars.ts`: `vars`, `alpha`, `resolveCssValue`), `initTheme`, `ThemeProvider` / `useTheme`, `theme.test.ts`
+- `src/components/ThemeSwitcher.tsx` — DARK / LIGHT / AMBER toggle in `TopBar`
+- `src/constants.ts` — phase/level/source/broker colors now reference theme vars
+- 28 component files, `index.css`, `tickerTab.css` — hex literals replaced by tokens
+- `docs/THEMING.md`, `CLAUDE.md` — usage rules
+
+### Verification
+
+```bash
+npx tsc -b        # clean
+npm run build     # ok
+npm test          # 131/132 — only the pre-existing preTradeCheck "earnings before expiration" failure
+npm run dev       # toggled all three themes in the browser
+```
+
+### Follow-ups
+
+- Pre-existing: `preTradeCheck` earnings test failure; lint error in `bot/src/index.ts`
+- Optional: tokenize spacing, font sizes, and radii
