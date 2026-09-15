@@ -187,6 +187,7 @@ export function TickerDetail({
         <OpenOptionsSection
           symbol={pos.ticker}
           shares={pos.shares}
+          costBasis={pos.costBasis}
           activeOption={pos.activeOption}
           phase={pos.phase}
           account={account}

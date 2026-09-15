@@ -1,6 +1,7 @@
 import type { AccountInfo, CatalystEvent } from "../types";
 import { isMarketOpen } from "../utils/marketHours";
 import { catalystWarningsForExpiry } from "../utils/catalystWarnings";
+import { callStrikeBasisBlocker } from "../utils/basisFloor";
 
 export type OrderAction = "sell_to_open" | "buy_to_close";
 
@@ -25,6 +26,8 @@ export interface PreTradeInput {
   contractMultiplier?: number;
   /** Upcoming earnings / ex-div events for catalyst warnings. */
   catalystEvents?: CatalystEvent[];
+  /** Per-share cost basis (Alpaca avg_entry_price); calls must strike ≥ basis + $1. */
+  costBasis?: number | null;
 }
 
 export interface PreTradeResult {
@@ -81,6 +84,10 @@ export function preTradeCheck(input: PreTradeInput): PreTradeResult {
         blockers.push(`Need at least ${mult} shares to sell a covered call`);
       } else if (qty > maxContracts) {
         blockers.push(`Qty ${qty} exceeds covered capacity (${maxContracts} contracts from ${input.shares} shares)`);
+      }
+      if (maxContracts >= 1) {
+        const basisBlocker = callStrikeBasisBlocker(input.strike, input.costBasis);
+        if (basisBlocker) blockers.push(basisBlocker);
       }
     } else {
       // Cash-secured put

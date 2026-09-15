@@ -78,4 +78,24 @@ describe("fetchFridayOptions (mock)", () => {
     }
     expect(bundle.warnings.some((w) => /mock/i.test(w))).toBe(true);
   });
+
+  it("raises covered-call strikes below basis + $1 and warns", async () => {
+    const callSuggestions = putSuggestions.map((s, i) => ({ ...s, strike: [185, 180, 175][i] }));
+    vi.mocked(fetchWheelAnalysis).mockResolvedValue(
+      mockWheelAnalysis({ put: [], call: callSuggestions, currentPrice: 170 }),
+    );
+
+    const bundle = await fetchFridayOptions({
+      symbol: "NVDA",
+      side: "call",
+      shares: 100,
+      costBasis: 176.4,
+    });
+
+    expect(bundle.costBasis).toBe(176.4);
+    expect(bundle.rows.length).toBe(3);
+    for (const row of bundle.rows) expect(row.strike).toBeGreaterThanOrEqual(177.4);
+    expect(bundle.rows.find((r) => r.level === "risky")?.strike).toBe(178);
+    expect(bundle.warnings.some((w) => /raised/.test(w))).toBe(true);
+  });
 });

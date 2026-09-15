@@ -11,9 +11,16 @@ describe("watchlistStore", () => {
     localStorage.clear();
   });
 
-  it("starts with an empty default watchlist", () => {
+  it("seeds the default watchlist with the bot symbols", () => {
     const entries = watchlistStore.getAll();
-    expect(entries).toEqual([]);
+    expect(entries.map((e) => e.symbol)).toEqual(["NVDA", "SPCX", "RKLB"]);
+  });
+
+  it("does not re-add a seeded symbol after removal", async () => {
+    watchlistStore.getAll();
+    await Promise.resolve();
+    watchlistStore.remove("SPCX");
+    expect(watchlistStore.getAll().map((e) => e.symbol)).toEqual(["NVDA", "RKLB"]);
   });
 
   it("creates default watchlist named watchlist", () => {
@@ -27,7 +34,7 @@ describe("watchlistStore", () => {
     ]);
 
     const entries = watchlistStore.getAll();
-    expect(entries.map((e) => e.symbol)).toEqual(["NVDA"]);
+    expect(entries.map((e) => e.symbol)).toEqual(["NVDA", "SPCX", "RKLB"]);
   });
 
   it("migrates legacy flat array into default watchlist", () => {
@@ -37,7 +44,7 @@ describe("watchlistStore", () => {
 
     const watchlists = watchlistStore.getWatchlists();
     expect(watchlists).toHaveLength(2);
-    expect(watchlists.find((w) => w.name === "watchlist")?.entries.map((e) => e.symbol)).toEqual(["AAPL"]);
+    expect(watchlists.find((w) => w.name === "watchlist")?.entries.map((e) => e.symbol)).toEqual(["AAPL", "NVDA", "SPCX", "RKLB"]);
   });
 
   it("creates additional watchlists and switches active", () => {
@@ -65,7 +72,7 @@ describe("watchlistStore", () => {
     expect(watchlistStore.getAll().map((e) => e.symbol)).toEqual(["TSLA"]);
 
     const defaultWl = watchlistStore.getWatchlists().find((w) => w.name === "watchlist");
-    expect(defaultWl?.entries.map((e) => e.symbol)).toEqual(["NVDA"]);
+    expect(defaultWl?.entries.map((e) => e.symbol)).toEqual(["NVDA", "SPCX", "RKLB"]);
   });
 
   it("seeds the target watchlist with wheel candidates", () => {

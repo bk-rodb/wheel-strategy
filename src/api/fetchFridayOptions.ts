@@ -14,6 +14,12 @@ import type {
   AlpacaOptionSnapshotsResponse,
 } from "./alpacaTypes";
 import { fetchWheelAnalysis } from "./fetchWheelAnalysis";
+import {
+  callStrikeFloor,
+  meetsCallStrikeFloor,
+  MIN_CALL_STRIKE_OVER_BASIS,
+  snapCallStrike,
+} from "../utils/basisFloor";
 
 export type OptionSide = "put" | "call";
 
@@ -51,6 +57,8 @@ export interface FridayOptionsBundle {
   quotedAt: string | null;
   /** HMM regime at analysis time (for decision snapshot / Experience). */
   hmmRegime: string | null;
+  /** Per-share basis that floored call strikes (null for puts / unknown basis). */
+  costBasis: number | null;
 }
 
 const LEVEL_LABEL: Record<AnalysisLevel, "LOW" | "MED" | "HIGH"> = {
@@ -98,6 +106,17 @@ function nearestContract(
     }
   }
   return best;
+}
+
+/** Nearest listed contract; for covered calls only strikes ≥ basis + $1 qualify. */
+function pickContract(
+  contracts: AlpacaOptionContract[],
+  targetStrike: number,
+  callFloor: number | null,
+): AlpacaOptionContract | null {
+  return callFloor != null
+    ? snapCallStrike(contracts, targetStrike, callFloor)
+    : nearestContract(contracts, targetStrike);
 }
 
 function midFromSnapshot(snap: AlpacaOptionSnapshot | undefined, fallback: number): {
@@ -243,15 +262,32 @@ function buildRowsFromSuggestions(
   optionType: OptionSide,
   /** When rows are synthesized without a listed contract (mock mode only). */
   simulateTradable: boolean,
+  /** Covered-call strike floor (basis + $1); null for puts. */
+  callFloor: number | null,
+  warnings: string[],
 ): FridayOptionRow[] {
   const rows: FridayOptionRow[] = [];
   for (const level of LEVEL_ORDER) {
     const sug = suggestions.find((s) => s.level === level);
     if (!sug || sug.estPremium == null) continue;
-    const contract = nearestContract(contracts, sug.strike);
-    if (!contract && !mockPrices) continue;
+    const label = LEVEL_LABEL[level];
+    const contract = pickContract(contracts, sug.strike, callFloor);
+    if (!contract && !mockPrices) {
+      if (callFloor != null) {
+        warnings.push(
+          `${label} call skipped: no listed strike ≥ $${callFloor.toFixed(2)} (basis + $${MIN_CALL_STRIKE_OVER_BASIS.toFixed(2)})`,
+        );
+      }
+      continue;
+    }
 
-    const strike = contract ? parseFloat(contract.strike_price) : sug.strike;
+    let strike = contract ? parseFloat(contract.strike_price) : sug.strike;
+    if (!contract && callFloor != null && !meetsCallStrikeFloor(strike, callFloor)) {
+      strike = Math.ceil(callFloor);
+    }
+    const unconstrained = contract ? nearestContract(contracts, sug.strike) : null;
+    const unconstrainedStrike = unconstrained ? parseFloat(unconstrained.strike_price) : sug.strike;
+    const raised = callFloor != null && strike !== unconstrainedStrike;
     const contractSymbol =
       contract?.symbol ??
       buildOsiSymbol(symbol, expiration, optionType, strike);
@@ -268,6 +304,18 @@ function buildRowsFromSuggestions(
           sellLimit: roundPrice(sug.estPremium),
         }
       : midFromSnapshot(snap, sug.estPremium);
+
+    if (raised) {
+      if (!mockPrices && !(prices.bid != null && prices.bid > 0)) {
+        warnings.push(
+          `${label} call skipped: strike ${strike} (raised to clear basis + $${MIN_CALL_STRIKE_OVER_BASIS.toFixed(2)}) has no live bid`,
+        );
+        continue;
+      }
+      warnings.push(
+        `${label} call strike raised from ${unconstrainedStrike} to ${strike} to stay ≥ basis + $${MIN_CALL_STRIKE_OVER_BASIS.toFixed(2)} — assignment probs and premium estimate are approximate`,
+      );
+    }
 
     if (contract && Math.abs(strike - sug.strike) / sug.strike > 0.02) {
       // Strike snapped >2% from suggestion — assignment probs are approximate.
@@ -319,6 +367,8 @@ export async function fetchFridayOptions(opts: {
   symbol: string;
   side: OptionSide;
   shares: number;
+  /** Per-share cost basis (Alpaca avg_entry_price); floors call strikes at basis + $1. */
+  costBasis?: number | null;
   expiration?: string;
   signal?: AbortSignal;
 }): Promise<FridayOptionsBundle> {
@@ -328,6 +378,13 @@ export async function fetchFridayOptions(opts: {
   const contractsQty =
     opts.side === "call" ? Math.max(1, Math.floor(opts.shares / 100)) : 1;
   const warnings: string[] = [];
+  const callFloor = opts.side === "call" ? callStrikeFloor(opts.costBasis) : null;
+  const bundleBasis = callFloor != null ? (opts.costBasis ?? null) : null;
+  if (opts.side === "call" && opts.shares >= 100 && callFloor == null) {
+    warnings.push(
+      `Cost basis unknown — call strikes are not floored at basis + $${MIN_CALL_STRIKE_OVER_BASIS.toFixed(2)}; SELL will be blocked`,
+    );
+  }
 
   const analysis = await fetchWheelAnalysis(
     { symbol, dte, granularity: "daily" },
@@ -349,6 +406,8 @@ export async function fetchFridayOptions(opts: {
         expiration,
         opts.side,
         true,
+        callFloor,
+        warnings,
       ),
       analysis.currentPrice,
     );
@@ -364,6 +423,7 @@ export async function fetchFridayOptions(opts: {
       warnings,
       quotedAt: null,
       hmmRegime: analysis.hmmRegime?.currentRegime ?? null,
+      costBasis: bundleBasis,
     };
   }
 
@@ -388,6 +448,8 @@ export async function fetchFridayOptions(opts: {
         expiration,
         opts.side,
         false,
+        callFloor,
+        warnings,
       ),
       analysis.currentPrice,
     );
@@ -402,6 +464,7 @@ export async function fetchFridayOptions(opts: {
       warnings,
       quotedAt: null,
       hmmRegime: analysis.hmmRegime?.currentRegime ?? null,
+      costBasis: bundleBasis,
     };
   }
 
@@ -409,7 +472,7 @@ export async function fetchFridayOptions(opts: {
     ...new Map(
       LEVEL_ORDER.map((level) => {
         const sug = suggestions.find((s) => s.level === level);
-        return sug ? nearestContract(contracts, sug.strike) : null;
+        return sug ? pickContract(contracts, sug.strike, callFloor) : null;
       })
         .filter((c): c is AlpacaOptionContract => c != null)
         .map((c) => [c.symbol, c] as const),
@@ -437,6 +500,8 @@ export async function fetchFridayOptions(opts: {
       expiration,
       opts.side,
       false,
+      callFloor,
+      warnings,
     ),
     analysis.currentPrice,
   );
@@ -452,5 +517,6 @@ export async function fetchFridayOptions(opts: {
     warnings,
     quotedAt: latestQuoteTime(snapshots),
     hmmRegime: analysis.hmmRegime?.currentRegime ?? null,
+    costBasis: bundleBasis,
   };
 }

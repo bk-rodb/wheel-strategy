@@ -19,6 +19,7 @@ const mockBundle = (): FridayOptionsBundle => ({
   warnings: [],
   quotedAt: null,
   hmmRegime: null,
+  costBasis: null,
 });
 
 describe("useFridayOptionSuggestions", () => {

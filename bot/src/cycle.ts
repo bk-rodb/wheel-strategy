@@ -1,7 +1,7 @@
 import { config, type AnalysisLevel } from "./config.js";
 import { persistLastCycle, persistRun } from "./botApi.js";
 import { sleep, toDateString } from "./calendar.js";
-import { fetchRegularLadder, type FridayLadder } from "./fridayLadder.js";
+import { BelowBasisSkip, fetchRegularLadder, type FridayLadder } from "./fridayLadder.js";
 import {
   cancelOrder,
   cycleClientOrderId,
@@ -16,7 +16,7 @@ import {
 import { listOpenJournalForUnderlying, waitForJournalClear } from "./orderJournal.js";
 import { decideReprice } from "./reprice.js";
 import { attachBotDecisionSnapshot } from "./tradeOutcome.js";
-import { getAccount, getEquityShares, sideAndQty, type OptionSide } from "./positions.js";
+import { getAccount, getEquityPosition, sideAndQty, type OptionSide } from "./positions.js";
 import { preTradeCheck } from "./preTrade.js";
 import {
   alreadyCompletedForFriday,
@@ -164,18 +164,34 @@ export async function runSellToOpenCycle(opts: {
     console.warn(`${tag} Journal check failed (continuing with Alpaca open-order gate):`, e);
   }
 
-  const shares = await getEquityShares(symbol, opts.signal);
+  const { shares, avgEntryPrice } = await getEquityPosition(symbol, opts.signal);
   const { side, qty } = sideAndQty(shares);
-  console.log(`${tag} shares=${shares} → ${side} x${qty}`);
+  console.log(`${tag} shares=${shares} basis=${avgEntryPrice ?? "?"} → ${side} x${qty}`);
 
-  let ladder = await fetchRegularLadder({
-    symbol,
-    side,
-    qty,
-    expiration: opts.targetFriday,
-    level,
-    signal: opts.signal,
-  });
+  let ladder: FridayLadder;
+  try {
+    ladder = await fetchRegularLadder({
+      symbol,
+      side,
+      qty,
+      expiration: opts.targetFriday,
+      level,
+      costBasis: avgEntryPrice,
+      signal: opts.signal,
+    });
+  } catch (e) {
+    if (!(e instanceof BelowBasisSkip)) throw e;
+    const record: RunRecord = {
+      ...base,
+      side,
+      qty,
+      status: "skipped",
+      reason: e.message,
+    };
+    await persistRun(record, opts.signal);
+    console.log(`${tag} ${record.reason}`);
+    return { record };
+  }
 
   for (const w of ladder.warnings) console.warn(`${tag} warn: ${w}`);
 
@@ -194,6 +210,7 @@ export async function runSellToOpenCycle(opts: {
     account,
     tradable: ladder.row.tradable,
     contractMultiplier: ladder.row.multiplier,
+    costBasis: avgEntryPrice,
   });
 
   for (const w of check.warnings) console.warn(`${tag} pretrade: ${w}`);
@@ -378,14 +395,21 @@ export async function runSellToOpenCycle(opts: {
 
     // Recompute the ladder from scratch — the price/vol that picked the original strike may
     // have moved enough that it's no longer the right one.
-    ladder = await fetchRegularLadder({
-      symbol,
-      side,
-      qty,
-      expiration: opts.targetFriday,
-      level,
-      signal: opts.signal,
-    });
+    try {
+      ladder = await fetchRegularLadder({
+        symbol,
+        side,
+        qty,
+        expiration: opts.targetFriday,
+        level,
+        costBasis: avgEntryPrice,
+        signal: opts.signal,
+      });
+    } catch (e) {
+      if (!(e instanceof BelowBasisSkip)) throw e;
+      console.log(`[${new Date().toISOString()}] ${tag} Reprice: ${e.message}`);
+      return finalize("canceled", `Reprice stopped: ${e.message}`, final, activeClientOrderId, true);
+    }
     account = await getAccount(opts.signal);
     check = preTradeCheck({
       optionType: side,
@@ -401,6 +425,7 @@ export async function runSellToOpenCycle(opts: {
       account,
       tradable: ladder.row.tradable,
       contractMultiplier: ladder.row.multiplier,
+      costBasis: avgEntryPrice,
     });
 
     if (!check.ok) {

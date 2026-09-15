@@ -143,4 +143,46 @@ describe("preTradeCheck", () => {
     expect(r.ok).toBe(true);
     expect(r.warnings.some((w) => w.includes("Earnings"))).toBe(true);
   });
+
+  const coveredCall = {
+    action: "sell_to_open" as const,
+    optionType: "call" as const,
+    contractSymbol: "NVDA260918C00185000",
+    expiration: "2099-09-18",
+    qty: 1,
+    limitPrice: 1.5,
+    bid: 1.4,
+    ask: 1.6,
+    mid: 1.5,
+    shares: 100,
+    account,
+  };
+
+  it("blocks a covered call below basis + $1", () => {
+    const r = preTradeCheck({ ...coveredCall, strike: 185, costBasis: 184.5 });
+    expect(r.ok).toBe(false);
+    expect(r.blockers.some((b) => b.includes("below basis"))).toBe(true);
+  });
+
+  it("allows a covered call at exactly basis + $1", () => {
+    const r = preTradeCheck({ ...coveredCall, strike: 185.5, costBasis: 184.5 });
+    expect(r.blockers.some((b) => b.includes("basis"))).toBe(false);
+  });
+
+  it("blocks a covered call when basis is unknown", () => {
+    const r = preTradeCheck({ ...coveredCall, strike: 185 });
+    expect(r.blockers.some((b) => b.includes("Cost basis unknown"))).toBe(true);
+  });
+
+  it("ignores basis for cash-secured puts", () => {
+    const r = preTradeCheck({
+      ...coveredCall,
+      optionType: "put",
+      contractSymbol: "NVDA260918P00100000",
+      strike: 100,
+      shares: 0,
+      costBasis: 184.5,
+    });
+    expect(r.blockers.some((b) => b.includes("basis"))).toBe(false);
+  });
 });

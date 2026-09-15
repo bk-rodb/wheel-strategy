@@ -1,3 +1,4 @@
+import { callStrikeBasisBlocker } from "./basisFloor.js";
 import { isRegularSession } from "./calendar.js";
 import type { AccountSnapshot } from "./positions.js";
 import type { OptionSide } from "./positions.js";
@@ -16,6 +17,8 @@ export interface PreTradeInput {
   account: AccountSnapshot | null;
   tradable?: boolean;
   contractMultiplier?: number;
+  /** Per-share cost basis (Alpaca avg_entry_price); calls must strike ≥ basis + $1. */
+  costBasis?: number | null;
 }
 
 export interface PreTradeResult {
@@ -68,6 +71,10 @@ export function preTradeCheck(input: PreTradeInput): PreTradeResult {
       blockers.push(
         `Qty ${qty} exceeds covered capacity (${maxContracts} from ${input.shares} shares)`,
       );
+    }
+    if (maxContracts >= 1) {
+      const basisBlocker = callStrikeBasisBlocker(input.strike, input.costBasis);
+      if (basisBlocker) blockers.push(basisBlocker);
     }
   } else {
     collateralRequired = Math.max(0, input.strike * mult * qty - Math.max(0, estCashFlow));
