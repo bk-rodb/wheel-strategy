@@ -4,6 +4,7 @@ import { fetchContractSnapshot } from "../api/fetchFridayOptions";
 import { buildOsiSymbol } from "../api/optionOrders";
 import { preTradeCheck, type OrderAction } from "../api/preTradeCheck";
 import { IS_MOCK } from "../config";
+import { LEVEL_COLOR } from "../constants";
 import { useFridayOptionSuggestions } from "../hooks/useFridayOptionSuggestions";
 import { usePendingOptionOrder } from "../hooks/usePendingOptionOrder";
 import { useTickerCatalysts } from "../hooks/useTickerCatalysts";
@@ -12,28 +13,7 @@ import { fmt } from "../utils/formatters";
 import { dteUntil } from "../utils/nextFriday";
 import { OptionCard } from "./OptionCard";
 import { OrderTicket } from "./OrderTicket";
-
-const cardLabelStyle: React.CSSProperties = {
-  fontSize: 10,
-  color: "#4a4a6a",
-  fontFamily: "monospace",
-  letterSpacing: "0.08em",
-  marginBottom: 8,
-};
-
-const emptyStyle: React.CSSProperties = {
-  fontSize: 11,
-  color: "#3a3a5a",
-  fontFamily: "monospace",
-  padding: "12px 0",
-  textAlign: "center",
-};
-
-const LEVEL_COLOR: Record<FridayOptionRow["level"], string> = {
-  safe: "#34d399",
-  regular: "#d8d8f0",
-  risky: "#f87171",
-};
+import { Banner, CardLabel, EmptyState } from "./ui";
 
 type TicketDraft = {
   action: OrderAction;
@@ -199,102 +179,70 @@ export function OpenOptionsSection({
     });
   }, [ticket, qty, shares, account, catalystEvents, costBasis]);
 
+  const sellDraftFor = (
+    row: FridayOptionRow,
+    expiration: string,
+  ): TicketDraft & { action: "sell_to_open" } => ({
+    action: "sell_to_open",
+    optionType: side,
+    contractSymbol: row.contractSymbol,
+    strike: row.strike,
+    expiration,
+    limitPrice: row.sellLimit,
+    bid: row.bid,
+    ask: row.ask,
+    mid: row.mid,
+    tradable: row.tradable,
+    contractMultiplier: row.multiplier,
+    level: row.level,
+  });
+
   const openSellTicket = (row: FridayOptionRow) => {
     if (locked) return;
     setDeskPhase("confirming", `ticket ${row.contractSymbol}`);
     setQty(data?.contracts ?? 1);
     setFlashMsg(null);
     setFlashErr(null);
+    setTicket(sellDraftFor(row, data?.expiration ?? ""));
+  };
+
+  /** Quote the held leg and open a buy-to-close ticket, optionally chaining a roll sell. */
+  const openBuyToCloseTicket = async (
+    opt: OptionLeg,
+    reason: string,
+    rollAfter?: TicketDraft["rollAfter"],
+  ) => {
+    const contractSymbol = buildOsiSymbol(symbol, opt.expiration, opt.type, opt.strike);
+    setDeskPhase("confirming", `${reason} ${contractSymbol}`);
+    setQty(opt.contracts);
+    setFlashMsg(null);
+    setFlashErr(null);
+    const quote = await fetchContractSnapshot(contractSymbol);
     setTicket({
-      action: "sell_to_open",
-      optionType: side,
-      contractSymbol: row.contractSymbol,
-      strike: row.strike,
-      expiration: data?.expiration ?? "",
-      limitPrice: row.sellLimit,
-      bid: row.bid,
-      ask: row.ask,
-      mid: row.mid,
-      tradable: row.tradable,
-      contractMultiplier: row.multiplier,
-      level: row.level,
+      action: "buy_to_close",
+      optionType: opt.type,
+      contractSymbol,
+      strike: opt.strike,
+      expiration: opt.expiration,
+      limitPrice: quote.mid ?? quote.ask ?? opt.currentOptionPrice,
+      bid: quote.bid,
+      ask: quote.ask,
+      mid: quote.mid,
+      quoteQuotedAt: quote.quotedAt,
+      contractMultiplier: 100,
+      rollAfter,
     });
   };
 
   const openCloseTicket = async () => {
     if (!activeOption || locked) return;
-    const contractSymbol = buildOsiSymbol(
-      symbol,
-      activeOption.expiration,
-      activeOption.type,
-      activeOption.strike,
-    );
-    setDeskPhase("confirming", `close ${contractSymbol}`);
-    setQty(activeOption.contracts);
-    setFlashMsg(null);
-    setFlashErr(null);
-    const quote = await fetchContractSnapshot(contractSymbol);
-    const limitPrice =
-      quote.mid ?? quote.ask ?? activeOption.currentOptionPrice;
-    setTicket({
-      action: "buy_to_close",
-      optionType: activeOption.type,
-      contractSymbol,
-      strike: activeOption.strike,
-      expiration: activeOption.expiration,
-      limitPrice,
-      bid: quote.bid,
-      ask: quote.ask,
-      mid: quote.mid,
-      quoteQuotedAt: quote.quotedAt,
-      contractMultiplier: 100,
-    });
+    await openBuyToCloseTicket(activeOption, "close");
   };
 
   const openRollTicket = async () => {
     if (!activeOption || locked || !data?.rows.length) return;
-    const closeSym = buildOsiSymbol(
-      symbol,
-      activeOption.expiration,
-      activeOption.type,
-      activeOption.strike,
-    );
-    const openRow =
-      data.rows.find((r) => r.level === "regular") ?? data.rows[0];
-    setDeskPhase("confirming", `roll close ${closeSym}`);
-    setQty(activeOption.contracts);
-    setFlashMsg(null);
-    setFlashErr(null);
-    const quote = await fetchContractSnapshot(closeSym);
-    const limitPrice =
-      quote.mid ?? quote.ask ?? activeOption.currentOptionPrice;
-    setTicket({
-      action: "buy_to_close",
-      optionType: activeOption.type,
-      contractSymbol: closeSym,
-      strike: activeOption.strike,
-      expiration: activeOption.expiration,
-      limitPrice,
-      bid: quote.bid,
-      ask: quote.ask,
-      mid: quote.mid,
-      quoteQuotedAt: quote.quotedAt,
-      contractMultiplier: 100,
-      rollAfter: {
-        action: "sell_to_open",
-        optionType: side,
-        contractSymbol: openRow.contractSymbol,
-        strike: openRow.strike,
-        expiration: data.expiration,
-        limitPrice: openRow.sellLimit,
-        bid: openRow.bid,
-        ask: openRow.ask,
-        mid: openRow.mid,
-        tradable: openRow.tradable,
-        contractMultiplier: openRow.multiplier,
-        level: openRow.level,
-      },
-    });
+    const openRow = data.rows.find((r) => r.level === "regular") ?? data.rows[0];
+    await openBuyToCloseTicket(activeOption, "roll close", sellDraftFor(openRow, data.expiration));
   };
 
   const dismissTicket = () => {
@@ -598,44 +546,49 @@ export function OpenOptionsSection({
     </div>
   );
 
+  const sectionStyle: React.CSSProperties = {
+    scrollMarginTop: 24,
+    outline: highlight ? "1px solid #f59e0b80" : "none",
+    boxShadow: highlight ? "0 0 0 4px #f59e0b18" : "none",
+    borderRadius: 6,
+    transition: "outline 0.3s, box-shadow 0.3s",
+  };
+
+  const orderTicket = ticket && (
+    <OrderTicket
+      action={ticket.action}
+      optionType={ticket.optionType}
+      contractSymbol={ticket.contractSymbol}
+      strike={ticket.strike}
+      expiration={ticket.expiration}
+      qty={qty}
+      onQtyChange={setQty}
+      maxQty={maxQty}
+      limitPrice={ticket.limitPrice}
+      check={check}
+      busy={busy}
+      onConfirm={() => void submitTicket()}
+      onCancel={dismissTicket}
+      accent={accent}
+      simulate={IS_MOCK}
+    />
+  );
+
   // ─── Active option: OptionCard + CLOSE / ROLL ───
   if (activeOption) {
     // For roll we still need Friday ladder data
     const rollEnabled = !locked && !!data?.rows.length;
-    const sectionStyle: React.CSSProperties = {
-      scrollMarginTop: 24,
-      outline: highlight ? "1px solid #f59e0b80" : "none",
-      boxShadow: highlight ? "0 0 0 4px #f59e0b18" : "none",
-      borderRadius: 6,
-      transition: "outline 0.3s, box-shadow 0.3s",
-    };
 
     return (
       <div ref={sectionRef} id={`open-options-${symbol}`} style={sectionStyle}>
-        <div style={cardLabelStyle}>OPEN OPTIONS</div>
+        <CardLabel>OPEN OPTIONS</CardLabel>
         <OptionCard opt={activeOption} phase={phase} />
         {multiOpenBanner}
         {workingBanner}
         {flash}
         {ticket && (
           <div style={{ marginTop: 10 }}>
-            <OrderTicket
-              action={ticket.action}
-              optionType={ticket.optionType}
-              contractSymbol={ticket.contractSymbol}
-              strike={ticket.strike}
-              expiration={ticket.expiration}
-              qty={qty}
-              onQtyChange={setQty}
-              maxQty={maxQty}
-              limitPrice={ticket.limitPrice}
-              check={check}
-              busy={busy}
-              onConfirm={() => void submitTicket()}
-              onCancel={dismissTicket}
-              accent={accent}
-              simulate={IS_MOCK}
-            />
+            {orderTicket}
             {ticket.rollAfter && (
               <div
                 style={{
@@ -692,14 +645,6 @@ export function OpenOptionsSection({
       ? `NO COVERED CALL · NEXT FRIDAY CALLS`
       : `NO OPEN OPTIONS · NEXT FRIDAY PUTS`;
 
-  const sectionStyle: React.CSSProperties = {
-    scrollMarginTop: 24,
-    outline: highlight ? "1px solid #f59e0b80" : "none",
-    boxShadow: highlight ? "0 0 0 4px #f59e0b18" : "none",
-    borderRadius: 6,
-    transition: "outline 0.3s, box-shadow 0.3s",
-  };
-
   return (
     <div ref={sectionRef} id={`open-options-${symbol}`} style={sectionStyle}>
       <div
@@ -710,7 +655,7 @@ export function OpenOptionsSection({
           marginBottom: 8,
         }}
       >
-        <div style={{ ...cardLabelStyle, marginBottom: 0 }}>{title}</div>
+        <CardLabel marginBottom={0}>{title}</CardLabel>
         <button
           type="button"
           onClick={() => refresh()}
@@ -747,48 +692,16 @@ export function OpenOptionsSection({
       {workingBanner}
       {flash}
 
-      {ticket && (
-        <OrderTicket
-          action={ticket.action}
-          optionType={ticket.optionType}
-          contractSymbol={ticket.contractSymbol}
-          strike={ticket.strike}
-          expiration={ticket.expiration}
-          qty={qty}
-          onQtyChange={setQty}
-          maxQty={maxQty}
-          limitPrice={ticket.limitPrice}
-          check={check}
-          busy={busy}
-          onConfirm={() => void submitTicket()}
-          onCancel={dismissTicket}
-          accent={accent}
-          simulate={IS_MOCK}
-        />
-      )}
+      {orderTicket}
 
       {loading && !data && (
-        <div style={emptyStyle}>
+        <EmptyState>
           <div style={{ fontSize: 18, marginBottom: 6 }}>◌</div>
           LOADING FRIDAY {side.toUpperCase()}S...
-        </div>
+        </EmptyState>
       )}
 
-      {error && (
-        <div
-          style={{
-            background: "#1a0808",
-            border: "1px solid #4a1010",
-            borderRadius: 4,
-            padding: 10,
-            fontSize: 11,
-            color: "#f87171",
-            fontFamily: "monospace",
-          }}
-        >
-          ✗ {error}
-        </div>
-      )}
+      {error && <Banner tone="error">✗ {error}</Banner>}
 
       {data && (
         <>
@@ -938,7 +851,7 @@ export function OpenOptionsSection({
           })}
 
           {data.rows.length === 0 && (
-            <div style={emptyStyle}>NO FRIDAY {side.toUpperCase()} CONTRACTS FOUND</div>
+            <EmptyState>NO FRIDAY {side.toUpperCase()} CONTRACTS FOUND</EmptyState>
           )}
 
           {data.warnings.length > 0 && (

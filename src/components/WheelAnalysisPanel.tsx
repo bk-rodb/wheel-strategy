@@ -3,12 +3,8 @@ import { useWheelAnalysis } from "../hooks/useWheelAnalysis";
 import type { AnalysisGranularity, AnalysisLevel, StrikeSuggestion, WheelAnalysis } from "../types";
 import { fmt } from "../utils/formatters";
 import { API_BASE } from "../config";
-
-const LEVEL_COLOR: Record<AnalysisLevel, string> = {
-  safe: "#34d399",
-  regular: "#d8d8f0",
-  risky: "#f87171",
-};
+import { GRANULARITY_CHOICES, LEVEL_COLOR } from "../constants";
+import { Banner, LoadingState, ToggleButton } from "./ui";
 
 const LEVEL_LABEL: Record<AnalysisLevel, string> = {
   safe: "CONSERVATIVE",
@@ -23,19 +19,6 @@ const LEVEL_DELTA_HINT: Record<AnalysisLevel, string> = {
 };
 
 const DTE_CHOICES = [21, 30, 35, 45];
-
-const GRANULARITY_CHOICES: { value: AnalysisGranularity; label: string; title: string }[] = [
-  {
-    value: "weekly",
-    label: "WEEKLY",
-    title: "Fewer, wider-spaced samples; default and faster to interpret.",
-  },
-  {
-    value: "daily",
-    label: "DAILY",
-    title: "~5× more overlapping forward-return samples; empirical percentiles are sharper, but overlapping windows still widen confidence.",
-  },
-];
 
 export function WheelAnalysisPanel({ symbol }: { symbol: string }) {
   const [dte, setDte] = useState(35);
@@ -56,30 +39,17 @@ export function WheelAnalysisPanel({ symbol }: { symbol: string }) {
       />
 
       {error && (
-        <div
-          style={{
-            background: "#1a0808",
-            border: "1px solid #4a1010",
-            borderRadius: 6,
-            padding: 12,
-            fontSize: 12,
-            color: "#f87171",
-            fontFamily: "monospace",
-            marginBottom: 16,
-          }}
+        <Banner
+          tone="error"
+          marginBottom={16}
+          hint={`Is the analysis backend running on ${API_BASE}? (cd backend/WheelStrategy.Api && dotnet run)`}
         >
           ✗ {error}
-          <div style={{ color: "#7a4a4a", fontSize: 10, marginTop: 6 }}>
-            Is the analysis backend running on {API_BASE}? (cd backend/WheelStrategy.Api && dotnet run)
-          </div>
-        </div>
+        </Banner>
       )}
 
       {loading && !data && (
-        <div style={{ textAlign: "center", padding: 60, color: "#2a2a4a", fontFamily: "monospace", fontSize: 12 }}>
-          <div style={{ fontSize: 24, marginBottom: 8 }}>◌</div>
-          ANALYZING {symbol} · {granularity}...
-        </div>
+        <LoadingState label={`ANALYZING ${symbol} · ${granularity}...`} padding={60} />
       )}
 
       {data && (
@@ -203,26 +173,22 @@ function Header({
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", letterSpacing: "0.08em" }}>BARS</span>
           {GRANULARITY_CHOICES.map(({ value, label, title }) => (
-            <button
+            <ToggleButton
               key={value}
+              active={value === granularity}
               onClick={() => onGranularity(value)}
               title={title}
-              style={toggleBtn(value === granularity)}
             >
               {label}
-            </button>
+            </ToggleButton>
           ))}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", letterSpacing: "0.08em" }}>DTE</span>
           {DTE_CHOICES.map((d) => (
-            <button
-              key={d}
-              onClick={() => onDte(d)}
-              style={toggleBtn(d === dte)}
-            >
+            <ToggleButton key={d} active={d === dte} onClick={() => onDte(d)}>
               {d}
-            </button>
+            </ToggleButton>
           ))}
         </div>
         <button
@@ -247,20 +213,6 @@ function Header({
       </div>
     </div>
   );
-}
-
-function toggleBtn(active: boolean): React.CSSProperties {
-  return {
-    cursor: "pointer",
-    background: active ? "#34d39920" : "#0d0d1e",
-    border: `1px solid ${active ? "#34d39950" : "#1e1e38"}`,
-    borderRadius: 4,
-    padding: "4px 9px",
-    fontSize: 11,
-    fontFamily: "monospace",
-    fontWeight: 700,
-    color: active ? "#34d399" : "#5a5a7a",
-  };
 }
 
 function SideCard({

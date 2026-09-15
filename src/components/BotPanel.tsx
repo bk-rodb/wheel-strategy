@@ -7,23 +7,14 @@ import {
   type BotLastCycle,
   type BotRun,
 } from "../api/fetchBot";
+import { fmtShortDateTime as fmtTime } from "../utils/formatters";
 import { nextFriday, toDateString } from "../utils/nextFriday";
+import { Banner, LoadingState } from "./ui";
 
 const STATUSES = ["", "skipped", "dry_run", "placed", "filled", "canceled", "blocked", "error"];
 
 function completedStatuses(status: string): boolean {
   return status === "placed" || status === "filled" || status === "dry_run";
-}
-
-function fmtTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function lastFor(cycles: BotLastCycle[], symbol: string): BotLastCycle | undefined {
@@ -112,19 +103,11 @@ export function BotPanel() {
   };
 
   if (loading && !config) {
-    return (
-      <div style={{ textAlign: "center", padding: 80, color: "#2a2a4a", fontSize: 12 }}>
-        LOADING BOT…
-      </div>
-    );
+    return <LoadingState label="LOADING BOT…" spinner={false} />;
   }
 
   if (!config) {
-    return (
-      <div style={{ color: "#f87171", fontSize: 12, fontFamily: "monospace" }}>
-        {error ?? "Bot config unavailable"}
-      </div>
-    );
+    return <Banner tone="error">✗ {error ?? "Bot config unavailable"}</Banner>;
   }
 
   const { settings, lastCycles } = config;
@@ -141,36 +124,16 @@ export function BotPanel() {
       </div>
 
       {error && (
-        <div
-          style={{
-            background: "#1a0808",
-            border: "1px solid #4a1010",
-            borderRadius: 6,
-            padding: 12,
-            marginBottom: 16,
-            fontSize: 12,
-            color: "#f87171",
-          }}
-        >
-          {error}
-        </div>
+        <Banner tone="error" marginBottom={16}>
+          ✗ {error}
+        </Banner>
       )}
 
       {confirm && (
-        <div
-          style={{
-            background: "#1a1408",
-            border: "1px solid #4a3810",
-            borderRadius: 6,
-            padding: 12,
-            marginBottom: 16,
-            fontSize: 12,
-            color: "#f59e0b",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 12,
-          }}
+        <Banner
+          tone="warning"
+          marginBottom={16}
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}
         >
           <span>
             {confirm.symbol
@@ -190,7 +153,7 @@ export function BotPanel() {
               CONFIRM
             </button>
           </span>
-        </div>
+        </Banner>
       )}
 
       <div style={card}>

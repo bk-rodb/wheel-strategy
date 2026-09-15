@@ -1,4 +1,36 @@
-import type { WheelPhase, DataSource, BrokerType, BrokerAccount } from "./types";
+import type {
+  AnalysisGranularity,
+  AnalysisLevel,
+  BrokerAccount,
+  BrokerType,
+  DataSource,
+  WheelPhase,
+} from "./types";
+
+export const GAIN_COLOR = "#34d399";
+export const LOSS_COLOR = "#f87171";
+
+/** Green for ≥ 0, red for < 0 — P&L, day change, returns. */
+export const signColor = (n: number): string => (n >= 0 ? GAIN_COLOR : LOSS_COLOR);
+
+export const LEVEL_COLOR: Record<AnalysisLevel, string> = {
+  safe: GAIN_COLOR,
+  regular: "#d8d8f0",
+  risky: LOSS_COLOR,
+};
+
+export const GRANULARITY_CHOICES: { value: AnalysisGranularity; label: string; title: string }[] = [
+  {
+    value: "weekly",
+    label: "WEEKLY",
+    title: "Fewer, wider-spaced samples; default and faster to interpret.",
+  },
+  {
+    value: "daily",
+    label: "DAILY",
+    title: "~5× more overlapping forward-return samples; empirical percentiles are sharper, but overlapping windows still widen confidence.",
+  },
+];
 
 export const PHASE_CONFIG: Record<
   WheelPhase,

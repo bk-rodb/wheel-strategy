@@ -2,21 +2,10 @@ import { useState } from "react";
 import { useHmmTrend } from "../hooks/useHmmTrend";
 import type { AnalysisGranularity } from "../types";
 import { API_BASE } from "../config";
+import { GRANULARITY_CHOICES } from "../constants";
 import { fmt } from "../utils/formatters";
 import { HmmForecastTable, HmmTrendChart, regimeColor } from "./HmmTrendChart";
-
-const cardLabelStyle: React.CSSProperties = {
-  fontSize: 10,
-  color: "#4a4a6a",
-  fontFamily: "monospace",
-  letterSpacing: "0.08em",
-  marginBottom: 8,
-};
-
-const GRANULARITY_CHOICES: { value: AnalysisGranularity; label: string }[] = [
-  { value: "weekly", label: "WEEKLY" },
-  { value: "daily", label: "DAILY" },
-];
+import { Banner, CardLabel, LoadingState, ToggleButton } from "./ui";
 
 export function ResearchSection({ symbol }: { symbol: string }) {
   const [granularity, setGranularity] = useState<AnalysisGranularity>("weekly");
@@ -32,71 +21,36 @@ export function ResearchSection({ symbol }: { symbol: string }) {
           marginBottom: 12,
         }}
       >
-        <div style={cardLabelStyle}>HMM TREND FORECAST</div>
+        <CardLabel marginBottom={0}>HMM TREND FORECAST</CardLabel>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {GRANULARITY_CHOICES.map((g) => (
-            <button
+            <ToggleButton
               key={g.value}
-              type="button"
+              active={granularity === g.value}
               onClick={() => setGranularity(g.value)}
-              style={{
-                fontSize: 9,
-                fontFamily: "monospace",
-                padding: "3px 8px",
-                borderRadius: 3,
-                border: `1px solid ${granularity === g.value ? "#34d399" : "#2a2a3a"}`,
-                background: granularity === g.value ? "#0a1a14" : "transparent",
-                color: granularity === g.value ? "#34d399" : "#5a5a7a",
-                cursor: "pointer",
-              }}
+              title={g.title}
             >
               {g.label}
-            </button>
+            </ToggleButton>
           ))}
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={loading}
-            style={{
-              fontSize: 9,
-              fontFamily: "monospace",
-              padding: "3px 8px",
-              borderRadius: 3,
-              border: "1px solid #2a2a3a",
-              background: "transparent",
-              color: "#5a5a7a",
-              cursor: loading ? "wait" : "pointer",
-            }}
-          >
+          <ToggleButton active={false} onClick={refresh} disabled={loading} title="Refit HMM">
             {loading ? "…" : "↻"}
-          </button>
+          </ToggleButton>
         </div>
       </div>
 
       {error && (
-        <div
-          style={{
-            background: "#1a0808",
-            border: "1px solid #4a1010",
-            borderRadius: 6,
-            padding: 12,
-            fontSize: 12,
-            color: "#f87171",
-            fontFamily: "monospace",
-            marginBottom: 12,
-          }}
+        <Banner
+          tone="error"
+          marginBottom={12}
+          hint={`Is the analysis backend running on ${API_BASE}?`}
         >
           ✗ {error}
-          <div style={{ color: "#7a4a4a", fontSize: 10, marginTop: 6 }}>
-            Is the analysis backend running on {API_BASE}?
-          </div>
-        </div>
+        </Banner>
       )}
 
       {loading && !data && (
-        <div style={{ textAlign: "center", padding: 40, color: "#2a2a4a", fontFamily: "monospace", fontSize: 12 }}>
-          FITTING HMM · {symbol}...
-        </div>
+        <LoadingState label={`FITTING HMM · ${symbol}...`} padding={40} spinner={false} />
       )}
 
       {data && data.history.length > 0 && (
@@ -121,7 +75,7 @@ export function ResearchSection({ symbol }: { symbol: string }) {
 
           {data.transitionMatrix.length > 0 && (
             <div style={{ marginTop: 14 }}>
-              <div style={{ ...cardLabelStyle, marginBottom: 6 }}>TRANSITION MATRIX</div>
+              <CardLabel marginBottom={6}>TRANSITION MATRIX</CardLabel>
               <TransitionMatrix labels={data.stateLabels} matrix={data.transitionMatrix} />
             </div>
           )}

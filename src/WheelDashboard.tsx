@@ -11,6 +11,7 @@ import { TickerDetail } from "./components/TickerDetail";
 import { WatchlistTickerDetail } from "./components/WatchlistTickerDetail";
 import { WatchlistPanel } from "./components/WatchlistPanel";
 import { BotPanel } from "./components/BotPanel";
+import { Banner, LoadingState } from "./components/ui";
 
 export default function WheelDashboard() {
   const [broker, setBroker] = useState<BrokerType>("alpaca-paper");
@@ -107,48 +108,23 @@ export default function WheelDashboard() {
         <div style={{ display: "flex", alignItems: "flex-start", flex: 1 }}>
           <div style={{ flex: 1, padding: "24px", minWidth: 0 }}>
             {error && (
-              <div
-                style={{
-                  background: "#1a0808",
-                  border: "1px solid #4a1010",
-                  borderRadius: 6,
-                  padding: 12,
-                  marginBottom: 16,
-                  fontSize: 12,
-                  color: "#f87171",
-                  fontFamily: "monospace",
-                }}
-              >
+              <Banner tone="error" marginBottom={16}>
                 ✗ {error}
-              </div>
+              </Banner>
             )}
             {!error && staleSince && (
-              <div
-                style={{
-                  background: "#1a1408",
-                  border: "1px solid #4a3810",
-                  borderRadius: 6,
-                  padding: 12,
-                  marginBottom: 16,
-                  fontSize: 12,
-                  color: "#f59e0b",
-                  fontFamily: "monospace",
-                }}
-              >
+              <Banner tone="warning" marginBottom={16}>
                 ⚠ Showing last-known positions
                 {lastError ? ` — ${lastError}` : ""}
                 {" · "}stale since {staleSince.toLocaleTimeString()}
-              </div>
+              </Banner>
             )}
 
             {activeTab === "__bot__" ? (
               <BotPanel />
             ) : loading && positions.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 80, color: "#2a2a4a", fontFamily: "monospace", fontSize: 12 }}>
-                <div style={{ fontSize: 24, marginBottom: 8 }}>◌</div>
-                LOADING POSITIONS...
-              </div>
-            ) : activeTab === "__summary__" ? (
+              <LoadingState label="LOADING POSITIONS..." />
+            ) :activeTab === "__summary__" ? (
               <SummaryDashboard
                 positions={positions}
                 account={account}

@@ -1,14 +1,7 @@
 import { useTickerCatalysts } from "../hooks/useTickerCatalysts";
 import type { CatalystEvent } from "../types";
 import { fmtRelativeTime } from "../utils/formatters";
-
-const cardLabelStyle: React.CSSProperties = {
-  fontSize: 10,
-  color: "#4a4a6a",
-  fontFamily: "monospace",
-  letterSpacing: "0.08em",
-  marginBottom: 8,
-};
+import { CardLabel } from "./ui";
 
 const emptyStyle: React.CSSProperties = {
   fontSize: 10,
@@ -173,7 +166,7 @@ export function CatalystsAndNews({ symbol }: { symbol: string }) {
 
   return (
     <div style={{ width: "100%", minWidth: 0 }}>
-      <div style={cardLabelStyle}>CATALYSTS &amp; NEWS</div>
+      <CardLabel>CATALYSTS &amp; NEWS</CardLabel>
       {loading && (
         <div style={emptyStyle}>Loading catalysts…</div>
       )}

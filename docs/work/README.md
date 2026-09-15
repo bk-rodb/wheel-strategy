@@ -65,6 +65,7 @@ Agents and humans: create the work file **when the work is planned**, not as an 
 | [F-002](./F-002%20-%20Bot%20Config%20Management%20Tab.md) | Bot Config Management Tab | done | 2026-09-06 | 2026-09-06 | `03e357a` |
 | [E-005](./E-005%20-%20Move%20Secrets%20To%20User%20Environment.md) | Move Secrets To User Environment | done | 2026-09-06 | 2026-09-06 | `40e8449` |
 | [B-001](./B-001%20-%20Desk%20Shows%20Mock%20Instead%20of%20Alpaca.md) | Desk Shows Mock Instead of Alpaca | in-progress | 2026-09-06 | — | — |
+| [B-002](./B-002%20-%20Align%20Position%20Card%20Accent%20Bar.md) | Align Position Card Accent Bar | in-progress | 2026-09-14 | — | — |
 
 ---
 
