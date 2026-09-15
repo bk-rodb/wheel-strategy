@@ -12,6 +12,7 @@ import { WatchlistTickerDetail } from "./components/WatchlistTickerDetail";
 import { WatchlistPanel } from "./components/WatchlistPanel";
 import { BotPanel } from "./components/BotPanel";
 import { Banner, LoadingState } from "./components/ui";
+import { vars } from "./theme";
 
 export default function WheelDashboard() {
   const [broker, setBroker] = useState<BrokerType>("alpaca-paper");
@@ -73,15 +74,15 @@ export default function WheelDashboard() {
   const activeWatchlistTicker = watchlistTabs.includes(activeTab) ? activeTab : null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#030310", padding: "10px", color: "#c0c0e0", fontFamily: "monospace" }}>
+    <div style={{ minHeight: "100vh", background: vars.bg.app, padding: "10px", color: vars.text.primary, fontFamily: vars.font.mono }}>
       <div
         style={{
           minHeight: "calc(100vh - 20px)",
-          background: "#07071a",
+          background: vars.bg.panel,
           borderRadius: 12,
           overflow: "hidden",
-          boxShadow: "0 4px 6px #00000040, 0 12px 32px #00000060, 0 32px 64px #00000050, inset 0 1px 0 #ffffff08",
-          border: "1px solid #16162e",
+          boxShadow: vars.shadow.app,
+          border: `1px solid ${vars.border.default}`,
           display: "flex",
           flexDirection: "column",
         }}

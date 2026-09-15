@@ -1,16 +1,17 @@
 import type { OptionLeg, WheelPhase } from "../types";
 import { fmt, dte } from "../utils/formatters";
 import { StatRow } from "./StatRow";
+import { alpha, vars } from "../theme";
 
 export function OptionCard({ opt, phase }: { opt: OptionLeg; phase: WheelPhase }) {
   const d = dte(opt.expiration);
-  const urgency = d <= 7 ? "#ef4444" : d <= 14 ? "#f59e0b" : "#34d399";
+  const urgency = d <= 7 ? vars.status.danger : d <= 14 ? vars.status.warning : vars.status.gain;
   const pnlPerContract = (opt.premiumReceived - opt.currentOptionPrice) * 100;
   return (
     <div
       style={{
-        background: "#0a0a18",
-        border: "1px solid #1e1e38",
+        background: vars.bg.sunken,
+        border: `1px solid ${vars.border.strong}`,
         borderRadius: 6,
         padding: 14,
       }}
@@ -26,8 +27,8 @@ export function OptionCard({ opt, phase }: { opt: OptionLeg; phase: WheelPhase }
         <span
           style={{
             fontSize: 11,
-            fontFamily: "monospace",
-            color: phase === "covered-call" ? "#34d399" : "#f59e0b",
+            fontFamily: vars.font.mono,
+            color: phase === "covered-call" ? vars.status.gain : vars.status.warning,
             fontWeight: 700,
             letterSpacing: "0.1em",
           }}
@@ -37,12 +38,12 @@ export function OptionCard({ opt, phase }: { opt: OptionLeg; phase: WheelPhase }
         <span
           style={{
             fontSize: 11,
-            fontFamily: "monospace",
+            fontFamily: vars.font.mono,
             color: urgency,
-            background: `${urgency}18`,
+            background: alpha(urgency, 0.094),
             padding: "2px 8px",
             borderRadius: 3,
-            border: `1px solid ${urgency}40`,
+            border: `1px solid ${alpha(urgency, 0.251)}`,
           }}
         >
           {d}d DTE

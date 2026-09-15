@@ -5,6 +5,7 @@ import { fmt } from "../utils/formatters";
 import { API_BASE } from "../config";
 import { GRANULARITY_CHOICES, LEVEL_COLOR } from "../constants";
 import { Banner, LoadingState, ToggleButton } from "./ui";
+import { vars } from "../theme";
 
 const LEVEL_LABEL: Record<AnalysisLevel, string> = {
   safe: "CONSERVATIVE",
@@ -58,21 +59,21 @@ export function WheelAnalysisPanel({ symbol }: { symbol: string }) {
             <SideCard
               title="CASH-SECURED PUT"
               subtitle="sell put · want price to stay ABOVE strike"
-              accent="#f59e0b"
+              accent={vars.status.warning}
               rows={data.put}
               spot={data.currentPrice}
             />
             <SideCard
               title="COVERED CALL"
               subtitle="sell call · want price to stay BELOW strike"
-              accent="#34d399"
+              accent={vars.status.gain}
               rows={data.call}
               spot={data.currentPrice}
             />
           </div>
 
           {data.warnings.length > 0 && (
-            <div style={{ marginTop: 16, fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", lineHeight: 1.7 }}>
+            <div style={{ marginTop: 16, fontSize: 9, fontFamily: vars.font.mono, color: vars.text.dim, lineHeight: 1.7 }}>
               {data.warnings.map((w, i) => (
                 <div key={i}>· {w}</div>
               ))}
@@ -115,17 +116,17 @@ function Header({
       }}
     >
       <div>
-        <div style={{ fontSize: 10, fontFamily: "monospace", color: "#4a4a6a", letterSpacing: "0.08em", fontWeight: 700 }}>
+        <div style={{ fontSize: 10, fontFamily: vars.font.mono, color: vars.text.dim, letterSpacing: "0.08em", fontWeight: 700 }}>
           WHEEL STRATEGY ANALYSIS · {symbol}
         </div>
         {data && (
           <>
-            <div style={{ fontSize: 11, fontFamily: "monospace", color: "#5a5a7a", marginTop: 6, display: "flex", gap: 16, flexWrap: "wrap" }}>
-              <span>SPOT <b style={{ color: "#e8e8f8" }}>{fmt.currency(data.currentPrice)}</b></span>
-              <span>IV(realized) <b style={{ color: "#e8e8f8" }}>{data.realizedVolAnnual != null ? `${(data.realizedVolAnnual * 100).toFixed(1)}%` : "—"}</b></span>
+            <div style={{ fontSize: 11, fontFamily: vars.font.mono, color: vars.text.subtle, marginTop: 6, display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <span>SPOT <b style={{ color: vars.text.strong }}>{fmt.currency(data.currentPrice)}</b></span>
+              <span>IV(realized) <b style={{ color: vars.text.strong }}>{data.realizedVolAnnual != null ? `${(data.realizedVolAnnual * 100).toFixed(1)}%` : "—"}</b></span>
               {data.atr && (
                 <span title="7 / 14 / 21-day ATR as % of spot">
-                  ATR <b style={{ color: "#e8e8f8" }}>
+                  ATR <b style={{ color: vars.text.strong }}>
                     {[data.atr.atr7Pct, data.atr.atr14Pct, data.atr.atr21Pct]
                       .map((v) => (v != null ? `${(v * 100).toFixed(1)}%` : "—"))
                       .join(" / ")}
@@ -134,9 +135,9 @@ function Header({
               )}
               {data.hmmRegime && (
                 <span title="HMM regime at option horizon">
-                  HMM <b style={{ color: "#e8e8f8" }}>{data.hmmRegime.currentRegime.toUpperCase()}</b>
+                  HMM <b style={{ color: vars.text.strong }}>{data.hmmRegime.currentRegime.toUpperCase()}</b>
                   {data.hmmRegime.expectedReturnPctAtDte != null && (
-                    <> · <b style={{ color: data.hmmRegime.expectedReturnPctAtDte >= 0 ? "#34d399" : "#f87171" }}>
+                    <> · <b style={{ color: data.hmmRegime.expectedReturnPctAtDte >= 0 ? vars.status.gain : vars.status.loss }}>
                       {data.hmmRegime.expectedReturnPctAtDte >= 0 ? "+" : ""}
                       {data.hmmRegime.expectedReturnPctAtDte.toFixed(1)}%
                     </b></>
@@ -146,7 +147,7 @@ function Header({
               {data.putExperience && (
                 <span
                   title={(data.putExperience.reasons ?? []).join("\n")}
-                  style={{ color: "#a78bfa" }}
+                  style={{ color: vars.status.highlight }}
                 >
                   EXP n={data.putExperience.sampleSize}
                   {data.putExperience.biasDelta != null && (
@@ -158,11 +159,11 @@ function Header({
                   )}
                 </span>
               )}
-              <span>HORIZON <b style={{ color: "#e8e8f8" }}>{data.horizonPeriods}× {data.granularity}</b></span>
-              <span>LOOKBACK <b style={{ color: "#e8e8f8" }}>{(data.lookbackDays / 365).toFixed(1)}y</b></span>
-              <span>SAMPLES <b style={{ color: "#e8e8f8" }}>{data.sampleCount}</b></span>
+              <span>HORIZON <b style={{ color: vars.text.strong }}>{data.horizonPeriods}× {data.granularity}</b></span>
+              <span>LOOKBACK <b style={{ color: vars.text.strong }}>{(data.lookbackDays / 365).toFixed(1)}y</b></span>
+              <span>SAMPLES <b style={{ color: vars.text.strong }}>{data.sampleCount}</b></span>
             </div>
-            <div style={{ fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", marginTop: 4, letterSpacing: "0.04em" }}>
+            <div style={{ fontSize: 9, fontFamily: vars.font.mono, color: vars.text.dim, marginTop: 4, letterSpacing: "0.04em" }}>
               conservative / balanced / aggressive via |delta| 0.20 / 0.30 / 0.40 · ATR + HMM review applied
             </div>
           </>
@@ -171,7 +172,7 @@ function Header({
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", letterSpacing: "0.08em" }}>BARS</span>
+          <span style={{ fontSize: 9, fontFamily: vars.font.mono, color: vars.text.dim, letterSpacing: "0.08em" }}>BARS</span>
           {GRANULARITY_CHOICES.map(({ value, label, title }) => (
             <ToggleButton
               key={value}
@@ -184,7 +185,7 @@ function Header({
           ))}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", letterSpacing: "0.08em" }}>DTE</span>
+          <span style={{ fontSize: 9, fontFamily: vars.font.mono, color: vars.text.dim, letterSpacing: "0.08em" }}>DTE</span>
           {DTE_CHOICES.map((d) => (
             <ToggleButton key={d} active={d === dte} onClick={() => onDte(d)}>
               {d}
@@ -197,14 +198,14 @@ function Header({
           title="Re-pull bars from Alpaca"
           style={{
             cursor: loading ? "default" : "pointer",
-            background: "#0d0d1e",
-            border: "1px solid #1e1e38",
+            background: vars.bg.raised,
+            border: `1px solid ${vars.border.strong}`,
             borderRadius: 4,
             padding: "4px 10px",
             fontSize: 11,
-            fontFamily: "monospace",
+            fontFamily: vars.font.mono,
             fontWeight: 700,
-            color: loading ? "#3a3a5a" : "#8a8aa8",
+            color: loading ? vars.text.faint : vars.text.tertiary,
             letterSpacing: "0.06em",
           }}
         >
@@ -229,18 +230,18 @@ function SideCard({
   spot: number;
 }) {
   return (
-    <div style={{ background: "#08081a", border: "1px solid #16162e", borderRadius: 8, overflow: "hidden" }}>
-      <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid #12122a" }}>
-        <div style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: accent, letterSpacing: "0.06em" }}>
+    <div style={{ background: vars.bg.card, border: `1px solid ${vars.border.default}`, borderRadius: 8, overflow: "hidden" }}>
+      <div style={{ padding: "12px 14px 10px", borderBottom: `1px solid ${vars.border.subtle}` }}>
+        <div style={{ fontSize: 12, fontFamily: vars.font.mono, fontWeight: 700, color: accent, letterSpacing: "0.06em" }}>
           {title}
         </div>
-        <div style={{ fontSize: 9, fontFamily: "monospace", color: "#4a4a6a", marginTop: 3, letterSpacing: "0.04em" }}>
+        <div style={{ fontSize: 9, fontFamily: vars.font.mono, color: vars.text.dim, marginTop: 3, letterSpacing: "0.04em" }}>
           {subtitle}
         </div>
       </div>
 
       {!rows || rows.length === 0 ? (
-        <div style={{ padding: 24, textAlign: "center", fontSize: 10, fontFamily: "monospace", color: "#3a3a5a" }}>
+        <div style={{ padding: 24, textAlign: "center", fontSize: 10, fontFamily: vars.font.mono, color: vars.text.faint }}>
           INSUFFICIENT HISTORY
         </div>
       ) : (
@@ -260,24 +261,24 @@ function SideCard({
               <span style={{ color: LEVEL_COLOR[r.level], fontWeight: 700 }} title={LEVEL_DELTA_HINT[r.level]}>
                 {LEVEL_LABEL[r.level]}
               </span>
-              <span style={{ textAlign: "right", color: "#e8e8f8", fontWeight: 700 }}>{fmt.currency(r.strike)}</span>
-              <span style={{ textAlign: "right", color: (r.pctFromSpot ?? 0) >= 0 ? "#34d399" : "#f87171" }}>
+              <span style={{ textAlign: "right", color: vars.text.strong, fontWeight: 700 }}>{fmt.currency(r.strike)}</span>
+              <span style={{ textAlign: "right", color: (r.pctFromSpot ?? 0) >= 0 ? vars.status.gain : vars.status.loss }}>
                 {r.pctFromSpot != null ? `${(r.pctFromSpot * 100).toFixed(1)}%` : "—"}
               </span>
-              <span style={{ textAlign: "right", color: "#a0a0c0" }} title={`target ${LEVEL_DELTA_HINT[r.level]}`}>
+              <span style={{ textAlign: "right", color: vars.text.secondary }} title={`target ${LEVEL_DELTA_HINT[r.level]}`}>
                 {r.blackScholesDelta != null ? `${(Math.abs(r.blackScholesDelta) * 100).toFixed(0)}Δ` : "—"}
                 {r.distanceAtr14 != null ? ` · ${r.distanceAtr14.toFixed(1)}×` : ""}
               </span>
-              <span style={{ textAlign: "right", color: "#a0a0c0" }}>
+              <span style={{ textAlign: "right", color: vars.text.secondary }}>
                 {r.empiricalAssignmentProb != null && r.blackScholesAssignmentProb != null
                   ? `${(r.empiricalAssignmentProb * 100).toFixed(0)}% / ${(r.blackScholesAssignmentProb * 100).toFixed(0)}%`
                   : "—"}
               </span>
-              <span style={{ textAlign: "right", color: "#a0a0c0" }}>{r.estPremium != null ? fmt.currency(r.estPremium) : "—"}</span>
-              <span style={{ textAlign: "right", color: "#34d399" }}>{r.annualizedYield != null ? `${(r.annualizedYield * 100).toFixed(1)}%` : "—"}</span>
+              <span style={{ textAlign: "right", color: vars.text.secondary }}>{r.estPremium != null ? fmt.currency(r.estPremium) : "—"}</span>
+              <span style={{ textAlign: "right", color: vars.status.gain }}>{r.annualizedYield != null ? `${(r.annualizedYield * 100).toFixed(1)}%` : "—"}</span>
             </div>
           ))}
-          <div style={{ padding: "8px 14px 4px", fontSize: 8, fontFamily: "monospace", color: "#3a3a5a", letterSpacing: "0.04em" }}>
+          <div style={{ padding: "8px 14px 4px", fontSize: 8, fontFamily: vars.font.mono, color: vars.text.faint, letterSpacing: "0.04em" }}>
             spot {fmt.currency(spot)} · BS delta targets · ATR14 distance in × multiples
           </div>
         </div>
@@ -293,10 +294,10 @@ function gridRow(isHeader: boolean): React.CSSProperties {
     gap: 6,
     padding: isHeader ? "6px 14px" : "7px 14px",
     fontSize: isHeader ? 8 : 11,
-    fontFamily: "monospace",
-    color: isHeader ? "#3a3a5a" : "#c0c0e0",
+    fontFamily: vars.font.mono,
+    color: isHeader ? vars.text.faint : vars.text.primary,
     letterSpacing: isHeader ? "0.06em" : "0",
-    borderBottom: isHeader ? "1px solid #12122a" : "1px solid #0c0c1c",
+    borderBottom: isHeader ? `1px solid ${vars.border.subtle}` : `1px solid ${vars.bg.raised}`,
     alignItems: "center",
   };
 }

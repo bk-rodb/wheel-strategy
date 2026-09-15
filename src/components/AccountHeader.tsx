@@ -1,16 +1,17 @@
 import type { AccountInfo } from "../types";
 import { fmt } from "../utils/formatters";
+import { vars } from "../theme";
 
 export function AccountHeader({ account, loading }: { account: AccountInfo | null; loading: boolean }) {
   if (loading && !account) {
     return (
       <div
         style={{
-          borderBottom: "1px solid #12122a",
+          borderBottom: `1px solid ${vars.border.subtle}`,
           padding: "10px 24px",
-          background: "#07071a",
-          color: "#2a2a4a",
-          fontFamily: "monospace",
+          background: vars.bg.panel,
+          color: vars.text.ghost,
+          fontFamily: vars.font.mono,
           fontSize: 10,
           letterSpacing: "0.08em",
         }}
@@ -22,7 +23,7 @@ export function AccountHeader({ account, loading }: { account: AccountInfo | nul
 
   if (!account) return null;
 
-  const pnlColor = account.dayPnL >= 0 ? "#34d399" : "#f87171";
+  const pnlColor = account.dayPnL >= 0 ? vars.status.gain : vars.status.loss;
   const pnlSign = account.dayPnL >= 0 ? "+" : "";
 
   const stats = [
@@ -41,9 +42,9 @@ export function AccountHeader({ account, loading }: { account: AccountInfo | nul
   return (
     <div
       style={{
-        borderBottom: "1px solid #12122a",
+        borderBottom: `1px solid ${vars.border.subtle}`,
         padding: "0 24px",
-        background: "#07071a",
+        background: vars.bg.panel,
         display: "flex",
         alignItems: "stretch",
         gap: 0,
@@ -55,15 +56,15 @@ export function AccountHeader({ account, loading }: { account: AccountInfo | nul
           key={s.label}
           style={{
             padding: "10px 20px",
-            borderRight: i < stats.length - 1 ? "1px solid #12122a" : "none",
+            borderRight: i < stats.length - 1 ? `1px solid ${vars.border.subtle}` : "none",
             flexShrink: 0,
           }}
         >
           <div
             style={{
               fontSize: 9,
-              color: "#3a3a5a",
-              fontFamily: "monospace",
+              color: vars.text.faint,
+              fontFamily: vars.font.mono,
               letterSpacing: "0.1em",
               marginBottom: 3,
             }}
@@ -73,9 +74,9 @@ export function AccountHeader({ account, loading }: { account: AccountInfo | nul
           <div
             style={{
               fontSize: s.highlight ? 15 : 12,
-              fontFamily: "monospace",
+              fontFamily: vars.font.mono,
               fontWeight: s.highlight ? 700 : 600,
-              color: s.color ?? (s.highlight ? "#e8e8f8" : "#a0a0c0"),
+              color: s.color ?? (s.highlight ? vars.text.strong : vars.text.secondary),
               letterSpacing: "-0.01em",
             }}
           >

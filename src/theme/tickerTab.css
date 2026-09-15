@@ -21,24 +21,24 @@
 .ticker-tab-label__symbol {
   margin: 0;
   font-size: 28px;
-  font-family: "Syne", "Trebuchet MS", sans-serif;
+  font-family: var(--wd-font-display);
   font-weight: 800;
-  color: #e8e8f8;
+  color: var(--wd-text-strong);
   letter-spacing: -0.02em;
   white-space: nowrap;
 }
 
 .ticker-tab-label__company {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--wd-font-code);
   font-size: 12px;
-  color: #5a5a7a;
+  color: var(--wd-text-subtle);
   margin-top: 2px;
 }
 
 .ticker-tab-label__subtitle {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--wd-font-code);
   font-size: 12px;
-  color: #5a5a7a;
+  color: var(--wd-text-subtle);
   margin-top: 2px;
 }
 
@@ -48,5 +48,5 @@
 }
 
 .ticker-tab-bar__tab--active {
-  background: #0a0a1e;
+  background: var(--wd-bg-sunken);
 }

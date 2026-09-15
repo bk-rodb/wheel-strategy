@@ -1,3 +1,4 @@
+import { vars } from "../theme";
 export function StatRow({
   label,
   value,
@@ -14,14 +15,14 @@ export function StatRow({
         justifyContent: "space-between",
         alignItems: "baseline",
         padding: "5px 0",
-        borderBottom: "1px solid #14142a",
+        borderBottom: `1px solid ${vars.bg.hover}`,
       }}
     >
       <span
         style={{
           fontSize: 10,
-          color: "#4a4a6a",
-          fontFamily: "monospace",
+          color: vars.text.dim,
+          fontFamily: vars.font.mono,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
         }}
@@ -31,9 +32,9 @@ export function StatRow({
       <span
         style={{
           fontSize: 12,
-          fontFamily: "monospace",
+          fontFamily: vars.font.mono,
           fontWeight: 600,
-          color: accent ? "#34d399" : "#c0c0e0",
+          color: accent ? vars.status.gain : vars.text.primary,
         }}
       >
         {value}

@@ -3,6 +3,7 @@ import { useDebounce } from "../hooks/useDebounce";
 import { useWatchlist } from "../hooks/useWatchlist";
 import { searchAssets, type AssetResult } from "../api/searchAssets";
 import { WatchlistItem } from "./WatchlistItem";
+import { alpha, vars } from "../theme";
 
 export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string) => void }) {
   const {
@@ -159,15 +160,15 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
       style={{
         width: 260,
         flexShrink: 0,
-        borderLeft: "1px solid #12122a",
-        background: "#07071a",
+        borderLeft: `1px solid ${vars.border.subtle}`,
+        background: vars.bg.panel,
         display: "flex",
         flexDirection: "column",
         height: "100%",
       }}
     >
       {/* Panel header */}
-      <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid #12122a" }}>
+      <div style={{ padding: "12px 14px 10px", borderBottom: `1px solid ${vars.border.subtle}` }}>
         <div ref={dropdownRef} style={{ position: "relative", marginBottom: 10 }}>
           <button
             type="button"
@@ -182,9 +183,9 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
               border: "none",
               cursor: "pointer",
               fontSize: 10,
-              fontFamily: "monospace",
+              fontFamily: vars.font.mono,
               fontWeight: 700,
-              color: "#4a4a6a",
+              color: vars.text.dim,
               letterSpacing: "0.12em",
               textAlign: "left",
             }}
@@ -192,7 +193,7 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
             <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {activeWatchlist.name.toUpperCase()}
             </span>
-            <span style={{ fontSize: 8, color: "#3a3a5a", flexShrink: 0 }}>
+            <span style={{ fontSize: 8, color: vars.text.faint, flexShrink: 0 }}>
               {dropdownOpen ? "▲" : "▼"}
             </span>
           </button>
@@ -205,11 +206,11 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                 left: 0,
                 right: 0,
                 zIndex: 60,
-                background: "#0d0d1e",
-                border: "1px solid #2a2a3a",
+                background: vars.bg.raised,
+                border: `1px solid ${vars.border.emphasis}`,
                 borderRadius: 6,
                 overflow: "hidden",
-                boxShadow: "0 8px 24px #00000070",
+                boxShadow: `0 8px 24px ${alpha(vars.shadow.color, 0.439)}`,
               }}
             >
               {watchlists.map((wl) => {
@@ -225,14 +226,14 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                       gap: 8,
                       width: "100%",
                       padding: "8px 10px",
-                      background: isActive ? "#1a1a30" : "transparent",
+                      background: isActive ? vars.border.default : "transparent",
                       border: "none",
-                      borderBottom: "1px solid #12122a",
+                      borderBottom: `1px solid ${vars.border.subtle}`,
                       cursor: "pointer",
                       fontSize: 10,
-                      fontFamily: "monospace",
+                      fontFamily: vars.font.mono,
                       fontWeight: 700,
-                      color: isActive ? "#34d399" : "#c0c0e0",
+                      color: isActive ? vars.status.gain : vars.text.primary,
                       letterSpacing: "0.08em",
                       textAlign: "left",
                     }}
@@ -240,13 +241,13 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                     <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {wl.name.toUpperCase()}
                     </span>
-                    {isActive && <span style={{ fontSize: 8, color: "#34d399" }}>✓</span>}
+                    {isActive && <span style={{ fontSize: 8, color: vars.status.gain }}>✓</span>}
                   </button>
                 );
               })}
 
               {creating ? (
-                <div style={{ padding: "8px 10px", borderTop: "1px solid #12122a" }}>
+                <div style={{ padding: "8px 10px", borderTop: `1px solid ${vars.border.subtle}` }}>
                   <input
                     ref={newNameRef}
                     value={newName}
@@ -267,14 +268,14 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                     style={{
                       width: "100%",
                       boxSizing: "border-box",
-                      background: "#07071a",
-                      border: `1px solid ${createError ? "#ef444460" : "#1e1e38"}`,
+                      background: vars.bg.panel,
+                      border: `1px solid ${createError ? alpha(vars.status.danger, 0.376) : vars.border.strong}`,
                       borderRadius: 4,
                       padding: "5px 8px",
                       fontSize: 10,
-                      fontFamily: "monospace",
+                      fontFamily: vars.font.mono,
                       fontWeight: 700,
-                      color: "#e0e0f0",
+                      color: vars.text.strong,
                       letterSpacing: "0.06em",
                       outline: "none",
                       marginBottom: 6,
@@ -284,8 +285,8 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                     <div
                       style={{
                         fontSize: 8,
-                        fontFamily: "monospace",
-                        color: "#ef4444",
+                        fontFamily: vars.font.mono,
+                        color: vars.status.danger,
                         letterSpacing: "0.06em",
                         marginBottom: 6,
                       }}
@@ -300,14 +301,14 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                       style={{
                         flex: 1,
                         cursor: "pointer",
-                        background: "#34d39920",
-                        border: "1px solid #34d39950",
+                        background: alpha(vars.status.gain, 0.125),
+                        border: `1px solid ${alpha(vars.status.gain, 0.314)}`,
                         borderRadius: 4,
                         padding: "4px 8px",
                         fontSize: 9,
-                        fontFamily: "monospace",
+                        fontFamily: vars.font.mono,
                         fontWeight: 700,
-                        color: "#34d399",
+                        color: vars.status.gain,
                         letterSpacing: "0.06em",
                       }}
                     >
@@ -324,13 +325,13 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                         flex: 1,
                         cursor: "pointer",
                         background: "transparent",
-                        border: "1px solid #2a2a3a",
+                        border: `1px solid ${vars.border.emphasis}`,
                         borderRadius: 4,
                         padding: "4px 8px",
                         fontSize: 9,
-                        fontFamily: "monospace",
+                        fontFamily: vars.font.mono,
                         fontWeight: 700,
-                        color: "#4a4a6a",
+                        color: vars.text.dim,
                         letterSpacing: "0.06em",
                       }}
                     >
@@ -350,9 +351,9 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                     border: "none",
                     cursor: "pointer",
                     fontSize: 9,
-                    fontFamily: "monospace",
+                    fontFamily: vars.font.mono,
                     fontWeight: 700,
-                    color: "#34d399",
+                    color: vars.status.gain,
                     letterSpacing: "0.08em",
                     textAlign: "left",
                   }}
@@ -381,14 +382,14 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
               maxLength={20}
               style={{
                 flex: 1,
-                background: "#0d0d1e",
-                border: `1px solid ${addError ? "#ef444460" : isFocused ? "#34d39940" : "#1e1e38"}`,
+                background: vars.bg.raised,
+                border: `1px solid ${addError ? alpha(vars.status.danger, 0.376) : isFocused ? alpha(vars.status.gain, 0.251) : vars.border.strong}`,
                 borderRadius: 4,
                 padding: "5px 8px",
                 fontSize: 11,
-                fontFamily: "monospace",
+                fontFamily: vars.font.mono,
                 fontWeight: 700,
-                color: "#e0e0f0",
+                color: vars.text.strong,
                 letterSpacing: "0.08em",
                 outline: "none",
               }}
@@ -397,22 +398,22 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
               onClick={() => commit(activeIndex >= 0 ? suggestions[activeIndex].symbol : query)}
               style={{
                 cursor: "pointer",
-                background: "#34d39920",
-                border: "1px solid #34d39950",
+                background: alpha(vars.status.gain, 0.125),
+                border: `1px solid ${alpha(vars.status.gain, 0.314)}`,
                 borderRadius: 4,
                 padding: "5px 10px",
                 fontSize: 11,
-                fontFamily: "monospace",
+                fontFamily: vars.font.mono,
                 fontWeight: 700,
-                color: "#34d399",
+                color: vars.status.gain,
                 letterSpacing: "0.06em",
                 transition: "all 0.15s",
               }}
               onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLElement).style.background = "#34d39930")
+                ((e.currentTarget as HTMLElement).style.background = alpha(vars.status.gain, 0.188))
               }
               onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLElement).style.background = "#34d39920")
+                ((e.currentTarget as HTMLElement).style.background = alpha(vars.status.gain, 0.125))
               }
             >
               + ADD
@@ -429,11 +430,11 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                 left: 0,
                 right: 0,
                 zIndex: 50,
-                background: "#0d0d1e",
-                border: "1px solid #2a2a3a",
+                background: vars.bg.raised,
+                border: `1px solid ${vars.border.emphasis}`,
                 borderRadius: 6,
                 overflow: "hidden",
-                boxShadow: "0 8px 24px #00000070",
+                boxShadow: `0 8px 24px ${alpha(vars.shadow.color, 0.439)}`,
                 listStyle: "none",
                 maxHeight: 280,
                 overflowY: "auto",
@@ -444,8 +445,8 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                   style={{
                     padding: "8px 12px",
                     fontSize: 10,
-                    fontFamily: "monospace",
-                    color: "#3a3a5a",
+                    fontFamily: vars.font.mono,
+                    color: vars.text.faint,
                     letterSpacing: "0.06em",
                   }}
                 >
@@ -467,18 +468,18 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                         gap: 8,
                         padding: "7px 12px",
                         cursor: alreadyAdded ? "default" : "pointer",
-                        background: isActive ? "#1a1a30" : "transparent",
-                        borderBottom: "1px solid #12122a",
+                        background: isActive ? vars.border.default : "transparent",
+                        borderBottom: `1px solid ${vars.border.subtle}`,
                         opacity: alreadyAdded ? 0.4 : 1,
                         transition: "background 0.08s",
                       }}
                     >
                       <span
                         style={{
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontSize: 12,
                           fontWeight: 700,
-                          color: isActive ? "#34d399" : "#c0c0e0",
+                          color: isActive ? vars.status.gain : vars.text.primary,
                           minWidth: 52,
                           letterSpacing: "0.04em",
                         }}
@@ -487,9 +488,9 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                       </span>
                       <span
                         style={{
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontSize: 9,
-                          color: "#4a4a6a",
+                          color: vars.text.dim,
                           flex: 1,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -500,9 +501,9 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                       </span>
                       <span
                         style={{
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontSize: 8,
-                          color: "#2a2a4a",
+                          color: vars.text.ghost,
                           letterSpacing: "0.06em",
                           flexShrink: 0,
                         }}
@@ -510,7 +511,7 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
                         {asset.exchange}
                       </span>
                       {alreadyAdded && (
-                        <span style={{ fontSize: 8, color: "#34d399" }}>✓</span>
+                        <span style={{ fontSize: 8, color: vars.status.gain }}>✓</span>
                       )}
                     </li>
                   );
@@ -524,8 +525,8 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
             style={{
               marginTop: 5,
               fontSize: 9,
-              fontFamily: "monospace",
-              color: "#ef4444",
+              fontFamily: vars.font.mono,
+              color: vars.status.danger,
               letterSpacing: "0.06em",
             }}
           >
@@ -539,10 +540,10 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
           style={{
             padding: "8px 14px",
             fontSize: 9,
-            fontFamily: "monospace",
-            color: "#f59e0b",
-            background: "#1a1408",
-            borderBottom: "1px solid #4a3810",
+            fontFamily: vars.font.mono,
+            color: vars.status.warning,
+            background: vars.tint.warningSurface,
+            borderBottom: `1px solid ${vars.tint.warningBorder}`,
           }}
         >
           Quotes stale{lastError ? ` — ${lastError}` : ""} · since {staleSince.toLocaleTimeString()}
@@ -557,8 +558,8 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
               padding: "32px 14px",
               textAlign: "center",
               fontSize: 10,
-              fontFamily: "monospace",
-              color: "#2a2a4a",
+              fontFamily: vars.font.mono,
+              color: vars.text.ghost,
               letterSpacing: "0.06em",
               lineHeight: 1.8,
             }}
@@ -578,10 +579,10 @@ export function WatchlistPanel({ onOpenTicker }: { onOpenTicker: (symbol: string
         <div
           style={{
             padding: "8px 14px",
-            borderTop: "1px solid #12122a",
+            borderTop: `1px solid ${vars.border.subtle}`,
             fontSize: 9,
-            fontFamily: "monospace",
-            color: "#2a2a4a",
+            fontFamily: vars.font.mono,
+            color: vars.text.ghost,
             letterSpacing: "0.06em",
           }}
         >

@@ -1,6 +1,7 @@
 import type { WheelPosition } from "../types";
 import { PHASE_CONFIG } from "../constants";
 import { fmt, dayChange, dayChangePct } from "../utils/formatters";
+import { vars } from "../theme";
 
 export interface Tab {
   id: string;
@@ -22,12 +23,12 @@ export function TabBar({ tabs, activeTab, positions, onSelect, onClose }: TabBar
       role="tablist"
       aria-label="Desk views"
       style={{
-        borderBottom: "1px solid #12122a",
+        borderBottom: `1px solid ${vars.border.subtle}`,
         padding: "0 24px",
         display: "flex",
         gap: 0,
         overflowX: "auto",
-        background: "#07071a",
+        background: vars.bg.panel,
       }}
     >
       {tabs.map((tab) => {
@@ -49,12 +50,12 @@ export function TabBar({ tabs, activeTab, positions, onSelect, onClose }: TabBar
               style={{
                 padding: "10px 18px",
                 fontSize: 11,
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: vars.font.code,
                 fontWeight: 700,
                 letterSpacing: "0.06em",
-                color: isActive ? (phase ? phase.color : "#34d399") : "#3a3a5a",
+                color: isActive ? (phase ? phase.color : vars.accent) : vars.text.faint,
                 borderBottom: isActive
-                  ? `2px solid ${phase ? phase.color : "#34d399"}`
+                  ? `2px solid ${phase ? phase.color : vars.accent}`
                   : "2px solid transparent",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
@@ -67,7 +68,7 @@ export function TabBar({ tabs, activeTab, positions, onSelect, onClose }: TabBar
                   style={{
                     marginLeft: 6,
                     fontSize: 9,
-                    color: dayChange(pos) >= 0 ? "#34d399" : "#f87171",
+                    color: dayChange(pos) >= 0 ? vars.status.gain : vars.status.loss,
                     fontWeight: 400,
                   }}
                 >
@@ -84,18 +85,18 @@ export function TabBar({ tabs, activeTab, positions, onSelect, onClose }: TabBar
                 style={{
                   padding: "10px 8px 10px 0",
                   fontSize: 10,
-                  color: "#3a3a5a",
+                  color: vars.text.faint,
                   cursor: "pointer",
                   borderBottom: isActive
-                    ? `2px solid ${phase ? phase.color : "#34d399"}`
+                    ? `2px solid ${phase ? phase.color : vars.accent}`
                     : "2px solid transparent",
                   transition: "color 0.15s",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#ef4444";
+                  e.currentTarget.style.color = vars.status.danger;
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "#3a3a5a";
+                  e.currentTarget.style.color = vars.text.faint;
                 }}
               >
                 ✕

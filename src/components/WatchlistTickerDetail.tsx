@@ -12,6 +12,7 @@ import { TickerHeader } from "./TickerHeader";
 import { CatalystsAndNews } from "./CatalystsAndNews";
 import { Banner, Card, CardLabel, EmptyState, LoadingState } from "./ui";
 import { VolatilityBar } from "./VolatilityBar";
+import { vars } from "../theme";
 
 export function WatchlistTickerDetail({
   symbol,
@@ -45,12 +46,12 @@ export function WatchlistTickerDetail({
           <span
             style={{
               fontSize: 10,
-              color: "#8a8aa8",
-              background: "#16162e",
-              border: "1px solid #2a2a3a",
+              color: vars.text.tertiary,
+              background: vars.border.default,
+              border: `1px solid ${vars.border.emphasis}`,
               padding: "2px 7px",
               borderRadius: 3,
-              fontFamily: "monospace",
+              fontFamily: vars.font.mono,
               fontWeight: 700,
               letterSpacing: "0.06em",
             }}

@@ -6,6 +6,7 @@ import { GRANULARITY_CHOICES } from "../constants";
 import { fmt } from "../utils/formatters";
 import { HmmForecastTable, HmmTrendChart, regimeColor } from "./HmmTrendChart";
 import { Banner, CardLabel, LoadingState, ToggleButton } from "./ui";
+import { vars } from "../theme";
 
 export function ResearchSection({ symbol }: { symbol: string }) {
   const [granularity, setGranularity] = useState<AnalysisGranularity>("weekly");
@@ -64,9 +65,9 @@ export function ResearchSection({ symbol }: { symbol: string }) {
             }}
           >
             <RegimeBadge label="CURRENT REGIME" regime={data.currentRegime} />
-            <ProbPill label="BEAR" prob={data.currentStateProbs[0]} color="#f87171" />
-            <ProbPill label="NEUTRAL" prob={data.currentStateProbs[1]} color="#94a3b8" />
-            <ProbPill label="BULL" prob={data.currentStateProbs[2]} color="#34d399" />
+            <ProbPill label="BEAR" prob={data.currentStateProbs[0]} color={vars.status.loss} />
+            <ProbPill label="NEUTRAL" prob={data.currentStateProbs[1]} color={vars.status.neutral} />
+            <ProbPill label="BULL" prob={data.currentStateProbs[2]} color={vars.status.gain} />
           </div>
 
           <HmmTrendChart data={data} />
@@ -81,7 +82,7 @@ export function ResearchSection({ symbol }: { symbol: string }) {
           )}
 
           {data.warnings.length > 0 && (
-            <div style={{ marginTop: 12, fontSize: 9, color: "#4a4a6a", fontFamily: "monospace", lineHeight: 1.5 }}>
+            <div style={{ marginTop: 12, fontSize: 9, color: vars.text.dim, fontFamily: vars.font.mono, lineHeight: 1.5 }}>
               {data.warnings.map((w) => (
                 <div key={w}>⚠ {w}</div>
               ))}
@@ -91,7 +92,7 @@ export function ResearchSection({ symbol }: { symbol: string }) {
       )}
 
       {data && data.history.length === 0 && !error && (
-        <div style={{ fontSize: 11, color: "#3a3a5a", fontFamily: "monospace", textAlign: "center", padding: 24 }}>
+        <div style={{ fontSize: 11, color: vars.text.faint, fontFamily: vars.font.mono, textAlign: "center", padding: 24 }}>
           INSUFFICIENT HISTORY FOR HMM
         </div>
       )}
@@ -103,11 +104,11 @@ function RegimeBadge({ label, regime }: { label: string; regime: string }) {
   const color = regimeColor(regime);
   return (
     <div>
-      <div style={{ fontSize: 9, color: "#4a4a6a", fontFamily: "monospace", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 9, color: vars.text.dim, fontFamily: vars.font.mono, marginBottom: 4 }}>{label}</div>
       <div
         style={{
           fontSize: 13,
-          fontFamily: "monospace",
+          fontFamily: vars.font.mono,
           fontWeight: 700,
           color,
           textTransform: "uppercase",
@@ -123,8 +124,8 @@ function RegimeBadge({ label, regime }: { label: string; regime: string }) {
 function ProbPill({ label, prob, color }: { label: string; prob: number; color: string }) {
   return (
     <div>
-      <div style={{ fontSize: 9, color: "#4a4a6a", fontFamily: "monospace", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 12, fontFamily: "monospace", color }}>{fmt.pctFromRatio(prob)}</div>
+      <div style={{ fontSize: 9, color: vars.text.dim, fontFamily: vars.font.mono, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 12, fontFamily: vars.font.mono, color }}>{fmt.pctFromRatio(prob)}</div>
     </div>
   );
 }
@@ -168,17 +169,17 @@ function TransitionMatrix({
 
 const thMini: React.CSSProperties = {
   fontSize: 8,
-  color: "#4a4a6a",
-  fontFamily: "monospace",
+  color: vars.text.dim,
+  fontFamily: vars.font.mono,
   padding: "4px 10px",
   textAlign: "center",
 };
 
 const tdMini: React.CSSProperties = {
   fontSize: 10,
-  color: "#a8a8c8",
-  fontFamily: "monospace",
+  color: vars.text.secondary,
+  fontFamily: vars.font.mono,
   padding: "4px 10px",
   textAlign: "center",
-  borderTop: "1px solid #12122a",
+  borderTop: `1px solid ${vars.border.subtle}`,
 };

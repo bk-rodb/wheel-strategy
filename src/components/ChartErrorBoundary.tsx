@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { vars } from "../theme";
 
 interface Props {
   children: ReactNode;
@@ -27,8 +28,8 @@ export class ChartErrorBoundary extends Component<Props, State> {
         <div
           style={{
             fontSize: 11,
-            color: "#3a3a5a",
-            fontFamily: "monospace",
+            color: vars.text.faint,
+            fontFamily: vars.font.mono,
             textAlign: "center",
             padding: 24,
           }}

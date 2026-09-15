@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { alpha, vars } from "../theme";
 
 /** Shared desk primitives — the card chrome, labels, banners, and placeholders every panel reuses. */
 
@@ -14,8 +15,8 @@ export function Card({
   return (
     <div
       style={{
-        background: "#08081a",
-        border: "1px solid #1a1a30",
+        background: vars.bg.card,
+        border: `1px solid ${vars.border.default}`,
         borderRadius: 6,
         padding: 14,
         marginBottom,
@@ -38,8 +39,8 @@ export function CardLabel({
     <div
       style={{
         fontSize: 10,
-        color: "#4a4a6a",
-        fontFamily: "monospace",
+        color: vars.text.dim,
+        fontFamily: vars.font.mono,
         letterSpacing: "0.08em",
         marginBottom,
       }}
@@ -50,8 +51,8 @@ export function CardLabel({
 }
 
 const BANNER_TONE = {
-  error: { background: "#1a0808", border: "#4a1010", color: "#f87171" },
-  warning: { background: "#1a1408", border: "#4a3810", color: "#f59e0b" },
+  error: { background: vars.tint.lossSurface, border: vars.tint.lossBorder, color: vars.status.loss },
+  warning: { background: vars.tint.warningSurface, border: vars.tint.warningBorder, color: vars.status.warning },
 } as const;
 
 export function Banner({
@@ -80,12 +81,12 @@ export function Banner({
         marginBottom,
         fontSize: 12,
         color: t.color,
-        fontFamily: "monospace",
+        fontFamily: vars.font.mono,
         ...style,
       }}
     >
       {children}
-      {hint && <div style={{ color: "#7a4a4a", fontSize: 10, marginTop: 6 }}>{hint}</div>}
+      {hint && <div style={{ color: vars.tint.lossHint, fontSize: 10, marginTop: 6 }}>{hint}</div>}
     </div>
   );
 }
@@ -104,8 +105,8 @@ export function LoadingState({
       style={{
         textAlign: "center",
         padding,
-        color: "#2a2a4a",
-        fontFamily: "monospace",
+        color: vars.text.ghost,
+        fontFamily: vars.font.mono,
         fontSize: 12,
       }}
     >
@@ -120,8 +121,8 @@ export function EmptyState({ children, hint }: { children: ReactNode; hint?: Rea
     <div
       style={{
         fontSize: 11,
-        color: "#3a3a5a",
-        fontFamily: "monospace",
+        color: vars.text.faint,
+        fontFamily: vars.font.mono,
         padding: "12px 0",
         textAlign: "center",
       }}
@@ -159,14 +160,14 @@ export function ToggleButton({
       aria-pressed={active}
       style={{
         cursor: disabled ? "default" : "pointer",
-        background: active ? "#34d39920" : "#0d0d1e",
-        border: `1px solid ${active ? "#34d39950" : "#1e1e38"}`,
+        background: active ? alpha(vars.accent, 0.125) : vars.bg.raised,
+        border: `1px solid ${active ? alpha(vars.accent, 0.314) : vars.border.strong}`,
         borderRadius: 4,
         padding: "4px 9px",
         fontSize: 11,
-        fontFamily: "monospace",
+        fontFamily: vars.font.mono,
         fontWeight: 700,
-        color: active ? "#34d399" : "#5a5a7a",
+        color: active ? vars.accent : vars.text.subtle,
       }}
     >
       {children}

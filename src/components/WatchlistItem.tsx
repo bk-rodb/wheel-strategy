@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from "react";
 import type { WatchlistItem as WatchlistItemData } from "../hooks/useWatchlist";
 import { fmt } from "../utils/formatters";
+import { vars } from "../theme";
 
 interface WatchlistItemProps {
   item: WatchlistItemData;
@@ -15,7 +16,7 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
   // market is currently open.
   const flat = q ? q.change === 0 : false;
   const up = q ? q.change >= 0 : true;
-  const chgColor = !q ? "#3a3a5a" : flat ? "#8a8aa8" : up ? "#34d399" : "#f87171";
+  const chgColor = !q ? vars.text.faint : flat ? vars.text.tertiary : up ? vars.status.gain : vars.status.loss;
   const arrow = flat ? "▶" : up ? "▲" : "▼";
 
   const onRowKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -35,12 +36,12 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
       aria-label={`Open ${item.symbol}`}
       style={{
         padding: "10px 14px",
-        borderBottom: "1px solid #0e0e20",
+        borderBottom: `1px solid ${vars.bg.raised}`,
         transition: "background 0.1s",
         position: "relative",
         cursor: "pointer",
       }}
-      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "#0d0d1e")}
+      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = vars.bg.raised)}
       onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
     >
       <div
@@ -54,9 +55,9 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
         <span
           style={{
             fontSize: 12,
-            fontFamily: "monospace",
+            fontFamily: vars.font.mono,
             fontWeight: 700,
-            color: "#d8d8f0",
+            color: vars.text.strong,
             letterSpacing: "0.04em",
           }}
         >
@@ -65,9 +66,9 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
         <span
           style={{
             fontSize: 13,
-            fontFamily: "monospace",
+            fontFamily: vars.font.mono,
             fontWeight: 700,
-            color: q ? "#e0e0f8" : "#3a3a5a",
+            color: q ? vars.text.strong : vars.text.faint,
           }}
         >
           {item.loadingQuote ? "···" : q ? fmt.currency(q.lastPrice) : "—"}
@@ -85,7 +86,7 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
           <span
             style={{
               fontSize: 11,
-              fontFamily: "monospace",
+              fontFamily: vars.font.mono,
               fontWeight: 600,
               color: chgColor,
               display: "flex",
@@ -115,7 +116,7 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
         style={{
           cursor: "pointer",
           fontSize: 9,
-          color: "#2a2a4a",
+          color: vars.text.ghost,
           position: "absolute",
           top: 8,
           right: 10,
@@ -123,8 +124,8 @@ export function WatchlistItem({ item, onRemove, onOpen }: WatchlistItemProps) {
           borderRadius: 2,
           transition: "color 0.15s",
         }}
-        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#ef4444")}
-        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#2a2a4a")}
+        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = vars.status.danger)}
+        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = vars.text.ghost)}
       >
         ✕
       </button>

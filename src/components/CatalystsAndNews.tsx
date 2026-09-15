@@ -2,11 +2,12 @@ import { useTickerCatalysts } from "../hooks/useTickerCatalysts";
 import type { CatalystEvent } from "../types";
 import { fmtRelativeTime } from "../utils/formatters";
 import { CardLabel } from "./ui";
+import { vars } from "../theme";
 
 const emptyStyle: React.CSSProperties = {
   fontSize: 10,
-  color: "#3a3a5a",
-  fontFamily: "monospace",
+  color: vars.text.faint,
+  fontFamily: vars.font.mono,
   padding: "8px 0",
 };
 
@@ -18,10 +19,10 @@ const EVENT_ICON: Record<CatalystEvent["type"], string> = {
 };
 
 const EVENT_COLOR: Record<CatalystEvent["type"], string> = {
-  earnings: "#f59e0b",
-  ex_dividend: "#60a5fa",
-  split: "#a78bfa",
-  macro: "#8a8aa8",
+  earnings: vars.status.warning,
+  ex_dividend: vars.status.info,
+  split: vars.status.highlight,
+  macro: vars.text.tertiary,
 };
 
 function daysUntil(dateStr: string): number {
@@ -32,9 +33,9 @@ function daysUntil(dateStr: string): number {
 }
 
 function urgencyColor(days: number): string {
-  if (days <= 0) return "#f87171";
-  if (days <= 7) return "#f59e0b";
-  return "#5a5a7a";
+  if (days <= 0) return vars.status.loss;
+  if (days <= 7) return vars.status.warning;
+  return vars.text.subtle;
 }
 
 function EventRow({ event }: { event: CatalystEvent }) {
@@ -48,7 +49,7 @@ function EventRow({ event }: { event: CatalystEvent }) {
         display: "flex",
         gap: 10,
         padding: "8px 0",
-        borderBottom: "1px solid #101020",
+        borderBottom: `1px solid ${vars.bg.overlay}`,
       }}
     >
       <span style={{ color, fontSize: 10, marginTop: 2 }}>{EVENT_ICON[event.type]}</span>
@@ -57,8 +58,8 @@ function EventRow({ event }: { event: CatalystEvent }) {
           <span
             style={{
               fontSize: 11,
-              fontFamily: "monospace",
-              color: urgent ? "#e8e8f8" : "#b8b8d0",
+              fontFamily: vars.font.mono,
+              color: urgent ? vars.text.strong : vars.text.secondary,
               fontWeight: urgent ? 600 : 400,
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -71,7 +72,7 @@ function EventRow({ event }: { event: CatalystEvent }) {
           <span
             style={{
               fontSize: 9,
-              fontFamily: "monospace",
+              fontFamily: vars.font.mono,
               color: urgencyColor(days),
               whiteSpace: "nowrap",
             }}
@@ -79,7 +80,7 @@ function EventRow({ event }: { event: CatalystEvent }) {
             {days === 0 ? "TODAY" : days < 0 ? "PAST" : `${days}D`}
           </span>
         </div>
-        <div style={{ fontSize: 9, color: "#4a4a6a", fontFamily: "monospace", marginTop: 2 }}>
+        <div style={{ fontSize: 9, color: vars.text.dim, fontFamily: vars.font.mono, marginTop: 2 }}>
           {event.date}
           {event.timing ? ` · ${event.timing.toUpperCase()}` : ""}
           {event.detail ? ` · ${event.detail}` : ""}
@@ -88,8 +89,8 @@ function EventRow({ event }: { event: CatalystEvent }) {
           <div
             style={{
               fontSize: 9,
-              color: "#f59e0b",
-              fontFamily: "monospace",
+              color: vars.status.warning,
+              fontFamily: vars.font.mono,
               marginTop: 4,
             }}
           >
@@ -97,7 +98,7 @@ function EventRow({ event }: { event: CatalystEvent }) {
           </div>
         )}
         {event.type === "ex_dividend" && event.yieldPct != null && (
-          <div style={{ fontSize: 9, color: "#60a5fa", fontFamily: "monospace", marginTop: 2 }}>
+          <div style={{ fontSize: 9, color: vars.status.info, fontFamily: vars.font.mono, marginTop: 2 }}>
             CC early-assignment risk if ITM
           </div>
         )}
@@ -120,7 +121,7 @@ function NewsRow({ item }: { item: { headline: string; source: string; url: stri
       style={{
         display: "block",
         padding: "8px 0",
-        borderBottom: "1px solid #101020",
+        borderBottom: `1px solid ${vars.bg.overlay}`,
         textDecoration: "none",
         color: "inherit",
       }}
@@ -128,8 +129,8 @@ function NewsRow({ item }: { item: { headline: string; source: string; url: stri
       <div
         style={{
           fontSize: 11,
-          fontFamily: "monospace",
-          color: "#c8c8e0",
+          fontFamily: vars.font.mono,
+          color: vars.text.primary,
           lineHeight: 1.4,
           marginBottom: 3,
           overflow: "hidden",
@@ -139,7 +140,7 @@ function NewsRow({ item }: { item: { headline: string; source: string; url: stri
       >
         {item.headline}
       </div>
-      <div style={{ fontSize: 9, color: "#4a4a6a", fontFamily: "monospace" }}>
+      <div style={{ fontSize: 9, color: vars.text.dim, fontFamily: vars.font.mono }}>
         {item.source} · {fmtRelativeTime(item.publishedAt)}
       </div>
     </a>
@@ -153,8 +154,8 @@ const columnStyle: React.CSSProperties = {
 
 const sectionLabelStyle: React.CSSProperties = {
   fontSize: 9,
-  color: "#3a3a5a",
-  fontFamily: "monospace",
+  color: vars.text.faint,
+  fontFamily: vars.font.mono,
   letterSpacing: "0.06em",
   marginBottom: 6,
 };
@@ -171,7 +172,7 @@ export function CatalystsAndNews({ symbol }: { symbol: string }) {
         <div style={emptyStyle}>Loading catalysts…</div>
       )}
       {error && (
-        <div style={{ ...emptyStyle, color: "#f87171" }}>✗ {error}</div>
+        <div style={{ ...emptyStyle, color: vars.status.loss }}>✗ {error}</div>
       )}
       <div
         style={{

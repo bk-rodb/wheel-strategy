@@ -12,6 +12,7 @@ import { TickerHeader } from "./TickerHeader";
 import { Card, CardLabel } from "./ui";
 import { VolatilityBar } from "./VolatilityBar";
 import { WheelAnalysisPanel } from "./WheelAnalysisPanel";
+import { vars } from "../theme";
 
 export function TickerDetail({
   pos,
@@ -35,11 +36,11 @@ export function TickerDetail({
           <span
             style={{
               fontSize: 10,
-              color: "#fff",
+              color: vars.text.onBrand,
               background: SOURCE_BADGE[pos.dataSource],
               padding: "2px 7px",
               borderRadius: 3,
-              fontFamily: "monospace",
+              fontFamily: vars.font.mono,
               fontWeight: 700,
             }}
           >
@@ -126,8 +127,8 @@ export function TickerDetail({
       <div
         style={{
           fontSize: 10,
-          color: "#2a2a4a",
-          fontFamily: "monospace",
+          color: vars.text.ghost,
+          fontFamily: vars.font.mono,
           textAlign: "right",
         }}
       >

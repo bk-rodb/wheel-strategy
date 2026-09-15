@@ -3,6 +3,7 @@ import { fmt, dayChange, dayChangePct, dte } from "../utils/formatters";
 import { PHASE_CONFIG, SOURCE_BADGE, signColor } from "../constants";
 import { WheelPhaseIndicator } from "./WheelPhaseIndicator";
 import { Sparkline } from "./Sparkline";
+import { vars } from "../theme";
 
 interface PositionCardProps {
   position: WheelPosition;
@@ -29,8 +30,8 @@ export function PositionCard({ position: pos, onSelect }: PositionCardProps) {
         height: "100%",
         minWidth: 0,
         boxSizing: "border-box",
-        background: "#08081a",
-        border: "1px solid #1a1a30",
+        background: vars.bg.card,
+        border: `1px solid ${vars.border.default}`,
         borderRadius: 8,
         padding: 0,
         cursor: "pointer",
@@ -43,7 +44,7 @@ export function PositionCard({ position: pos, onSelect }: PositionCardProps) {
         (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.borderColor = "#1a1a30";
+        (e.currentTarget as HTMLButtonElement).style.borderColor = vars.border.default;
         (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
       }}
     >
@@ -79,10 +80,10 @@ export function PositionCard({ position: pos, onSelect }: PositionCardProps) {
           <div style={{ minWidth: 0, flex: 1, overflow: "hidden" }}>
             <div
               style={{
-                fontFamily: "'Syne','Trebuchet MS',sans-serif",
+                fontFamily: vars.font.display,
                 fontSize: 18,
                 fontWeight: 800,
-                color: "#e0e0f8",
+                color: vars.text.strong,
                 letterSpacing: "-0.01em",
               }}
             >
@@ -92,8 +93,8 @@ export function PositionCard({ position: pos, onSelect }: PositionCardProps) {
               title={pos.companyName}
               style={{
                 fontSize: 10,
-                color: "#3a3a5a",
-                fontFamily: "monospace",
+                color: vars.text.faint,
+                fontFamily: vars.font.mono,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
@@ -105,15 +106,15 @@ export function PositionCard({ position: pos, onSelect }: PositionCardProps) {
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <div
               style={{
-                fontFamily: "monospace",
+                fontFamily: vars.font.mono,
                 fontSize: 15,
                 fontWeight: 700,
-                color: "#d8d8f0",
+                color: vars.text.strong,
               }}
             >
               {fmt.currency(pos.currentPrice)}
             </div>
-            <div style={{ fontFamily: "monospace", fontSize: 10, color: chgColor }}>
+            <div style={{ fontFamily: vars.font.mono, fontSize: 10, color: chgColor }}>
               {fmt.pct(chgPct)}
             </div>
           </div>
@@ -131,11 +132,11 @@ export function PositionCard({ position: pos, onSelect }: PositionCardProps) {
           <span
             style={{
               fontSize: 9,
-              color: "#fff",
+              color: vars.text.onBrand,
               background: SOURCE_BADGE[pos.dataSource],
               padding: "1px 6px",
               borderRadius: 2,
-              fontFamily: "monospace",
+              fontFamily: vars.font.mono,
             }}
           >
             {pos.dataSource}
@@ -155,14 +156,14 @@ export function PositionCard({ position: pos, onSelect }: PositionCardProps) {
           }}
         >
           <div>
-            <div style={{ fontSize: 9, color: "#3a3a5a", fontFamily: "monospace" }}>
+            <div style={{ fontSize: 9, color: vars.text.faint, fontFamily: vars.font.mono }}>
               UNREALIZED
             </div>
             <div
               style={{
                 fontSize: 12,
-                fontFamily: "monospace",
-                color: pos.unrealizedPnL >= 0 ? "#34d399" : "#f87171",
+                fontFamily: vars.font.mono,
+                color: pos.unrealizedPnL >= 0 ? vars.status.gain : vars.status.loss,
                 fontWeight: 600,
               }}
             >
@@ -170,14 +171,14 @@ export function PositionCard({ position: pos, onSelect }: PositionCardProps) {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 9, color: "#3a3a5a", fontFamily: "monospace" }}>
+            <div style={{ fontSize: 9, color: vars.text.faint, fontFamily: vars.font.mono }}>
               PREMIUM
             </div>
             <div
               style={{
                 fontSize: 12,
-                fontFamily: "monospace",
-                color: "#34d399",
+                fontFamily: vars.font.mono,
+                color: vars.status.gain,
                 fontWeight: 600,
               }}
             >
@@ -187,22 +188,22 @@ export function PositionCard({ position: pos, onSelect }: PositionCardProps) {
           {pos.activeOption && (
             <>
               <div>
-                <div style={{ fontSize: 9, color: "#3a3a5a", fontFamily: "monospace" }}>
+                <div style={{ fontSize: 9, color: vars.text.faint, fontFamily: vars.font.mono }}>
                   STRIKE
                 </div>
-                <div style={{ fontSize: 12, fontFamily: "monospace", color: "#c0c0e0" }}>
+                <div style={{ fontSize: 12, fontFamily: vars.font.mono, color: vars.text.primary }}>
                   {fmt.currency(pos.activeOption.strike)}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 9, color: "#3a3a5a", fontFamily: "monospace" }}>
+                <div style={{ fontSize: 9, color: vars.text.faint, fontFamily: vars.font.mono }}>
                   DTE
                 </div>
                 <div
                   style={{
                     fontSize: 12,
-                    fontFamily: "monospace",
-                    color: dte(pos.activeOption.expiration) <= 7 ? "#ef4444" : "#c0c0e0",
+                    fontFamily: vars.font.mono,
+                    color: dte(pos.activeOption.expiration) <= 7 ? vars.status.danger : vars.text.primary,
                   }}
                 >
                   {dte(pos.activeOption.expiration)}d

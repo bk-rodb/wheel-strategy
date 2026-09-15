@@ -6,6 +6,7 @@ import {
   type RetrospectiveSummary,
 } from "../api/fetchTradeOutcomes";
 import { fmt } from "../utils/formatters";
+import { vars } from "../theme";
 
 export function RetrospectivePanel() {
   const [summary, setSummary] = useState<RetrospectiveSummary | null>(null);
@@ -33,8 +34,8 @@ export function RetrospectivePanel() {
   return (
     <div
       style={{
-        background: "#08081a",
-        border: "1px solid #1a1a30",
+        background: vars.bg.card,
+        border: `1px solid ${vars.border.default}`,
         borderRadius: 6,
         marginBottom: 20,
         overflow: "hidden",
@@ -43,7 +44,7 @@ export function RetrospectivePanel() {
       <div
         style={{
           padding: "12px 14px",
-          borderBottom: "1px solid #12122a",
+          borderBottom: `1px solid ${vars.border.subtle}`,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "baseline",
@@ -55,21 +56,21 @@ export function RetrospectivePanel() {
             style={{
               fontSize: 11,
               letterSpacing: "0.08em",
-              color: "#6b6b8a",
-              fontFamily: "monospace",
+              color: vars.text.muted,
+              fontFamily: vars.font.mono,
               marginBottom: 4,
             }}
           >
             RETROSPECTIVE · EXPERIENCE LEDGER
           </div>
-          <div style={{ fontSize: 13, color: "#c0c0e0" }}>
+          <div style={{ fontSize: 13, color: vars.text.primary }}>
             Closed-leg outcomes, cohorts, and anomalies feeding the Experience head
           </div>
         </div>
         {!IS_MOCK && (
           <a
             href={tradeOutcomesCsvUrl()}
-            style={{ fontSize: 11, color: "#60a5fa", fontFamily: "monospace" }}
+            style={{ fontSize: 11, color: vars.status.info, fontFamily: vars.font.mono }}
           >
             CSV EXPORT
           </a>
@@ -78,12 +79,12 @@ export function RetrospectivePanel() {
 
       <div style={{ padding: 14 }}>
         {loading && (
-          <div style={{ color: "#6b6b8a", fontSize: 12, fontFamily: "monospace" }}>
+          <div style={{ color: vars.text.muted, fontSize: 12, fontFamily: vars.font.mono }}>
             Loading outcomes…
           </div>
         )}
         {error && (
-          <div style={{ color: "#f87171", fontSize: 12, fontFamily: "monospace" }}>{error}</div>
+          <div style={{ color: vars.status.loss, fontSize: 12, fontFamily: vars.font.mono }}>{error}</div>
         )}
         {!loading && !error && summary && (
           <>
@@ -111,14 +112,14 @@ export function RetrospectivePanel() {
                   label: "REALIZED",
                   value: fmt.currency(summary.totalRealizedPnL ?? 0),
                   color:
-                    (summary.totalRealizedPnL ?? 0) >= 0 ? "#34d399" : "#f87171",
+                    (summary.totalRealizedPnL ?? 0) >= 0 ? vars.status.gain : vars.status.loss,
                 },
               ].map((m) => (
                 <div
                   key={m.label}
                   style={{
-                    background: "#0c0c1c",
-                    border: "1px solid #16162a",
+                    background: vars.bg.raised,
+                    border: `1px solid ${vars.bg.hover}`,
                     borderRadius: 4,
                     padding: "8px 10px",
                   }}
@@ -126,8 +127,8 @@ export function RetrospectivePanel() {
                   <div
                     style={{
                       fontSize: 10,
-                      color: "#6b6b8a",
-                      fontFamily: "monospace",
+                      color: vars.text.muted,
+                      fontFamily: vars.font.mono,
                       marginBottom: 4,
                     }}
                   >
@@ -136,9 +137,9 @@ export function RetrospectivePanel() {
                   <div
                     style={{
                       fontSize: 14,
-                      fontFamily: "monospace",
+                      fontFamily: vars.font.mono,
                       fontWeight: 700,
-                      color: m.color ?? "#c0c0e0",
+                      color: m.color ?? vars.text.primary,
                     }}
                   >
                     {m.value}
@@ -152,8 +153,8 @@ export function RetrospectivePanel() {
                 <div
                   style={{
                     fontSize: 10,
-                    color: "#6b6b8a",
-                    fontFamily: "monospace",
+                    color: vars.text.muted,
+                    fontFamily: vars.font.mono,
                     marginBottom: 6,
                     letterSpacing: "0.06em",
                   }}
@@ -166,11 +167,11 @@ export function RetrospectivePanel() {
                       width: "100%",
                       borderCollapse: "collapse",
                       fontSize: 11,
-                      fontFamily: "monospace",
+                      fontFamily: vars.font.mono,
                     }}
                   >
                     <thead>
-                      <tr style={{ color: "#6b6b8a", textAlign: "left" }}>
+                      <tr style={{ color: vars.text.muted, textAlign: "left" }}>
                         <th style={{ padding: "4px 6px" }}>KEY</th>
                         <th style={{ padding: "4px 6px" }}>N</th>
                         <th style={{ padding: "4px 6px" }}>ASSIGN</th>
@@ -181,7 +182,7 @@ export function RetrospectivePanel() {
                     </thead>
                     <tbody>
                       {summary.cohorts.slice(0, 8).map((c) => (
-                        <tr key={c.cohortKey} style={{ color: "#a0a0c0" }}>
+                        <tr key={c.cohortKey} style={{ color: vars.text.secondary }}>
                           <td style={{ padding: "4px 6px", maxWidth: 220 }}>{c.cohortKey}</td>
                           <td style={{ padding: "4px 6px" }}>{c.sampleSize}</td>
                           <td style={{ padding: "4px 6px" }}>
@@ -213,8 +214,8 @@ export function RetrospectivePanel() {
                 <div
                   style={{
                     fontSize: 10,
-                    color: "#f59e0b",
-                    fontFamily: "monospace",
+                    color: vars.status.warning,
+                    fontFamily: vars.font.mono,
                     marginBottom: 6,
                     letterSpacing: "0.06em",
                   }}
@@ -226,12 +227,12 @@ export function RetrospectivePanel() {
                     key={a.clientOrderId}
                     style={{
                       fontSize: 11,
-                      fontFamily: "monospace",
-                      color: "#c0c0e0",
+                      fontFamily: vars.font.mono,
+                      color: vars.text.primary,
                       marginBottom: 4,
                     }}
                   >
-                    <span style={{ color: "#f59e0b" }}>{a.underlying}</span> · {a.outcomeLabel}
+                    <span style={{ color: vars.status.warning }}>{a.underlying}</span> · {a.outcomeLabel}
                     {" — "}
                     {a.reason ?? "flagged"}
                   </div>
@@ -244,8 +245,8 @@ export function RetrospectivePanel() {
                 <div
                   style={{
                     fontSize: 10,
-                    color: "#6b6b8a",
-                    fontFamily: "monospace",
+                    color: vars.text.muted,
+                    fontFamily: vars.font.mono,
                     marginBottom: 6,
                     letterSpacing: "0.06em",
                   }}
@@ -257,8 +258,8 @@ export function RetrospectivePanel() {
                     key={c.wheelCycleId}
                     style={{
                       fontSize: 11,
-                      fontFamily: "monospace",
-                      color: "#a0a0c0",
+                      fontFamily: vars.font.mono,
+                      color: vars.text.secondary,
                       marginBottom: 4,
                     }}
                   >
@@ -266,7 +267,7 @@ export function RetrospectivePanel() {
                     {fmt.currency(c.totalPremiumCash ?? 0)} · pnl{" "}
                     <span
                       style={{
-                        color: (c.totalRealizedPnL ?? 0) >= 0 ? "#34d399" : "#f87171",
+                        color: (c.totalRealizedPnL ?? 0) >= 0 ? vars.status.gain : vars.status.loss,
                       }}
                     >
                       {fmt.currency(c.totalRealizedPnL ?? 0)}
@@ -277,7 +278,7 @@ export function RetrospectivePanel() {
             )}
 
             {summary.totalOutcomes === 0 && (
-              <div style={{ color: "#6b6b8a", fontSize: 12, fontFamily: "monospace" }}>
+              <div style={{ color: vars.text.muted, fontSize: 12, fontFamily: vars.font.mono }}>
                 No closed outcomes yet. Place and resolve fills to train the Experience head.
               </div>
             )}
