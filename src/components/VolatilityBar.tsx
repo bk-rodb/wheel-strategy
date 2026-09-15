@@ -1,11 +1,12 @@
 import { useVolatilityMetrics } from "../hooks/useVolatilityMetrics";
+import { vars } from "../theme";
 
 export function VolatilityBar({ symbol }: { symbol: string }) {
   const { realizedVol, impliedVol, vrp, loading, error } = useVolatilityMetrics(symbol);
 
   if (loading && realizedVol == null && impliedVol == null) {
     return (
-      <div style={{ fontSize: 10, color: "#3a3a5a", fontFamily: "monospace", padding: "4px 0" }}>
+      <div style={{ fontSize: 10, color: vars.text.faint, fontFamily: vars.font.mono, padding: "4px 0" }}>
         Loading volatility…
       </div>
     );
@@ -21,7 +22,7 @@ export function VolatilityBar({ symbol }: { symbol: string }) {
   const vrpPct =
     vrp != null ? `${vrp >= 0 ? "+" : ""}${(vrp * 100).toFixed(1)}%` : "—";
   const vrpColor =
-    vrp == null ? "#8a8aa8" : vrp >= 0.05 ? "#34d399" : vrp <= -0.05 ? "#f87171" : "#8a8aa8";
+    vrp == null ? vars.text.tertiary : vrp >= 0.05 ? vars.status.gain : vrp <= -0.05 ? vars.status.loss : vars.text.tertiary;
 
   return (
     <div
@@ -31,22 +32,22 @@ export function VolatilityBar({ symbol }: { symbol: string }) {
         alignItems: "center",
         gap: 12,
         padding: "8px 0 4px",
-        borderTop: "1px solid #141428",
+        borderTop: `1px solid ${vars.border.subtle}`,
         marginTop: 8,
         fontSize: 10,
-        fontFamily: "monospace",
-        color: "#5a5a7a",
+        fontFamily: vars.font.mono,
+        color: vars.text.subtle,
       }}
     >
-      <span style={{ letterSpacing: "0.08em", color: "#4a4a6a" }}>VOLATILITY</span>
+      <span style={{ letterSpacing: "0.08em", color: vars.text.dim }}>VOLATILITY</span>
       <span>
-        RV <b style={{ color: "#e8e8f8" }}>{rvPct}%</b>
+        RV <b style={{ color: vars.text.strong }}>{rvPct}%</b>
       </span>
-      <span style={{ color: "#2a2a4a" }}>·</span>
+      <span style={{ color: vars.text.ghost }}>·</span>
       <span>
-        IV <b style={{ color: "#e8e8f8" }}>{ivPct}%</b>
+        IV <b style={{ color: vars.text.strong }}>{ivPct}%</b>
       </span>
-      <span style={{ color: "#2a2a4a" }}>·</span>
+      <span style={{ color: vars.text.ghost }}>·</span>
       <span>
         VRP <b style={{ color: vrpColor }}>{vrpPct}</b>
       </span>

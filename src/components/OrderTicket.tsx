@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { OrderAction, PreTradeResult } from "../api/preTradeCheck";
 import { fmt } from "../utils/formatters";
+import { alpha, vars } from "../theme";
 
 export interface OrderTicketProps {
   action: OrderAction;
@@ -49,8 +50,8 @@ export function OrderTicket({
   return (
     <div
       style={{
-        background: "#0c0c1c",
-        border: `1px solid ${accent}40`,
+        background: vars.bg.raised,
+        border: `1px solid ${alpha(accent, 0.251)}`,
         borderRadius: 6,
         padding: 14,
         margin: "0 0 10px",
@@ -59,7 +60,7 @@ export function OrderTicket({
       <div
         style={{
           fontSize: 10,
-          fontFamily: "monospace",
+          fontFamily: vars.font.mono,
           color: accent,
           fontWeight: 800,
           letterSpacing: "0.1em",
@@ -75,8 +76,8 @@ export function OrderTicket({
           gridTemplateColumns: "1fr 1fr",
           gap: "6px 16px",
           fontSize: 11,
-          fontFamily: "monospace",
-          color: "#c0c0e0",
+          fontFamily: vars.font.mono,
+          color: vars.text.primary,
           marginBottom: 12,
         }}
       >
@@ -85,7 +86,7 @@ export function OrderTicket({
         <Row label="STRIKE" value={fmt.currency(strike)} />
         <Row label="LIMIT" value={fmt.currency(limitPrice)} />
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: "#4a4a6a", fontSize: 9, letterSpacing: "0.06em" }}>QTY</span>
+          <span style={{ color: vars.text.dim, fontSize: 9, letterSpacing: "0.06em" }}>QTY</span>
           <input
             type="number"
             min={1}
@@ -99,21 +100,21 @@ export function OrderTicket({
             }
             style={{
               width: 56,
-              background: "#08081a",
-              border: "1px solid #2a2a3a",
+              background: vars.bg.card,
+              border: `1px solid ${vars.border.emphasis}`,
               borderRadius: 3,
-              color: "#e8e8f8",
-              fontFamily: "monospace",
+              color: vars.text.strong,
+              fontFamily: vars.font.mono,
               fontSize: 12,
               padding: "3px 6px",
             }}
           />
-          <span style={{ color: "#3a3a5a", fontSize: 9 }}>max {maxQty}</span>
+          <span style={{ color: vars.text.faint, fontSize: 9 }}>max {maxQty}</span>
         </div>
         <Row
           label={cashLabel}
           value={fmt.currency(Math.abs(check.estCashFlow))}
-          valueColor={check.estCashFlow >= 0 ? "#34d399" : "#f87171"}
+          valueColor={check.estCashFlow >= 0 ? vars.status.gain : vars.status.loss}
         />
         {check.collateralRequired > 0 && (
           <Row label="COLLATERAL" value={fmt.currency(check.collateralRequired)} />
@@ -136,8 +137,8 @@ export function OrderTicket({
               key={i}
               style={{
                 fontSize: 10,
-                fontFamily: "monospace",
-                color: "#f87171",
+                fontFamily: vars.font.mono,
+                color: vars.status.loss,
                 marginBottom: 2,
               }}
             >
@@ -154,8 +155,8 @@ export function OrderTicket({
               key={i}
               style={{
                 fontSize: 10,
-                fontFamily: "monospace",
-                color: "#f59e0b",
+                fontFamily: vars.font.mono,
+                color: vars.status.warning,
                 marginBottom: 2,
               }}
             >
@@ -171,8 +172,8 @@ export function OrderTicket({
           alignItems: "center",
           gap: 8,
           fontSize: 10,
-          fontFamily: "monospace",
-          color: "#8a8aa8",
+          fontFamily: vars.font.mono,
+          color: vars.text.tertiary,
           marginBottom: 12,
           cursor: "pointer",
           userSelect: "none",
@@ -192,7 +193,7 @@ export function OrderTicket({
           type="button"
           disabled={busy}
           onClick={onCancel}
-          style={btnStyle("#5a5a7a", "transparent", "#2a2a3a")}
+          style={btnStyle(vars.text.subtle, "transparent", vars.border.emphasis)}
         >
           DISMISS
         </button>
@@ -202,8 +203,8 @@ export function OrderTicket({
           onClick={onConfirm}
           style={{
             ...btnStyle(
-              canSubmit ? "#04120c" : "#3a3a5a",
-              canSubmit ? accent : "#1a1a30",
+              canSubmit ? vars.tint.gainSurface : vars.text.faint,
+              canSubmit ? accent : vars.border.default,
               "transparent",
             ),
             opacity: canSubmit ? 1 : 0.5,
@@ -228,8 +229,8 @@ function Row({
 }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-      <span style={{ color: "#4a4a6a", fontSize: 9, letterSpacing: "0.06em" }}>{label}</span>
-      <span style={{ color: valueColor ?? "#e8e8f8", fontWeight: 700 }}>{value}</span>
+      <span style={{ color: vars.text.dim, fontSize: 9, letterSpacing: "0.06em" }}>{label}</span>
+      <span style={{ color: valueColor ?? vars.text.strong, fontWeight: 700 }}>{value}</span>
     </div>
   );
 }
@@ -242,7 +243,7 @@ function btnStyle(color: string, bg: string, border: string): React.CSSPropertie
     borderRadius: 3,
     padding: "6px 14px",
     fontSize: 10,
-    fontFamily: "monospace",
+    fontFamily: vars.font.mono,
     fontWeight: 800,
     color,
     letterSpacing: "0.06em",

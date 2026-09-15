@@ -13,6 +13,7 @@ import {
 import type { PricePoint } from "../types";
 import { fmt } from "../utils/formatters";
 import { ChartErrorBoundary } from "./ChartErrorBoundary";
+import { useTheme } from "../theme";
 
 interface PriceTrendChartProps {
   data: PricePoint[];
@@ -31,6 +32,7 @@ function toPct(price: number, startPrice: number): number {
 }
 
 function PriceTrendChartInner({ data, costBasis, strike }: PriceTrendChartProps) {
+  const { theme } = useTheme();
   const startPrice = data[0]?.price ?? 0;
 
   const chartData = useMemo<ChartPoint[]>(
@@ -68,7 +70,7 @@ function PriceTrendChartInner({ data, costBasis, strike }: PriceTrendChartProps)
   const yMax = Math.max(...pctValues, ...levelPcts);
   const pad = Math.max(1.5, (yMax - yMin) * 0.08);
 
-  const trendColor = isUp ? "#34d399" : "#f87171";
+  const trendColor = isUp ? theme.status.gain : theme.status.loss;
   const gradientId = isUp ? "price-up-fill" : "price-down-fill";
 
   return (
@@ -82,10 +84,10 @@ function PriceTrendChartInner({ data, costBasis, strike }: PriceTrendChartProps)
           gap: 12,
         }}
       >
-        <div style={{ fontSize: 9, color: "#4a4a6a", fontFamily: "monospace", letterSpacing: "0.06em" }}>
+        <div style={{ fontSize: 9, color: theme.text.dim, fontFamily: theme.font.mono, letterSpacing: "0.06em" }}>
           % FROM {data[0].date.slice(5)} OPEN ({fmt.currency(startPrice)})
         </div>
-        <div style={{ fontSize: 13, fontFamily: "monospace", fontWeight: 700, color: trendColor }}>
+        <div style={{ fontSize: 13, fontFamily: theme.font.mono, fontWeight: 700, color: trendColor }}>
           {netPct >= 0 ? "+" : ""}
           {netPct.toFixed(2)}%
         </div>
@@ -100,11 +102,11 @@ function PriceTrendChartInner({ data, costBasis, strike }: PriceTrendChartProps)
             </linearGradient>
           </defs>
 
-          <CartesianGrid stroke="#141428" vertical={false} />
+          <CartesianGrid stroke={theme.border.subtle} vertical={false} />
 
           <XAxis
             dataKey="date"
-            tick={{ fill: "#4a4a6a", fontSize: 10, fontFamily: "monospace" }}
+            tick={{ fill: theme.text.dim, fontSize: 10, fontFamily: theme.font.mono }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v) => String(v).slice(5)}
@@ -113,7 +115,7 @@ function PriceTrendChartInner({ data, costBasis, strike }: PriceTrendChartProps)
           />
           <YAxis
             domain={[yMin - pad, yMax + pad]}
-            tick={{ fill: "#4a4a6a", fontSize: 10, fontFamily: "monospace" }}
+            tick={{ fill: theme.text.dim, fontSize: 10, fontFamily: theme.font.mono }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(v) => `${v >= 0 ? "+" : ""}${v.toFixed(0)}%`}
@@ -122,62 +124,62 @@ function PriceTrendChartInner({ data, costBasis, strike }: PriceTrendChartProps)
 
           <Tooltip
             contentStyle={{
-              background: "#0d0d1a",
-              border: "1px solid #2a2a3a",
+              background: theme.bg.raised,
+              border: `1px solid ${theme.border.emphasis}`,
               borderRadius: 4,
               fontSize: 11,
-              fontFamily: "monospace",
-              color: "#e0e0f0",
+              fontFamily: theme.font.mono,
+              color: theme.text.strong,
             }}
             formatter={(_v: number, _name: string, item) => {
               const row = item.payload as ChartPoint;
               return [`${fmt.currency(row.price)} (${row.pctFromStart >= 0 ? "+" : ""}${row.pctFromStart.toFixed(2)}%)`, "Price"];
             }}
-            labelStyle={{ color: "#6a6a8a" }}
+            labelStyle={{ color: theme.text.muted }}
           />
 
-          <ReferenceLine y={0} stroke="#3a3a5a" strokeWidth={1} strokeDasharray="3 3" />
+          <ReferenceLine y={0} stroke={theme.text.faint} strokeWidth={1} strokeDasharray="3 3" />
 
           <ReferenceLine
             y={toPct(periodHigh, startPrice)}
-            stroke="#34d399"
+            stroke={theme.status.gain}
             strokeDasharray="4 3"
             strokeWidth={1}
             strokeOpacity={0.55}
             label={{
               value: `H ${fmt.currency(periodHigh)}`,
-              fill: "#34d399",
+              fill: theme.status.gain,
               fontSize: 9,
-              fontFamily: "monospace",
+              fontFamily: theme.font.mono,
               position: "insideTopRight",
             }}
           />
           <ReferenceLine
             y={toPct(periodLow, startPrice)}
-            stroke="#f87171"
+            stroke={theme.status.loss}
             strokeDasharray="4 3"
             strokeWidth={1}
             strokeOpacity={0.55}
             label={{
               value: `L ${fmt.currency(periodLow)}`,
-              fill: "#f87171",
+              fill: theme.status.loss,
               fontSize: 9,
-              fontFamily: "monospace",
+              fontFamily: theme.font.mono,
               position: "insideBottomRight",
             }}
           />
           {costBasis > 0 && (
             <ReferenceLine
               y={toPct(costBasis, startPrice)}
-              stroke="#f59e0b"
+              stroke={theme.status.warning}
               strokeDasharray="4 3"
               strokeWidth={1}
               strokeOpacity={0.7}
               label={{
                 value: `BASIS ${fmt.currency(costBasis)}`,
-                fill: "#f59e0b",
+                fill: theme.status.warning,
                 fontSize: 9,
-                fontFamily: "monospace",
+                fontFamily: theme.font.mono,
                 position: "insideTopLeft",
               }}
             />
@@ -185,15 +187,15 @@ function PriceTrendChartInner({ data, costBasis, strike }: PriceTrendChartProps)
           {strike && (
             <ReferenceLine
               y={toPct(strike, startPrice)}
-              stroke="#60a5fa"
+              stroke={theme.status.info}
               strokeDasharray="4 3"
               strokeWidth={1}
               strokeOpacity={0.7}
               label={{
                 value: `STRIKE ${fmt.currency(strike)}`,
-                fill: "#60a5fa",
+                fill: theme.status.info,
                 fontSize: 9,
-                fontFamily: "monospace",
+                fontFamily: theme.font.mono,
                 position: "insideBottomLeft",
               }}
             />
@@ -220,8 +222,8 @@ function PriceTrendChartInner({ data, costBasis, strike }: PriceTrendChartProps)
               if (!isLast && !isHigh && !isLow) return <g />;
 
               let fill = trendColor;
-              if (isHigh) fill = "#34d399";
-              if (isLow) fill = "#f87171";
+              if (isHigh) fill = theme.status.gain;
+              if (isLow) fill = theme.status.loss;
 
               return (
                 <circle
@@ -230,7 +232,7 @@ function PriceTrendChartInner({ data, costBasis, strike }: PriceTrendChartProps)
                   cy={cy}
                   r={isLast ? 5 : 4}
                   fill={fill}
-                  stroke="#08081a"
+                  stroke={theme.bg.card}
                   strokeWidth={isLast ? 2 : 1.5}
                 />
               );

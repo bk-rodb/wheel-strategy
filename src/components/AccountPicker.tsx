@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { BrokerType } from "../types";
 import { BROKER_ACCOUNTS, BROKER_COLOR } from "../constants";
+import { alpha, vars } from "../theme";
 
 interface AccountPickerProps {
   selected: BrokerType;
@@ -22,9 +23,9 @@ export function AccountPicker({ selected, onChange }: AccountPickerProps) {
           alignItems: "center",
           gap: 8,
           padding: "5px 12px",
-          border: `1px solid ${color}50`,
+          border: `1px solid ${alpha(color, 0.314)}`,
           borderRadius: 4,
-          background: `${color}12`,
+          background: alpha(color, 0.071),
           transition: "all 0.15s",
         }}
       >
@@ -37,10 +38,10 @@ export function AccountPicker({ selected, onChange }: AccountPickerProps) {
             flexShrink: 0,
           }}
         />
-        <span style={{ fontSize: 11, fontFamily: "monospace", fontWeight: 700, color }}>
+        <span style={{ fontSize: 11, fontFamily: vars.font.mono, fontWeight: 700, color }}>
           {current.label}
         </span>
-        <span style={{ fontSize: 9, color: "#4a4a6a", fontFamily: "monospace" }}>
+        <span style={{ fontSize: 9, color: vars.text.dim, fontFamily: vars.font.mono }}>
           {open ? "▲" : "▼"}
         </span>
       </button>
@@ -58,12 +59,12 @@ export function AccountPicker({ selected, onChange }: AccountPickerProps) {
               top: "calc(100% + 6px)",
               right: 0,
               zIndex: 200,
-              background: "#0d0d1e",
-              border: "1px solid #2a2a3a",
+              background: vars.bg.raised,
+              border: `1px solid ${vars.border.emphasis}`,
               borderRadius: 6,
               overflow: "hidden",
               minWidth: 200,
-              boxShadow: "0 8px 24px #00000060",
+              boxShadow: `0 8px 24px ${alpha(vars.shadow.color, 0.376)}`,
             }}
           >
             {BROKER_ACCOUNTS.map((acct) => {
@@ -86,18 +87,18 @@ export function AccountPicker({ selected, onChange }: AccountPickerProps) {
                     gap: 10,
                     padding: "10px 14px",
                     cursor: acct.available ? "pointer" : "default",
-                    background: isSelected ? `${c}12` : "transparent",
-                    borderBottom: "1px solid #14142a",
+                    background: isSelected ? alpha(c, 0.071) : "transparent",
+                    borderBottom: `1px solid ${vars.bg.hover}`,
                     opacity: acct.available ? 1 : 0.4,
                     transition: "background 0.1s",
                   }}
                   onMouseEnter={(e) => {
                     if (acct.available)
-                      (e.currentTarget as HTMLElement).style.background = `${c}18`;
+                      (e.currentTarget as HTMLElement).style.background = alpha(c, 0.094);
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLElement).style.background = isSelected
-                      ? `${c}12`
+                      ? alpha(c, 0.071)
                       : "transparent";
                   }}
                 >
@@ -106,7 +107,7 @@ export function AccountPicker({ selected, onChange }: AccountPickerProps) {
                       width: 7,
                       height: 7,
                       borderRadius: "50%",
-                      background: isSelected ? c : "#2a2a4a",
+                      background: isSelected ? c : vars.text.ghost,
                       flexShrink: 0,
                     }}
                   />
@@ -114,14 +115,14 @@ export function AccountPicker({ selected, onChange }: AccountPickerProps) {
                     <div
                       style={{
                         fontSize: 12,
-                        fontFamily: "monospace",
+                        fontFamily: vars.font.mono,
                         fontWeight: 700,
-                        color: isSelected ? c : "#8080a0",
+                        color: isSelected ? c : vars.text.tertiary,
                       }}
                     >
                       {acct.label}
                     </div>
-                    <div style={{ fontSize: 9, color: "#3a3a5a", fontFamily: "monospace" }}>
+                    <div style={{ fontSize: 9, color: vars.text.faint, fontFamily: vars.font.mono }}>
                       {acct.sublabel}
                     </div>
                   </div>

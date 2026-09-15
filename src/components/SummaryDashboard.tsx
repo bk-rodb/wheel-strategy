@@ -7,6 +7,7 @@ import { PositionCard } from "./PositionCard";
 import { RetrospectivePanel } from "./RetrospectivePanel";
 import { useOpenBlotterOrders } from "../hooks/useOpenBlotterOrders";
 import type { BlotterOrder, DeskOrderState } from "../store/orderBlotter";
+import { alpha, vars } from "../theme";
 
 interface SummaryDashboardProps {
   positions: WheelPosition[];
@@ -92,14 +93,14 @@ export function SummaryDashboard({
         label: "Unrealized P&L",
         value: fmt.currency(totals.unrealizedPnL),
         accent: totals.unrealizedPnL >= 0,
-        color: totals.unrealizedPnL >= 0 ? "#34d399" : "#f87171",
+        color: totals.unrealizedPnL >= 0 ? vars.status.gain : vars.status.loss,
       },
       { label: "Premium Collected", value: fmt.currency(totals.premiumCollected), accent: true },
       {
         label: "Day Change",
         value: fmt.currency(totals.dayChange),
         accent: totals.dayChange >= 0,
-        color: totals.dayChange >= 0 ? "#34d399" : "#f87171",
+        color: totals.dayChange >= 0 ? vars.status.gain : vars.status.loss,
       },
     ],
     [totals],
@@ -125,8 +126,8 @@ export function SummaryDashboard({
           <div
             key={m.label}
             style={{
-              background: "#08081a",
-              border: "1px solid #1a1a30",
+              background: vars.bg.card,
+              border: `1px solid ${vars.border.default}`,
               borderRadius: 6,
               padding: 14,
             }}
@@ -134,8 +135,8 @@ export function SummaryDashboard({
             <div
               style={{
                 fontSize: 9,
-                color: "#4a4a6a",
-                fontFamily: "monospace",
+                color: vars.text.dim,
+                fontFamily: vars.font.mono,
                 letterSpacing: "0.1em",
                 marginBottom: 6,
               }}
@@ -145,9 +146,9 @@ export function SummaryDashboard({
             <div
               style={{
                 fontSize: 16,
-                fontFamily: "monospace",
+                fontFamily: vars.font.mono,
                 fontWeight: 700,
-                color: m.color ?? (m.accent ? "#34d399" : "#c0c0e0"),
+                color: m.color ?? (m.accent ? vars.status.gain : vars.text.primary),
               }}
             >
               {m.value}
@@ -169,8 +170,8 @@ export function SummaryDashboard({
       >
         <div
           style={{
-            background: "#08081a",
-            border: "1px solid #1a1a30",
+            background: vars.bg.card,
+            border: `1px solid ${vars.border.default}`,
             borderRadius: 6,
             overflow: "hidden",
           }}
@@ -178,7 +179,7 @@ export function SummaryDashboard({
           <div
             style={{
               padding: "12px 14px",
-              borderBottom: "1px solid #12122a",
+              borderBottom: `1px solid ${vars.border.subtle}`,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "baseline",
@@ -188,8 +189,8 @@ export function SummaryDashboard({
             <div
               style={{
                 fontSize: 10,
-                color: "#8a8aa8",
-                fontFamily: "monospace",
+                color: vars.text.tertiary,
+                fontFamily: vars.font.mono,
                 letterSpacing: "0.08em",
                 fontWeight: 700,
               }}
@@ -201,8 +202,8 @@ export function SummaryDashboard({
                 <div
                   style={{
                     fontSize: 8,
-                    color: "#4a4a6a",
-                    fontFamily: "monospace",
+                    color: vars.text.dim,
+                    fontFamily: vars.font.mono,
                     letterSpacing: "0.08em",
                   }}
                 >
@@ -211,9 +212,9 @@ export function SummaryDashboard({
                 <div
                   style={{
                     fontSize: 14,
-                    fontFamily: "monospace",
+                    fontFamily: vars.font.mono,
                     fontWeight: 700,
-                    color: "#e8e8f8",
+                    color: vars.text.strong,
                   }}
                 >
                   {fmt.currency(account.equity)}
@@ -228,8 +229,8 @@ export function SummaryDashboard({
                 padding: 28,
                 textAlign: "center",
                 fontSize: 10,
-                fontFamily: "monospace",
-                color: "#3a3a5a",
+                fontFamily: vars.font.mono,
+                color: vars.text.faint,
               }}
             >
               LOADING ACTIVITY...
@@ -240,8 +241,8 @@ export function SummaryDashboard({
                 padding: 28,
                 textAlign: "center",
                 fontSize: 10,
-                fontFamily: "monospace",
-                color: "#3a3a5a",
+                fontFamily: vars.font.mono,
+                color: vars.text.faint,
                 lineHeight: 1.8,
               }}
             >
@@ -253,7 +254,7 @@ export function SummaryDashboard({
             <div style={{ maxHeight: 360, overflowY: "auto" }}>
               {ledger.map((row) => {
                 const positive = row.amount >= 0;
-                const amountColor = positive ? "#34d399" : "#f87171";
+                const amountColor = positive ? vars.status.gain : vars.status.loss;
                 const sign = positive ? "+" : "−";
                 return (
                   <div
@@ -264,15 +265,15 @@ export function SummaryDashboard({
                       gap: 12,
                       alignItems: "center",
                       padding: "10px 14px",
-                      borderBottom: "1px solid #101024",
+                      borderBottom: `1px solid ${vars.bg.overlay}`,
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
                       <div
                         style={{
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontSize: 11,
-                          color: "#d0d0e8",
+                          color: vars.text.strong,
                           fontWeight: 600,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -283,15 +284,15 @@ export function SummaryDashboard({
                       </div>
                       <div
                         style={{
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontSize: 9,
-                          color: "#4a4a6a",
+                          color: vars.text.dim,
                           marginTop: 2,
                         }}
                       >
                         {fmtShortDateTime(row.timestamp)}
                         {row.activityType !== "FILL" && (
-                          <span style={{ marginLeft: 8, color: "#3a3a5a" }}>
+                          <span style={{ marginLeft: 8, color: vars.text.faint }}>
                             {row.activityType}
                           </span>
                         )}
@@ -299,7 +300,7 @@ export function SummaryDashboard({
                     </div>
                     <div
                       style={{
-                        fontFamily: "monospace",
+                        fontFamily: vars.font.mono,
                         fontSize: 12,
                         fontWeight: 700,
                         color: amountColor,
@@ -312,9 +313,9 @@ export function SummaryDashboard({
                     </div>
                     <div
                       style={{
-                        fontFamily: "monospace",
+                        fontFamily: vars.font.mono,
                         fontSize: 11,
-                        color: "#6a6a8a",
+                        color: vars.text.muted,
                         textAlign: "right",
                         minWidth: 88,
                         whiteSpace: "nowrap",
@@ -332,13 +333,13 @@ export function SummaryDashboard({
             <div
               style={{
                 padding: "8px 14px",
-                borderTop: "1px solid #12122a",
+                borderTop: `1px solid ${vars.border.subtle}`,
                 display: "grid",
                 gridTemplateColumns: "1fr auto auto",
                 gap: 12,
                 fontSize: 8,
-                fontFamily: "monospace",
-                color: "#3a3a5a",
+                fontFamily: vars.font.mono,
+                color: vars.text.faint,
                 letterSpacing: "0.06em",
               }}
             >
@@ -353,8 +354,8 @@ export function SummaryDashboard({
           {pendingOrders.length > 0 && (
             <div
               style={{
-                background: "#08081a",
-                border: "1px solid #2a2040",
+                background: vars.bg.card,
+                border: `1px solid ${vars.border.emphasis}`,
                 borderRadius: 6,
                 padding: 12,
               }}
@@ -362,8 +363,8 @@ export function SummaryDashboard({
               <div
                 style={{
                   fontSize: 10,
-                  color: "#a78bfa",
-                  fontFamily: "monospace",
+                  color: vars.status.highlight,
+                  fontFamily: vars.font.mono,
                   letterSpacing: "0.08em",
                   marginBottom: 10,
                   fontWeight: 700,
@@ -374,7 +375,7 @@ export function SummaryDashboard({
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {pendingOrders.map((o) => {
                   const stateLabel = DESK_STATE_LABEL[o.deskState] ?? o.deskState.toUpperCase();
-                  const sideColor = o.side === "buy" ? "#60a5fa" : "#f59e0b";
+                  const sideColor = o.side === "buy" ? vars.status.info : vars.status.warning;
                   return (
                     <button
                       key={o.clientOrderId}
@@ -382,8 +383,8 @@ export function SummaryDashboard({
                       onClick={() => goPending(o)}
                       title={`Open ${o.underlying} · focus Open Options`}
                       style={{
-                        background: "#0c0c1c",
-                        border: "1px solid #1e1e38",
+                        background: vars.bg.raised,
+                        border: `1px solid ${vars.border.strong}`,
                         borderRadius: 4,
                         padding: "10px 12px",
                         cursor: "pointer",
@@ -396,27 +397,27 @@ export function SummaryDashboard({
                         transition: "border-color 0.15s",
                       }}
                       onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "#a78bfa60";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = alpha(vars.status.highlight, 0.376);
                       }}
                       onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "#1e1e38";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = vars.border.strong;
                       }}
                     >
                       <span
                         style={{
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontWeight: 800,
                           fontSize: 13,
-                          color: "#e8e8f8",
+                          color: vars.text.strong,
                         }}
                       >
                         {o.underlying}
                       </span>
                       <span
                         style={{
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontSize: 11,
-                          color: "#8a8aa8",
+                          color: vars.text.tertiary,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -426,7 +427,7 @@ export function SummaryDashboard({
                       </span>
                       <span
                         style={{
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontSize: 11,
                           fontWeight: 700,
                           color: sideColor,
@@ -434,15 +435,15 @@ export function SummaryDashboard({
                       >
                         {(o.side || "?").toUpperCase()} {o.qty || "?"}
                       </span>
-                      <span style={{ fontFamily: "monospace", fontSize: 11, color: "#c0c0e0" }}>
+                      <span style={{ fontFamily: vars.font.mono, fontSize: 11, color: vars.text.primary }}>
                         {o.limitPrice ? `@ $${o.limitPrice}` : "MKT"}
                       </span>
                       <span
                         style={{
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontSize: 10,
                           fontWeight: 700,
-                          color: "#a78bfa",
+                          color: vars.status.highlight,
                           letterSpacing: "0.04em",
                           textAlign: "right",
                         }}
@@ -459,8 +460,8 @@ export function SummaryDashboard({
           {expiringSoon.length > 0 && (
             <div
               style={{
-                background: "#100a00",
-                border: "1px solid #3a2000",
+                background: vars.tint.warningSurface,
+                border: `1px solid ${vars.tint.warningBorder}`,
                 borderRadius: 6,
                 padding: 12,
               }}
@@ -468,8 +469,8 @@ export function SummaryDashboard({
               <div
                 style={{
                   fontSize: 10,
-                  color: "#f59e0b",
-                  fontFamily: "monospace",
+                  color: vars.status.warning,
+                  fontFamily: vars.font.mono,
                   letterSpacing: "0.08em",
                   marginBottom: 8,
                 }}
@@ -479,14 +480,14 @@ export function SummaryDashboard({
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {expiringSoon.map((p) => {
                   const d = dte(p.activeOption!.expiration);
-                  const c = d <= 7 ? "#ef4444" : "#f59e0b";
+                  const c = d <= 7 ? vars.status.danger : vars.status.warning;
                   return (
                     <button
                       key={p.id}
                       onClick={() => onSelectTicker(p.id)}
                       style={{
-                        background: `${c}10`,
-                        border: `1px solid ${c}50`,
+                        background: alpha(c, 0.063),
+                        border: `1px solid ${alpha(c, 0.314)}`,
                         borderRadius: 4,
                         padding: "4px 10px",
                         cursor: "pointer",
@@ -495,10 +496,10 @@ export function SummaryDashboard({
                         alignItems: "center",
                       }}
                     >
-                      <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 12, color: c }}>
+                      <span style={{ fontFamily: vars.font.mono, fontWeight: 700, fontSize: 12, color: c }}>
                         {p.ticker}
                       </span>
-                      <span style={{ fontFamily: "monospace", fontSize: 10, color: "#8a6020" }}>
+                      <span style={{ fontFamily: vars.font.mono, fontSize: 10, color: vars.tint.warningHint }}>
                         {d}d · {p.activeOption!.type.toUpperCase()} {fmt.currency(p.activeOption!.strike)}
                       </span>
                     </button>
@@ -511,13 +512,13 @@ export function SummaryDashboard({
           {positions.length === 0 && (
             <div
               style={{
-                background: "#08081a",
-                border: "1px solid #1a1a30",
+                background: vars.bg.card,
+                border: `1px solid ${vars.border.default}`,
                 borderRadius: 6,
                 padding: 24,
                 textAlign: "center",
-                fontFamily: "monospace",
-                color: "#3a3a5a",
+                fontFamily: vars.font.mono,
+                color: vars.text.faint,
                 fontSize: 10,
                 lineHeight: 1.8,
               }}

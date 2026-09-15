@@ -14,6 +14,7 @@ import { dteUntil } from "../utils/nextFriday";
 import { OptionCard } from "./OptionCard";
 import { OrderTicket } from "./OrderTicket";
 import { Banner, CardLabel, EmptyState } from "./ui";
+import { alpha, vars } from "../theme";
 
 type TicketDraft = {
   action: OrderAction;
@@ -137,10 +138,10 @@ export function OpenOptionsSection({
 
   const accent =
     ticket?.action === "buy_to_close"
-      ? "#60a5fa"
+      ? vars.status.info
       : side === "call" || ticket?.optionType === "call"
-        ? "#34d399"
-        : "#f59e0b";
+        ? vars.status.gain
+        : vars.status.warning;
 
   const check = useMemo(() => {
     if (!ticket) {
@@ -406,14 +407,14 @@ export function OpenOptionsSection({
     multiOpenCount > 1 ? (
       <div
         style={{
-          background: "#1a0c0c",
-          border: "1px solid #f8717150",
+          background: vars.tint.lossSurface,
+          border: `1px solid ${alpha(vars.status.loss, 0.314)}`,
           borderRadius: 4,
           padding: "10px 12px",
           marginBottom: 10,
           fontSize: 11,
-          fontFamily: "monospace",
-          color: "#f87171",
+          fontFamily: vars.font.mono,
+          color: vars.status.loss,
         }}
       >
         {multiOpenCount} OPEN OPTION ORDERS for {symbol.toUpperCase()} — cancel extras before
@@ -425,8 +426,8 @@ export function OpenOptionsSection({
     locked && (pendingOrder || orderPhase === "orphan_check" || orderPhase === "ack_pending" || orderPhase === "submitting") ? (
       <div
         style={{
-          background: "#0c0c1c",
-          border: `1px solid ${accent}40`,
+          background: vars.bg.raised,
+          border: `1px solid ${alpha(accent, 0.251)}`,
           borderRadius: 4,
           padding: "10px 12px",
           marginBottom: 10,
@@ -440,8 +441,8 @@ export function OpenOptionsSection({
           <div
             style={{
               fontSize: 9,
-              fontFamily: "monospace",
-              color: "#4a4a6a",
+              fontFamily: vars.font.mono,
+              color: vars.text.dim,
               letterSpacing: "0.08em",
             }}
           >
@@ -451,8 +452,8 @@ export function OpenOptionsSection({
             <div
               style={{
                 fontSize: 11,
-                fontFamily: "monospace",
-                color: "#e8e8f8",
+                fontFamily: vars.font.mono,
+                color: vars.text.strong,
                 marginTop: 4,
               }}
             >
@@ -460,16 +461,16 @@ export function OpenOptionsSection({
               {pendingOrder.limit_price ? ` @ $${pendingOrder.limit_price}` : " MKT"}
             </div>
           ) : null}
-          <div style={{ fontSize: 10, fontFamily: "monospace", color: accent, marginTop: 2 }}>
+          <div style={{ fontSize: 10, fontFamily: vars.font.mono, color: accent, marginTop: 2 }}>
             {statusLabel}
             {pendingOrder?.filled_qty && pendingOrder.filled_qty !== "0" && (
-              <span style={{ color: "#8a8aa8" }}>
+              <span style={{ color: vars.text.tertiary }}>
                 {" "}
                 · filled {pendingOrder.filled_qty}/{pendingOrder.qty}
               </span>
             )}
           </div>
-          <div style={{ fontSize: 8, fontFamily: "monospace", color: "#3a3a5a", marginTop: 2 }}>
+          <div style={{ fontSize: 8, fontFamily: vars.font.mono, color: vars.text.faint, marginTop: 2 }}>
             {pendingOrder ? `id ${pendingOrder.id.slice(0, 8)}…` : "awaiting broker id"}
             {clientOrderId ? ` · client ${clientOrderId.slice(0, 8)}…` : ""}
           </div>
@@ -486,13 +487,13 @@ export function OpenOptionsSection({
             style={{
               cursor: busy ? "default" : "pointer",
               background: "transparent",
-              border: "1px solid #f8717150",
+              border: `1px solid ${alpha(vars.status.loss, 0.314)}`,
               borderRadius: 3,
               padding: "5px 12px",
               fontSize: 10,
-              fontFamily: "monospace",
+              fontFamily: vars.font.mono,
               fontWeight: 700,
-              color: "#f87171",
+              color: vars.status.loss,
               letterSpacing: "0.04em",
               opacity:
                 busy || orderPhase === "cancel_pending" ? 0.5 : 1,
@@ -515,13 +516,13 @@ export function OpenOptionsSection({
             style={{
               cursor: "pointer",
               background: "transparent",
-              border: "1px solid #34d39940",
+              border: `1px solid ${alpha(vars.status.gain, 0.251)}`,
               borderRadius: 3,
               padding: "5px 12px",
               fontSize: 10,
-              fontFamily: "monospace",
+              fontFamily: vars.font.mono,
               fontWeight: 700,
-              color: "#34d399",
+              color: vars.status.gain,
             }}
           >
             DISMISS
@@ -536,8 +537,8 @@ export function OpenOptionsSection({
         marginTop: 8,
         marginBottom: 8,
         fontSize: 11,
-        fontFamily: "monospace",
-        color: flashErr || orderHookErr ? "#f87171" : "#34d399",
+        fontFamily: vars.font.mono,
+        color: flashErr || orderHookErr ? vars.status.loss : vars.status.gain,
       }}
     >
       {flashErr || orderHookErr
@@ -548,8 +549,8 @@ export function OpenOptionsSection({
 
   const sectionStyle: React.CSSProperties = {
     scrollMarginTop: 24,
-    outline: highlight ? "1px solid #f59e0b80" : "none",
-    boxShadow: highlight ? "0 0 0 4px #f59e0b18" : "none",
+    outline: highlight ? `1px solid ${alpha(vars.status.warning, 0.502)}` : "none",
+    boxShadow: highlight ? `0 0 0 4px ${alpha(vars.status.warning, 0.094)}` : "none",
     borderRadius: 6,
     transition: "outline 0.3s, box-shadow 0.3s",
   };
@@ -593,8 +594,8 @@ export function OpenOptionsSection({
               <div
                 style={{
                   fontSize: 9,
-                  fontFamily: "monospace",
-                  color: "#5a5a7a",
+                  fontFamily: vars.font.mono,
+                  color: vars.text.subtle,
                   marginBottom: 8,
                 }}
               >
@@ -609,7 +610,7 @@ export function OpenOptionsSection({
             <button
               type="button"
               onClick={() => void openCloseTicket()}
-              style={actionBtn("#60a5fa")}
+              style={actionBtn(vars.status.info)}
             >
               CLOSE
             </button>
@@ -626,7 +627,7 @@ export function OpenOptionsSection({
                   : "Loading Friday strikes…"
               }
               style={{
-                ...actionBtn("#34d399"),
+                ...actionBtn(vars.status.gain),
                 opacity: rollEnabled ? 1 : 0.4,
                 cursor: rollEnabled ? "pointer" : "default",
               }}
@@ -663,12 +664,12 @@ export function OpenOptionsSection({
           style={{
             cursor: loading || locked ? "default" : "pointer",
             background: "transparent",
-            border: "1px solid #1e1e38",
+            border: `1px solid ${vars.border.strong}`,
             borderRadius: 3,
             padding: "2px 8px",
             fontSize: 10,
-            fontFamily: "monospace",
-            color: loading || locked ? "#3a3a5a" : "#8a8aa8",
+            fontFamily: vars.font.mono,
+            color: loading || locked ? vars.text.faint : vars.text.tertiary,
           }}
         >
           ↻
@@ -679,8 +680,8 @@ export function OpenOptionsSection({
         <div
           style={{
             fontSize: 9,
-            fontFamily: "monospace",
-            color: "#5a5a7a",
+            fontFamily: vars.font.mono,
+            color: vars.text.subtle,
             marginBottom: 8,
           }}
         >
@@ -711,8 +712,8 @@ export function OpenOptionsSection({
               gap: 14,
               flexWrap: "wrap",
               fontSize: 10,
-              fontFamily: "monospace",
-              color: "#5a5a7a",
+              fontFamily: vars.font.mono,
+              color: vars.text.subtle,
               marginBottom: 10,
             }}
           >
@@ -726,11 +727,11 @@ export function OpenOptionsSection({
                   setTicket(null);
                 }}
                 style={{
-                  background: "#0c0c1c",
-                  border: `1px solid ${accent}50`,
+                  background: vars.bg.raised,
+                  border: `1px solid ${alpha(accent, 0.314)}`,
                   borderRadius: 3,
                   color: accent,
-                  fontFamily: "monospace",
+                  fontFamily: vars.font.mono,
                   fontSize: 10,
                   fontWeight: 700,
                   padding: "1px 4px",
@@ -746,10 +747,10 @@ export function OpenOptionsSection({
               </select>
             </span>
             <span>
-              DTE <b style={{ color: "#e8e8f8" }}>{dteUntil(pickerExpiration)}</b>
+              DTE <b style={{ color: vars.text.strong }}>{dteUntil(pickerExpiration)}</b>
             </span>
             <span>
-              SPOT <b style={{ color: "#e8e8f8" }}>{fmt.currency(data.spot)}</b>
+              SPOT <b style={{ color: vars.text.strong }}>{fmt.currency(data.spot)}</b>
             </span>
             <span>
               SIDE{" "}
@@ -779,7 +780,7 @@ export function OpenOptionsSection({
                   <span style={{ color: LEVEL_COLOR[row.level], fontWeight: 700 }}>
                     {row.label}
                   </span>
-                  <span style={{ textAlign: "right", color: "#e8e8f8", fontWeight: 700 }}>
+                  <span style={{ textAlign: "right", color: vars.text.strong, fontWeight: 700 }}>
                     {fmt.currency(row.strike)}
                   </span>
                   <span
@@ -788,24 +789,24 @@ export function OpenOptionsSection({
                       color:
                         side === "put"
                           ? row.pctFromSpot <= 0
-                            ? "#34d399"
-                            : "#f87171"
+                            ? vars.status.gain
+                            : vars.status.loss
                           : row.pctFromSpot >= 0
-                            ? "#34d399"
-                            : "#f87171",
+                            ? vars.status.gain
+                            : vars.status.loss,
                     }}
                   >
                     {(row.pctFromSpot * 100).toFixed(1)}%
                   </span>
-                  <span style={{ textAlign: "right", color: "#a0a0c0" }}>
+                  <span style={{ textAlign: "right", color: vars.text.secondary }}>
                     {(row.empiricalAssignmentProb * 100).toFixed(0)}% /{" "}
                     {(row.blackScholesAssignmentProb * 100).toFixed(0)}%
                   </span>
-                  <span style={{ textAlign: "right", color: "#a0a0c0" }}>
+                  <span style={{ textAlign: "right", color: vars.text.secondary }}>
                     {row.bid != null ? fmt.currency(row.bid) : "—"} /{" "}
                     {row.ask != null ? fmt.currency(row.ask) : "—"}
                   </span>
-                  <span style={{ textAlign: "right", color: "#e8e8f8" }}>
+                  <span style={{ textAlign: "right", color: vars.text.strong }}>
                     {fmt.currency(row.sellLimit)}
                   </span>
                   <span style={{ textAlign: "right" }}>
@@ -813,7 +814,7 @@ export function OpenOptionsSection({
                       <span
                         style={{
                           fontSize: 9,
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontWeight: 700,
                           color: accent,
                           letterSpacing: "0.04em",
@@ -830,14 +831,14 @@ export function OpenOptionsSection({
                         }
                         style={{
                           cursor: sellDisabled ? "default" : "pointer",
-                          background: selected ? "#1a1a30" : `${accent}18`,
-                          border: `1px solid ${accent}50`,
+                          background: selected ? vars.border.default : alpha(accent, 0.094),
+                          border: `1px solid ${alpha(accent, 0.314)}`,
                           borderRadius: 3,
                           padding: "3px 8px",
                           fontSize: 10,
-                          fontFamily: "monospace",
+                          fontFamily: vars.font.mono,
                           fontWeight: 700,
-                          color: sellDisabled ? "#3a3a5a" : accent,
+                          color: sellDisabled ? vars.text.faint : accent,
                           letterSpacing: "0.04em",
                         }}
                       >
@@ -859,8 +860,8 @@ export function OpenOptionsSection({
               style={{
                 marginTop: 8,
                 fontSize: 8,
-                fontFamily: "monospace",
-                color: "#3a3a5a",
+                fontFamily: vars.font.mono,
+                color: vars.text.faint,
                 lineHeight: 1.6,
               }}
             >
@@ -874,8 +875,8 @@ export function OpenOptionsSection({
             style={{
               marginTop: 6,
               fontSize: 8,
-              fontFamily: "monospace",
-              color: "#3a3a5a",
+              fontFamily: vars.font.mono,
+              color: vars.text.faint,
             }}
           >
             Desk flow: ticket ack → submit (client_order_id) → venue accept → cancel until filled
@@ -889,12 +890,12 @@ export function OpenOptionsSection({
 function actionBtn(color: string): React.CSSProperties {
   return {
     cursor: "pointer",
-    background: `${color}18`,
-    border: `1px solid ${color}50`,
+    background: alpha(color, 0.094),
+    border: `1px solid ${alpha(color, 0.314)}`,
     borderRadius: 3,
     padding: "5px 12px",
     fontSize: 10,
-    fontFamily: "monospace",
+    fontFamily: vars.font.mono,
     fontWeight: 700,
     color,
     letterSpacing: "0.06em",
@@ -907,10 +908,10 @@ const gridHeader: React.CSSProperties = {
   gap: 6,
   padding: "6px 4px",
   fontSize: 8,
-  fontFamily: "monospace",
-  color: "#3a3a5a",
+  fontFamily: vars.font.mono,
+  color: vars.text.faint,
   letterSpacing: "0.06em",
-  borderBottom: "1px solid #12122a",
+  borderBottom: `1px solid ${vars.border.subtle}`,
 };
 
 const gridRow: React.CSSProperties = {
@@ -919,8 +920,8 @@ const gridRow: React.CSSProperties = {
   gap: 6,
   padding: "8px 4px",
   fontSize: 11,
-  fontFamily: "monospace",
-  color: "#c0c0e0",
-  borderBottom: "1px solid #0c0c1c",
+  fontFamily: vars.font.mono,
+  color: vars.text.primary,
+  borderBottom: `1px solid ${vars.bg.raised}`,
   alignItems: "center",
 };

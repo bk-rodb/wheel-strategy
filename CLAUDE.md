@@ -98,6 +98,10 @@ Adding an Alpaca route means adding it to `AlpacaProxyPolicy` — otherwise it 4
 
 ⚠️ **The `trade_updates` websocket is inert.** Alpaca authenticates it with an in-band frame carrying the key and secret, so a browser socket meant shipping the secret. [tradeUpdatesStream.ts](src/api/tradeUpdatesStream.ts) keeps its surface but never connects; order state comes from the 5s `ORDER_STATUS_POLL_MS` polling that already drove the phase machine. A server-side SSE relay is the follow-up.
 
+### Theming
+
+All colors, font stacks, and the frame shadow come from **`src/theme/themes/{dark,light,custom}.ts`**. These are typed `Theme` token objects, emitted as `--wd-*` CSS custom properties under `:root[data-theme]`. Components import `vars` / `alpha` from `src/theme` (`color: vars.text.dim`). **Never write hex literals in components**, and never append hex alpha to a color (`` `${c}40` `` breaks on `var()`); use `alpha(c, 0.25)`. Recharts/SVG attributes can't read CSS vars, so use `useTheme().theme` / `resolve()` there. Full guide: [docs/THEMING.md](docs/THEMING.md).
+
 ### Data flow
 
 `useWheelPositions` hook → `src/WheelDashboard.tsx` → tab selection → `SummaryDashboard`, `TickerDetail` (held position), or `WatchlistTickerDetail` (opened-from-watchlist research view, which embeds the analysis panel).

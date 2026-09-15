@@ -1,5 +1,7 @@
 import type { BrokerType } from "../types";
 import { AccountPicker } from "./AccountPicker";
+import { ThemeSwitcher } from "./ThemeSwitcher";
+import { alpha, vars } from "../theme";
 
 interface TopBarProps {
   broker: BrokerType;
@@ -14,12 +16,12 @@ export function TopBar({ broker, onBrokerChange, lastRefresh, loading, isMock, o
   return (
     <div
       style={{
-        borderBottom: "1px solid #12122a",
+        borderBottom: `1px solid ${vars.border.subtle}`,
         padding: "12px 24px",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        background: "#07071a",
+        background: vars.bg.panel,
         position: "sticky",
         top: 0,
         zIndex: 10,
@@ -28,28 +30,28 @@ export function TopBar({ broker, onBrokerChange, lastRefresh, loading, isMock, o
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span
           style={{
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: vars.font.display,
             fontSize: 16,
             fontWeight: 800,
-            color: "#34d399",
+            color: vars.accent,
             letterSpacing: "-0.01em",
           }}
         >
           WHEEL DESK
         </span>
-        <span style={{ fontSize: 9, color: "#2a2a4a", letterSpacing: "0.1em" }}>
+        <span style={{ fontSize: 9, color: vars.text.ghost, letterSpacing: "0.1em" }}>
           OPTIONS STRATEGY TRACKER
         </span>
         {isMock && (
           <span
             style={{
               fontSize: 9,
-              color: "#f59e0b",
-              background: "#f59e0b18",
-              border: "1px solid #f59e0b40",
+              color: vars.status.warning,
+              background: alpha(vars.status.warning, 0.094),
+              border: `1px solid ${alpha(vars.status.warning, 0.251)}`,
               padding: "1px 7px",
               borderRadius: 3,
-              fontFamily: "monospace",
+              fontFamily: vars.font.mono,
               letterSpacing: "0.08em",
             }}
           >
@@ -58,8 +60,9 @@ export function TopBar({ broker, onBrokerChange, lastRefresh, loading, isMock, o
         )}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <ThemeSwitcher />
         <AccountPicker selected={broker} onChange={onBrokerChange} />
-        <span style={{ fontSize: 10, color: "#2a2a4a" }}>
+        <span style={{ fontSize: 10, color: vars.text.ghost }}>
           {lastRefresh.toLocaleTimeString()}
         </span>
         <button
@@ -70,10 +73,10 @@ export function TopBar({ broker, onBrokerChange, lastRefresh, loading, isMock, o
           style={{
             cursor: loading ? "default" : "pointer",
             fontSize: 10,
-            fontFamily: "monospace",
-            color: loading ? "#2a2a4a" : "#34d399",
+            fontFamily: vars.font.mono,
+            color: loading ? vars.text.ghost : vars.accent,
             border: "1px solid",
-            borderColor: loading ? "#1a1a2a" : "#34d39940",
+            borderColor: loading ? vars.border.default : alpha(vars.accent, 0.251),
             padding: "4px 12px",
             borderRadius: 3,
             letterSpacing: "0.06em",
