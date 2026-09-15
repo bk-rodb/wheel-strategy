@@ -77,7 +77,7 @@ describe("useFridayOptionSuggestions", () => {
     });
 
     await waitFor(() => {
-      expect(fetchFridayOptions.mock.calls.length).toBeGreaterThan(1);
+      expect(vi.mocked(fetchFridayOptions).mock.calls.length).toBeGreaterThan(1);
     });
     expect(result.current.error).toBeNull();
     expect(result.current.data).toEqual(mockBundle());
