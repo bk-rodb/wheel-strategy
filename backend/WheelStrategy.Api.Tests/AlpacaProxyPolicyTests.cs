@@ -41,6 +41,81 @@ public class AlpacaProxyPolicyTests
         return "{" + string.Join(",", fields) + "}";
     }
 
+    // ─── Covered-call strike vs cost basis ───────────────────────────────────
+
+    [Fact]
+    public void Parses_an_osi_call_symbol()
+    {
+        Assert.True(TryParseOsi("NVDA260918C00185000", out var underlying, out var isCall, out var strike));
+        Assert.Equal("NVDA", underlying);
+        Assert.True(isCall);
+        Assert.Equal(185m, strike);
+    }
+
+    [Fact]
+    public void Parses_an_osi_put_with_fractional_strike()
+    {
+        Assert.True(TryParseOsi("SPCX  260724P00012500", out var underlying, out var isCall, out var strike));
+        Assert.Equal("SPCX", underlying);
+        Assert.False(isCall);
+        Assert.Equal(12.5m, strike);
+    }
+
+    [Theory]
+    [InlineData("NVDA")]
+    [InlineData("")]
+    [InlineData("NVDA260918X00185000")]
+    public void Rejects_non_osi_symbols(string symbol)
+    {
+        Assert.False(TryParseOsi(symbol, out _, out _, out _));
+    }
+
+    [Fact]
+    public void Recognises_a_sell_to_open_call()
+    {
+        var body = Json(ValidOrder(symbol: "NVDA260918C00185000", positionIntent: "sell_to_open"));
+        Assert.True(IsSellToOpenCall(body, out var underlying, out var strike));
+        Assert.Equal("NVDA", underlying);
+        Assert.Equal(185m, strike);
+
+        Assert.True(IsSellToOpenCall(Json(ValidOrder(symbol: "NVDA260918C00185000")), out _, out _));
+    }
+
+    [Fact]
+    public void Ignores_puts_buys_and_closing_sells()
+    {
+        Assert.False(IsSellToOpenCall(Json(ValidOrder(symbol: "NVDA260918P00185000")), out _, out _));
+        Assert.False(IsSellToOpenCall(
+            Json(ValidOrder(symbol: "NVDA260918C00185000", side: "buy", positionIntent: "buy_to_close")), out _, out _));
+        Assert.False(IsSellToOpenCall(
+            Json(ValidOrder(symbol: "NVDA260918C00185000", positionIntent: "sell_to_close")), out _, out _));
+    }
+
+    [Theory]
+    [InlineData(185.00, 184.00, true)]
+    [InlineData(190.00, 184.00, true)]
+    [InlineData(184.99, 184.00, false)]
+    [InlineData(180.00, 184.00, false)]
+    public void Call_strike_must_clear_basis_plus_minimum(double strike, double basis, bool allowed)
+    {
+        var error = ValidateCallStrikeVsBasis("NVDA", (decimal)strike, (decimal)basis, 100m, Opts);
+        Assert.Equal(allowed, error is null);
+    }
+
+    [Fact]
+    public void Basis_rule_skips_when_fewer_than_100_shares()
+    {
+        Assert.Null(ValidateCallStrikeVsBasis("NVDA", 100m, 184m, 0m, Opts));
+        Assert.Null(ValidateCallStrikeVsBasis("NVDA", 100m, 184m, 99m, Opts));
+    }
+
+    [Fact]
+    public void Basis_rule_fails_closed_when_basis_unknown()
+    {
+        Assert.NotNull(ValidateCallStrikeVsBasis("NVDA", 500m, null, 100m, Opts));
+        Assert.NotNull(ValidateCallStrikeVsBasis("NVDA", 500m, 0m, 100m, Opts));
+    }
+
     // ─── Route allowlist ─────────────────────────────────────────────────────
 
     [Theory]

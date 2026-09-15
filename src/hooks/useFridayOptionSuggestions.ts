@@ -15,10 +15,12 @@ export function useFridayOptionSuggestions(opts: {
   symbol: string;
   side: OptionSide;
   shares: number;
+  /** Per-share cost basis; floors covered-call strikes at basis + $1. */
+  costBasis?: number | null;
   expiration?: string | null;
   enabled?: boolean;
 }) {
-  const { symbol, side, shares, expiration, enabled = true } = opts;
+  const { symbol, side, shares, costBasis, expiration, enabled = true } = opts;
   const [data, setData] = useState<FridayOptionsBundle | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export function useFridayOptionSuggestions(opts: {
           symbol,
           side,
           shares,
+          costBasis,
           expiration: effectiveExpiration,
           signal,
         });
@@ -81,7 +84,7 @@ export function useFridayOptionSuggestions(opts: {
         if (!opts?.silent) setLoading(false);
       }
     },
-    [symbol, side, shares, effectiveExpiration, enabled],
+    [symbol, side, shares, costBasis, effectiveExpiration, enabled],
   );
 
   useEffect(() => {

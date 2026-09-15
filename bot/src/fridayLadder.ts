@@ -1,4 +1,5 @@
 import type { AnalysisLevel } from "./config.js";
+import { callStrikeFloor, MIN_CALL_STRIKE_OVER_BASIS, snapCallStrike } from "./basisFloor.js";
 import { dteUntil } from "./calendar.js";
 import { analysisGet, marketData, trading } from "./http.js";
 import type { OptionSide } from "./positions.js";
@@ -181,8 +182,17 @@ async function fetchSnapshot(
   return res.snapshots?.[contractSymbol];
 }
 
+/** No covered call can be sold this cycle without breaching the basis + $1 floor. */
+export class BelowBasisSkip extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BelowBasisSkip";
+  }
+}
+
 /**
  * Build the mid-tier (or configured level) Friday ladder row: analysis → snap → quotes.
+ * Calls only snap to strikes ≥ cost basis + $1; throws BelowBasisSkip when none qualify.
  */
 export async function fetchRegularLadder(opts: {
   symbol: string;
@@ -190,11 +200,20 @@ export async function fetchRegularLadder(opts: {
   qty: number;
   expiration: string;
   level: AnalysisLevel;
+  /** Per-share cost basis (Alpaca avg_entry_price); required for calls. */
+  costBasis?: number | null;
   signal?: AbortSignal;
 }): Promise<FridayLadder> {
   const symbol = opts.symbol.toUpperCase();
   const dte = dteUntil(opts.expiration);
   const warnings: string[] = [];
+  const callFloor = opts.side === "call" ? callStrikeFloor(opts.costBasis) : null;
+  const cushion = `$${MIN_CALL_STRIKE_OVER_BASIS.toFixed(2)}`;
+  if (opts.side === "call" && callFloor == null) {
+    throw new BelowBasisSkip(
+      `Cost basis unknown for ${symbol} — cannot pick a covered-call strike ≥ basis + ${cushion}`,
+    );
+  }
 
   const analysis = await analysisGet<WheelAnalysisResult>(
     "/api/analysis/wheel",
@@ -231,10 +250,19 @@ export async function fetchRegularLadder(opts: {
     );
   }
 
-  const contract = nearestContract(contracts, sug.strike);
+  const unconstrained = nearestContract(contracts, sug.strike);
+  const contract =
+    callFloor != null ? snapCallStrike(contracts, sug.strike, callFloor) : unconstrained;
   if (!contract) {
+    if (callFloor != null) {
+      throw new BelowBasisSkip(
+        `No listed ${symbol} call expiring ${opts.expiration} at or above $${callFloor.toFixed(2)} ` +
+          `(basis $${opts.costBasis!.toFixed(2)} + ${cushion}) — skipping`,
+      );
+    }
     throw new Error(`Could not snap strike ${sug.strike} for ${symbol}`);
   }
+  const raised = unconstrained != null && contract.symbol !== unconstrained.symbol;
 
   let snap: AlpacaOptionSnapshot | undefined;
   try {
@@ -249,6 +277,17 @@ export async function fetchRegularLadder(opts: {
 
   const prices = midFromSnapshot(snap, sug.estPremium);
   const strike = parseFloat(contract.strike_price);
+
+  if (raised) {
+    if (!(prices.bid != null && prices.bid > 0)) {
+      throw new BelowBasisSkip(
+        `${symbol} call strike ${strike} (raised to clear basis + ${cushion}) has no live bid — skipping`,
+      );
+    }
+    warnings.push(
+      `Call strike raised from ${unconstrained!.strike_price} to ${strike} to stay ≥ basis + ${cushion}`,
+    );
+  }
   const spot = analysis.currentPrice;
 
   const row: LadderRow = {

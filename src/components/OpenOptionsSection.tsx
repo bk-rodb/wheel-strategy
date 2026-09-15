@@ -64,6 +64,8 @@ interface OpenOptionsSectionProps {
   onFocusHandled?: () => void;
   /** Re-fetch account positions after a sell/buy order fills. */
   onPositionRefresh?: () => void;
+  /** Per-share cost basis; covered-call strikes must be ≥ basis + $1. */
+  costBasis?: number;
 }
 
 export function OpenOptionsSection({
@@ -75,6 +77,7 @@ export function OpenOptionsSection({
   focusSection = false,
   onFocusHandled,
   onPositionRefresh,
+  costBasis,
 }: OpenOptionsSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [highlight, setHighlight] = useState(false);
@@ -90,6 +93,7 @@ export function OpenOptionsSection({
       symbol,
       side,
       shares,
+      costBasis,
       expiration: selectedExpiration,
       enabled: true,
     });
@@ -191,8 +195,9 @@ export function OpenOptionsSection({
       tradable: ticket.tradable !== false,
       contractMultiplier: ticket.contractMultiplier ?? 100,
       catalystEvents,
+      costBasis,
     });
-  }, [ticket, qty, shares, account, catalystEvents]);
+  }, [ticket, qty, shares, account, catalystEvents, costBasis]);
 
   const openSellTicket = (row: FridayOptionRow) => {
     if (locked) return;

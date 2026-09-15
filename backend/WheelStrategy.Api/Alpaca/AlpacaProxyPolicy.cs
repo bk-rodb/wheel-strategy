@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using WheelStrategy.Api.Options;
@@ -228,6 +229,72 @@ public static partial class AlpacaProxyPolicy
         }
 
         return null;
+    }
+
+    // OSI option symbol without padding: root, yymmdd, C|P, strike × 1000 (8 digits).
+    [GeneratedRegex(@"^([A-Z0-9.]{1,6})(\d{6})([CP])(\d{8})$", RegexOptions.CultureInvariant)]
+    private static partial Regex OsiRegex { get; }
+
+    /// <summary>Parse an OSI option symbol (e.g. NVDA260918C00185000 → NVDA, call, 185).</summary>
+    public static bool TryParseOsi(string symbol, out string underlying, out bool isCall, out decimal strike)
+    {
+        underlying = string.Empty;
+        isCall = false;
+        strike = 0m;
+        if (string.IsNullOrWhiteSpace(symbol)) return false;
+
+        var m = OsiRegex.Match(symbol.Replace(" ", string.Empty, StringComparison.Ordinal).ToUpperInvariant());
+        if (!m.Success) return false;
+
+        underlying = m.Groups[1].Value;
+        isCall = m.Groups[3].Value == "C";
+        strike = decimal.Parse(m.Groups[4].Value, CultureInfo.InvariantCulture) / 1000m;
+        return true;
+    }
+
+    /// <summary>
+    /// Is this order body a sell-to-open of a call? (side=sell, position_intent
+    /// sell_to_open or absent, OSI call symbol.) Returns the underlying and strike.
+    /// </summary>
+    public static bool IsSellToOpenCall(JsonElement body, out string underlying, out decimal strike)
+    {
+        underlying = string.Empty;
+        strike = 0m;
+        if (body.ValueKind != JsonValueKind.Object) return false;
+        if (!TryGetNonEmptyString(body, "side", out var side) || side != "sell") return false;
+
+        if (body.TryGetProperty("position_intent", out var intentProp)
+            && intentProp.ValueKind == JsonValueKind.String
+            && intentProp.GetString() != "sell_to_open")
+            return false;
+
+        if (!TryGetNonEmptyString(body, "symbol", out var symbol)) return false;
+        return TryParseOsi(symbol, out underlying, out var isCall, out strike) && isCall;
+    }
+
+    /// <summary>
+    /// Covered-call rule: with ≥100 shares held, a call must strike at least
+    /// <see cref="AlpacaProxyOptions.MinCallStrikeOverBasis"/> above avg_entry_price.
+    /// Unknown basis fails closed. Returns null when acceptable.
+    /// </summary>
+    public static string? ValidateCallStrikeVsBasis(
+        string underlying,
+        decimal strike,
+        decimal? avgEntryPrice,
+        decimal equityQty,
+        AlpacaProxyOptions opts)
+    {
+        if (equityQty < 100m) return null;
+        if (avgEntryPrice is not > 0m)
+            return $"Cost basis unknown for {underlying}; covered call refused.";
+
+        var floor = avgEntryPrice.Value + opts.MinCallStrikeOverBasis;
+        if (strike >= floor) return null;
+
+        var inv = CultureInfo.InvariantCulture;
+        return $"Call strike {strike.ToString("0.00", inv)} is below {underlying} cost basis "
+            + $"{avgEntryPrice.Value.ToString("0.00", inv)} + {opts.MinCallStrikeOverBasis.ToString("0.00", inv)} "
+            + $"(minimum {floor.ToString("0.00", inv)}).";
     }
 
     private static bool TryGetNonEmptyString(JsonElement body, string name, out string value)

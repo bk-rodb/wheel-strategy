@@ -138,6 +138,19 @@ public static class AlpacaProxyEndpoints
                         detail: validationError,
                         statusCode: StatusCodes.Status400BadRequest);
                 }
+
+                var basisError = await CheckCallStrikeVsBasisAsync(
+                    ctx, doc.RootElement, alpaca, proxy, logger, ct);
+                if (basisError is not null)
+                {
+                    logger.LogWarning("Alpaca proxy rejected a covered call: {Reason}", basisError);
+                    if (placeIntent is not null)
+                        await journal.MarkRejectedLocalAsync(placeIntent, basisError, ct);
+                    return Results.Problem(
+                        title: "Order rejected by proxy policy",
+                        detail: basisError,
+                        statusCode: StatusCodes.Status400BadRequest);
+                }
             }
 
             bodyJson = raw;
@@ -362,6 +375,63 @@ public static class AlpacaProxyEndpoints
 
         return null;
     }
+
+    /// <summary>
+    /// Last line of defence for the covered-call rule: a sell-to-open call against
+    /// held shares must strike ≥ avg_entry_price + MinCallStrikeOverBasis. A 404
+    /// position means no shares (rule does not apply); any other lookup failure
+    /// fails closed.
+    /// </summary>
+    private static async Task<string?> CheckCallStrikeVsBasisAsync(
+        HttpContext ctx,
+        JsonElement body,
+        AlpacaOptions alpaca,
+        AlpacaProxyOptions proxy,
+        ILogger logger,
+        CancellationToken ct)
+    {
+        if (!AlpacaProxyPolicy.IsSellToOpenCall(body, out var underlying, out var strike))
+            return null;
+
+        var http = ctx.RequestServices.GetRequiredService<IHttpClientFactory>().CreateClient(HttpClientName);
+        var url = $"{alpaca.TradingBaseUrl.TrimEnd('/')}/v2/positions/{Uri.EscapeDataString(underlying)}";
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.Add("APCA-API-KEY-ID", alpaca.ApiKeyId);
+        req.Headers.Add("APCA-API-SECRET-KEY", alpaca.ApiSecretKey);
+
+        try
+        {
+            using var res = await http.SendAsync(req, ct);
+            if (res.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+            if (!res.IsSuccessStatusCode)
+            {
+                return $"Could not verify cost basis for {underlying} "
+                    + $"(position lookup returned {(int)res.StatusCode}); covered call refused.";
+            }
+
+            var bytes = await res.Content.ReadAsByteArrayAsync(ct);
+            using var doc = JsonDocument.Parse(bytes);
+            var qty = ReadDecimalString(doc.RootElement, "qty") ?? 0m;
+            var avgEntry = ReadDecimalString(doc.RootElement, "avg_entry_price");
+            return AlpacaProxyPolicy.ValidateCallStrikeVsBasis(underlying, strike, avgEntry, qty, proxy);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException)
+        {
+            logger.LogWarning(ex, "Cost-basis lookup failed for {Underlying}", underlying);
+            return $"Could not verify cost basis for {underlying}; covered call refused.";
+        }
+    }
+
+    private static decimal? ReadDecimalString(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var prop)
+        && prop.ValueKind == JsonValueKind.String
+        && decimal.TryParse(
+            prop.GetString(),
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var value)
+            ? value
+            : null;
 
     private static string ResolveSource(HttpContext ctx)
     {

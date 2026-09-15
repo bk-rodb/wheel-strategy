@@ -29,4 +29,11 @@ public class AlpacaProxyOptions
     /// read-only. Lets you run live market data without exposing order entry.
     /// </summary>
     public bool AllowOrderPlacement { get; set; } = true;
+
+    /// <summary>
+    /// A sell-to-open call against held shares must strike at least this far
+    /// above the position's avg_entry_price (per share), so assignment is never
+    /// a loss. 1.00 = $100 per contract.
+    /// </summary>
+    public decimal MinCallStrikeOverBasis { get; set; } = 1.00m;
 }

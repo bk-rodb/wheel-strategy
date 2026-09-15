@@ -5,6 +5,7 @@ export interface AlpacaPosition {
   asset_class: string;
   qty: string;
   side: string;
+  avg_entry_price?: string;
 }
 
 export interface AccountSnapshot {
@@ -19,20 +20,31 @@ interface AlpacaAccount {
   options_buying_power?: string;
 }
 
-/** Equity shares held long for `symbol` (0 if flat). */
-export async function getEquityShares(
+export interface EquityPosition {
+  /** Whole shares held long (0 if flat). */
+  shares: number;
+  /** Per-share cost basis (Alpaca avg_entry_price); null when flat or unreadable. */
+  avgEntryPrice: number | null;
+}
+
+/** Long equity shares and cost basis for `symbol`. */
+export async function getEquityPosition(
   symbol: string,
   signal?: AbortSignal,
-): Promise<number> {
+): Promise<EquityPosition> {
   const positions = await trading.get<AlpacaPosition[]>("/v2/positions", undefined, signal);
   const u = symbol.toUpperCase();
   const pos = (positions ?? []).find(
     (p) => p.symbol.toUpperCase() === u && p.asset_class === "us_equity",
   );
-  if (!pos) return 0;
+  if (!pos) return { shares: 0, avgEntryPrice: null };
   const qty = parseFloat(pos.qty);
-  if (!Number.isFinite(qty) || qty <= 0) return 0;
-  return Math.floor(qty);
+  if (!Number.isFinite(qty) || qty <= 0) return { shares: 0, avgEntryPrice: null };
+  const avg = parseFloat(pos.avg_entry_price ?? "");
+  return {
+    shares: Math.floor(qty),
+    avgEntryPrice: Number.isFinite(avg) && avg > 0 ? avg : null,
+  };
 }
 
 export async function getAccount(signal?: AbortSignal): Promise<AccountSnapshot> {
